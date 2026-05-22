@@ -169,7 +169,8 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                   </td>
                   <td className="p-4 text-sm text-right">
                     <TransactionAmount
-                      amount={txn.amount || 0}
+                      amount={txn.amount}
+                      balance={txn.balance}
                       type={txn.type}
                     />
                   </td>
