@@ -1,17 +1,25 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { useAccountStats } from '@/hooks/use-account-stats'
 import { StatsCard } from '@/components/dashboard/stats-card'
+import { ProfitCard } from '@/components/dashboard/profit-card'
 import { AccountListPreview } from '@/components/dashboard/account-list-preview'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
 import { Wallet, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { getCurrentMonthProfitSummary } from '@/lib/utils/profit-calculator'
 
 export default function DashboardPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
 
   const stats = useAccountStats()
+
+  // 计算本月收益汇总
+  const profitSummary = useMemo(() => {
+    return getCurrentMonthProfitSummary(transactions, accounts)
+  }, [transactions, accounts])
 
   return (
     <div className="space-y-6">
@@ -22,7 +30,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatsCard
           title="总资产"
           value={stats.totalAssets}
@@ -51,6 +59,7 @@ export default function DashboardPage() {
           description="收支差额"
           variant="gold"
         />
+        <ProfitCard data={profitSummary} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

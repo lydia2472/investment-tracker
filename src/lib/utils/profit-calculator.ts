@@ -1,5 +1,5 @@
-import { TransactionType } from '@/types'
-import type { Transaction, Account, MonthlyProfit, SnapshotPair } from '@/types'
+import { TransactionType, AccountType, TransactionCategory } from '@/types'
+import type { Transaction, Account, MonthlyProfit, SnapshotPair, DashboardProfitSummary } from '@/types'
 import {
   endOfMonth,
   startOfMonth,
@@ -76,13 +76,46 @@ export function getPeriodTransactions(
 }
 
 /**
+ * 计算指定期间的转入总额
+ * 找出所有 TRANSFER_IN 类型的交易并汇总
+ */
+export function calculateTransferInAmount(
+  transactions: Transaction[],
+  startDate: Date,
+  endDate: Date,
+  accountId: string
+): number {
+  const start = startDate instanceof Date ? startDate : new Date(startDate)
+  const end = endDate instanceof Date ? endDate : new Date(endDate)
+
+  return transactions
+    .filter((txn) => {
+      if (txn.accountId !== accountId) return false
+
+      const txnDate = txn.createdAt instanceof Date
+        ? txn.createdAt
+        : new Date(txn.createdAt)
+
+      // 只统计 TRANSFER_IN 类型的收入交易
+      return txn.type === TransactionType.INCOME &&
+             txn.category === TransactionCategory.TRANSFER_IN &&
+             txnDate >= start &&
+             txnDate <= end
+    })
+    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+}
+
+
+/**
  * 计算指定快照对的月度收益
  */
 export function calculateProfitForPeriod(
   startSnapshot: Transaction,
   endSnapshot: Transaction,
   periodTransactions: Transaction[],
-  accountName: string
+  accountName: string,
+  accountType: AccountType,
+  allTransactions: Transaction[]  // 新增：完整交易列表，用于计算转入金额
 ): MonthlyProfit {
   const startDate = startSnapshot.createdAt instanceof Date
     ? startSnapshot.createdAt
@@ -93,7 +126,27 @@ export function calculateProfitForPeriod(
 
   const startBalance = startSnapshot.balance || 0
   const endBalance = endSnapshot.balance || 0
-  const calculatedProfit = endBalance - startBalance
+
+  // 根据账户类型应用不同的收益计算公式
+  let calculatedProfit: number
+  if (accountType === AccountType.CASH) {
+    // 现金账户：简化公式（期末 - 期初）
+    calculatedProfit = endBalance - startBalance
+  } else {
+    // 其他账户：扣除转入金额
+    const transferInAmount = calculateTransferInAmount(
+      allTransactions,
+      startDate,
+      endDate,
+      endSnapshot.accountId
+    )
+    calculatedProfit = endBalance - startBalance - transferInAmount
+  }
+
+  // 计算收益率（处理除零情况）
+  const profitRate = startBalance > 0
+    ? (calculatedProfit / startBalance) * 100
+    : 0
 
   const periodIncome = periodTransactions
     .filter((txn) => txn.type === TransactionType.INCOME)
@@ -114,6 +167,7 @@ export function calculateProfitForPeriod(
     periodIncome,
     periodExpense,
     netFlow: periodIncome - periodExpense,
+    profitRate,  // 新增：收益率
     hasCompleteData: true,
     startSnapshotId: startSnapshot.id,
     endSnapshotId: endSnapshot.id,
@@ -198,12 +252,14 @@ export function calculateAccountMonthlyProfits(
       account.id
     )
 
-    // 计算收益
+    // 计算收益（传入完整交易列表和账户类型）
     const profit = calculateProfitForPeriod(
       previousSnapshot,
       currentSnapshot,
       periodTransactions,
-      account.name
+      account.name,
+      account.type,
+      transactions  // 传入完整交易列表用于计算转入金额
     )
 
     profits.push(profit)
@@ -273,4 +329,67 @@ export function getWorstMonth(
   return profits.reduce((worst, current) =>
     current.calculatedProfit < worst.calculatedProfit ? current : worst
   )
+}
+
+/**
+ * 获取当月收益汇总（用于仪表板显示）
+ * @param transactions 所有交易
+ * @param accounts 所有账户
+ * @param targetMonth 目标月份（默认：当前月份）
+ * @param targetYear 目标年份（默认：当前年份）
+ */
+export function getCurrentMonthProfitSummary(
+  transactions: Transaction[],
+  accounts: Account[],
+  targetMonth?: number,
+  targetYear?: number
+): DashboardProfitSummary {
+  const now = new Date()
+  const month = targetMonth ?? now.getMonth() + 1
+  const year = targetYear ?? now.getFullYear()
+
+  // 获取所有月度收益
+  const allProfits = calculateMonthlyProfits(transactions, accounts)
+
+  // 筛选当月数据
+  const currentMonthProfits = allProfits.filter(
+    p => p.year === year && p.month === month
+  )
+
+  if (currentMonthProfits.length === 0) {
+    return {
+      totalProfit: 0,
+      profitRate: 0,
+      hasData: false,
+      month,
+      year,
+    }
+  }
+
+  // 计算总收益
+  const totalProfit = currentMonthProfits.reduce(
+    (sum, p) => sum + p.calculatedProfit,
+    0
+  )
+
+  // 计算加权平均收益率（按月初余额加权）
+  const totalStartBalance = currentMonthProfits.reduce(
+    (sum, p) => sum + p.startBalance,
+    0
+  )
+
+  const weightedProfitRate = totalStartBalance > 0
+    ? currentMonthProfits.reduce((sum, p) => {
+        const weight = p.startBalance / totalStartBalance
+        return sum + (p.profitRate || 0) * weight
+      }, 0)
+    : 0
+
+  return {
+    totalProfit,
+    profitRate: weightedProfitRate,
+    hasData: true,
+    month,
+    year,
+  }
 }

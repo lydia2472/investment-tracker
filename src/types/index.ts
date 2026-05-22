@@ -78,10 +78,11 @@ export interface MonthlyProfit {
   accountName: string;
   startBalance: number;        // 月初快照余额
   endBalance: number;          // 月末快照余额
-  calculatedProfit: number;    // 计算收益 = endBalance - startBalance
+  calculatedProfit: number;    // 计算收益 = endBalance - startBalance - transferIn
   periodIncome: number;        // 期间收入
   periodExpense: number;       // 期间支出
   netFlow: number;            // 净流入 = periodIncome - periodExpense
+  profitRate?: number;         // 收益率百分比（新增字段）
   hasCompleteData: boolean;   // 是否有完整的快照对
   startSnapshotId?: string;   // 月初快照ID
   endSnapshotId?: string;     // 月末快照ID
@@ -92,4 +93,13 @@ export interface SnapshotPair {
   start: Transaction | null;   // 月初快照
   end: Transaction | null;     // 月末快照
   periodTransactions: Transaction[];  // 期间的所有交易
+}
+
+// 仪表板收益汇总接口
+export interface DashboardProfitSummary {
+  totalProfit: number;         // 所有账户本月收益总和
+  profitRate: number;          // 加权平均收益率
+  hasData: boolean;            // 是否存在本月数据
+  month: number;               // 当前月份
+  year: number;                // 当前年份
 }

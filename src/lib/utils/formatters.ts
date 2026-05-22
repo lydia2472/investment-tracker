@@ -61,3 +61,8 @@ export const formatRelativeTime = (date: Date): string => {
   const diffInYears = Math.floor(diffInMonths / 12);
   return `${diffInYears}年前`;
 };
+
+// 百分比格式化
+export const formatPercentage = (value: number, decimals: number = 2): string => {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}%`
+};
