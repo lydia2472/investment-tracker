@@ -45,3 +45,18 @@ next-env.d.ts
 /*.dmg
 /*.zip
 .electron/
+
+# Backup files
+*-backup
+src-backup/
+.vite/
+
+# Embedded repositories
+electron/investment/
+invest/
+investment/
+invests/
+
+# Test files
+TEST_REPORT.md
+electron-test.js
