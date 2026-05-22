@@ -55,9 +55,9 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
           description: `已从 ${fromAccount?.name || '未知账户'} 转账 ¥${data.amount?.toFixed(2) || '0.00'} 到 ${toAccount?.name || '未知账户'}`,
         })
       } else {
-        // 处理其他类型
+        // 处理其他类型（ accountId 已在 handleSubmit 中验证）
         addTransaction({
-          accountId: data.accountId,
+          accountId: data.accountId!, // 类型断言：已在 handleSubmit 中验证
           type: data.type,
           category: data.category || TransactionCategory.DEPOSIT, // 提供默认值
           amount: data.amount,

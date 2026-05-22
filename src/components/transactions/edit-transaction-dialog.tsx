@@ -56,7 +56,7 @@ export function EditTransactionDialog({
 
   // 应用新交易的余额影响
   const applyNewBalance = (data: TransactionFormData) => {
-    const account = getAccount(data.accountId)
+    const account = getAccount(data.accountId!)
     if (!account) return
 
     let newBalance = account.balance
@@ -69,7 +69,7 @@ export function EditTransactionDialog({
       newBalance = data.balance || 0
     }
 
-    updateAccountBalance(data.accountId, newBalance)
+    updateAccountBalance(data.accountId!, newBalance)
   }
 
   const handleSubmit = async (data: TransactionFormData) => {
@@ -85,7 +85,7 @@ export function EditTransactionDialog({
 
       // 更新交易记录
       updateTransaction(transaction.id, {
-        accountId: data.accountId,
+        accountId: data.accountId!,
         type: data.type,
         category: data.category || TransactionCategory.DEPOSIT, // 提供默认值
         amount: data.amount,

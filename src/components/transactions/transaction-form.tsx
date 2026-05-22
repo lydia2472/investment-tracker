@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { useEffect } from 'react'
+import { toast } from 'sonner'
 import {
   Form,
   FormControl,
@@ -27,9 +28,9 @@ import { useAccountStore } from '@/lib/stores'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils/cn'
 
-// 本地 schema 定义，避免类型推断问题
-const transactionFormSchema = z.object({
-  accountId: z.string().min(1, '请选择账户'),
+// 基础 schema - 所有字段都标记为可选
+const baseTransactionSchema = z.object({
+  accountId: z.string().optional(),
   type: z.nativeEnum(TransactionType),
   category: z.nativeEnum(TransactionCategory).optional(),
   amount: z.number().optional(),
@@ -40,6 +41,25 @@ const transactionFormSchema = z.object({
   note: z.string().optional(),
   date: z.date(),
 })
+
+// 根据交易类型进行条件验证
+const transactionFormSchema = baseTransactionSchema.refine(
+  (data) => {
+    // 转账类型：必须有 fromAccountId, toAccountId, amount
+    if (data.type === TransactionType.TRANSFER) {
+      return data.fromAccountId &&
+             data.toAccountId &&
+             data.amount !== undefined &&
+             data.amount > 0
+    }
+    // 非转账类型：必须有 accountId
+    return !!data.accountId
+  },
+  {
+    message: "请填写完整的转账信息",
+    path: ["fromAccountId"],
+  }
+)
 
 export type TransactionFormData = z.infer<typeof transactionFormSchema>
 
@@ -101,6 +121,40 @@ export function TransactionForm({
   }, [selectedType, form, mode])
 
   const handleSubmit = async (data: TransactionFormData) => {
+    // 转账类型特殊验证
+    if (data.type === TransactionType.TRANSFER) {
+      if (!data.fromAccountId || !data.toAccountId) {
+        toast.error('请选择转出和转入账户')
+        return
+      }
+      if (!data.amount || data.amount <= 0) {
+        toast.error('请输入有效的转账金额')
+        return
+      }
+      if (data.fromAccountId === data.toAccountId) {
+        toast.error('不能转账到同一账户')
+        return
+      }
+    } else {
+      // 非转账类型验证
+      if (!data.accountId) {
+        toast.error('请选择账户')
+        return
+      }
+
+      // 收入和支出需要金额
+      if ((data.type === TransactionType.INCOME || data.type === TransactionType.EXPENSE) && !data.amount) {
+        toast.error('请输入金额')
+        return
+      }
+
+      // 快照需要余额
+      if (data.type === TransactionType.SNAPSHOT && data.balance === undefined) {
+        toast.error('请输入当前余额')
+        return
+      }
+    }
+
     await onSubmit(data)
   }
 
