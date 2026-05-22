@@ -393,7 +393,11 @@ export function TransactionForm({
             <FormItem>
               <FormLabel>描述</FormLabel>
               <FormControl>
-                <Input placeholder="输入描述" {...field} />
+                <Input
+                  placeholder="输入描述"
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -411,7 +415,8 @@ export function TransactionForm({
                 <Textarea
                   placeholder="添加备注信息..."
                   className="resize-none"
-                  {...field}
+                  value={field.value || ''}
+                  onChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />
