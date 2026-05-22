@@ -43,10 +43,13 @@ export function useAccountStatistics(): AccountStatistics {
     stats.netIncome = stats.totalIncome - stats.totalExpense
 
     if (transactions.length > 0) {
-      const sortedTxns = [...transactions].sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-      )
-      stats.lastTransactionDate = sortedTxns[0].createdAt
+      const sortedTxns = [...transactions].sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+        return dateB.getTime() - dateA.getTime()
+      })
+      const lastCreated = sortedTxns[0].createdAt
+      stats.lastTransactionDate = lastCreated instanceof Date ? lastCreated : new Date(lastCreated)
     }
 
     return stats

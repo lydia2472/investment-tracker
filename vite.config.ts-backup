@@ -1,0 +1,51 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import electron from 'vite-plugin-electron';
+import path from 'path';
+import { copyFileSync, existsSync } from 'fs';
+
+// 复制 preload.cjs 到 dist-electron
+function copyPreload() {
+  const src = path.resolve(__dirname, 'electron/preload.cjs');
+  const dest = path.resolve(__dirname, 'dist-electron/preload.cjs');
+  if (existsSync(src)) {
+    copyFileSync(src, dest);
+  }
+}
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    electron([
+      {
+        // 主进程入口文件
+        entry: 'electron/main.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+          plugins: [
+            {
+              name: 'copy-preload',
+              writeBundle() {
+                copyPreload();
+              },
+            },
+          ],
+        },
+      },
+    ]),
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+  },
+});

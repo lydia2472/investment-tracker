@@ -44,7 +44,11 @@ export function useTransactionStats(): TransactionStats {
 
     // 最近交易（前10条，按创建时间倒序）
     const recentTransactions = [...transactions]
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+        return dateB.getTime() - dateA.getTime()
+      })
       .slice(0, 10)
 
     return {

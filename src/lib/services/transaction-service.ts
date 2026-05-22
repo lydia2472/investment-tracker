@@ -43,7 +43,7 @@ export class TransactionService {
     endDate: Date
   ): Transaction[] {
     return transactions.filter(txn => {
-      const txnDate = txn.createdAt
+      const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
       return txnDate >= startDate && txnDate <= endDate
     })
   }
@@ -86,7 +86,8 @@ export class TransactionService {
    */
   static groupByDate(transactions: Transaction[]): Record<string, Transaction[]> {
     return transactions.reduce((acc, txn) => {
-      const dateKey = txn.createdAt.toISOString().split('T')[0]
+      const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+      const dateKey = date.toISOString().split('T')[0]
       if (!acc[dateKey]) {
         acc[dateKey] = []
       }
@@ -100,7 +101,7 @@ export class TransactionService {
    */
   static groupByMonth(transactions: Transaction[]): Record<string, Transaction[]> {
     return transactions.reduce((acc, txn) => {
-      const date = txn.createdAt
+      const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       if (!acc[monthKey]) {
         acc[monthKey] = []
@@ -117,15 +118,18 @@ export class TransactionService {
     transactions: Transaction[],
     initialBalance: number
   ): Array<{ date: string; balance: number }> {
-    const sortedTransactions = [...transactions].sort((a, b) =>
-      a.createdAt.getTime() - b.createdAt.getTime()
-    )
+    const sortedTransactions = [...transactions].sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+      return dateA.getTime() - dateB.getTime()
+    })
 
     const dailyBalances: Record<string, number> = {}
     let balance = initialBalance
 
     sortedTransactions.forEach(txn => {
-      const dateKey = txn.createdAt.toISOString().split('T')[0]
+      const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+      const dateKey = date.toISOString().split('T')[0]
 
       if (txn.type === TransactionType.INCOME) {
         balance += (txn.amount || 0)
