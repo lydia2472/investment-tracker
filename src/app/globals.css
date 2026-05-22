@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+:root {
+  /* Light Mode - 紫色 + 金色主题 */
+  --background: 240 100% 98%; /* 非常浅的紫色调 */
+  --foreground: 222 47% 11%;
+
+  /* Cards */
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 10%;
+
+  /* Popovers */
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 10%;
+
+  /* Primary - 翡翠绿 */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary - 金色 */
+  --secondary: 45 93% 47%;
+  --secondary-foreground: 0 0% 100%;
+
+  /* Muted */
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 50%;
+
+  /* Accent */
+  --accent: 240 5% 96%;
+  --accent-foreground: 240 10% 10%;
+
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Borders */
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 160 84% 39%;
+
+  /* Radius */
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark Mode */
+    --background: 240 10% 5%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 93% 47%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 4% 15%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 240 4% 15%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 160 84% 39%;
+  }
+}
+
+/* Custom Gradients */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+}
+
+.bg-gradient-purple {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.bg-gradient-green {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.bg-gradient-blue {
+  background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
+}
+
+.bg-gradient-red {
+  background: linear-gradient(135deg, #EF4444 0%, #F43F5E 100%);
+}
+
+.bg-gradient-pink {
+  background: linear-gradient(135deg, #EC4899 0%, #F472B6 100%);
+}
+
+/* Glassmorphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
