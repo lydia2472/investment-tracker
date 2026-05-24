@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from 'animal-island-ui'
 import { formatCurrency } from '@/lib/utils/formatters'
 import type { Account } from '@/types'
-import { Wallet } from 'lucide-react'
+import { ShellIcon } from '@/lib/components/icon-adapter'
 
 interface AccountListPreviewProps {
   accounts: Account[]
@@ -11,30 +11,30 @@ interface AccountListPreviewProps {
 export function AccountListPreview({ accounts, limit = 5 }: AccountListPreviewProps) {
   if (accounts.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>账户概览</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Card color="app-yellow">
+        <div className="p-6 pb-3">
+          <h3 className="font-semibold text-lg">账户概览</h3>
+        </div>
+        <div className="p-6 pt-0">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
-              <Wallet className="h-8 w-8 text-muted-foreground" />
+              <ShellIcon className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">
               暂无账户，请先创建账户
             </p>
           </div>
-        </CardContent>
+        </div>
       </Card>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>账户概览</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card color="app-blue">
+      <div className="p-6 pb-3">
+        <h3 className="font-semibold text-lg">账户概览</h3>
+      </div>
+      <div className="p-6 pt-0">
         <div className="space-y-3">
           {accounts.slice(0, limit).map((account) => (
             <div
@@ -59,7 +59,7 @@ export function AccountListPreview({ accounts, limit = 5 }: AccountListPreviewPr
             </div>
           ))}
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }

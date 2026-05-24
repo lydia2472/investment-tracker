@@ -9,12 +9,22 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+          "border-transparent bg-[var(--color-profit)] text-white shadow hover:bg-[var(--color-profit)]/80",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-[var(--color-bells)] text-white shadow hover:bg-[var(--color-bells)]/80",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
+          "border-transparent bg-[var(--color-loss)] text-white shadow hover:bg-[var(--color-loss)]/80",
+        profit:
+          "border-transparent bg-[var(--color-profit)] text-white shadow hover:bg-[var(--color-profit)]/80",
+        bells:
+          "border-transparent bg-[var(--color-bells)] text-white shadow hover:bg-[var(--color-bells)]/80",
+        loss:
+          "border-transparent bg-[var(--color-loss)] text-white shadow hover:bg-[var(--color-loss)]/80",
+        leaf:
+          "border-transparent bg-[var(--color-leaf)] text-white shadow hover:bg-[var(--color-leaf)]/80",
+        shell:
+          "border-transparent bg-[var(--color-shell)] text-white shadow hover:bg-[var(--color-shell)]/80",
+        outline: "text-foreground border-[var(--color-profit)]/30",
       },
     },
     defaultVariants: {

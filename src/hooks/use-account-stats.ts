@@ -13,12 +13,30 @@ export interface AccountStats {
   transactionCount: number
 }
 
-export function useAccountStats(): AccountStats {
+export interface UseAccountStatsOptions {
+  startDate?: Date  // undefined = 全部数据
+  endDate?: Date    // undefined = 当前时间
+}
+
+export function useAccountStats(options?: UseAccountStatsOptions): AccountStats {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
 
   return useMemo(() => {
-    // 计算总资产
+    // 按日期范围筛选交易记录
+    const filteredTransactions = (() => {
+      if (!options?.startDate && !options?.endDate) {
+        return transactions
+      }
+      return transactions.filter(t => {
+        const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
+        if (options.startDate && txnDate < options.startDate) return false
+        if (options.endDate && txnDate > options.endDate) return false
+        return true
+      })
+    })()
+
+    // 计算总资产（始终使用当前余额，不受日期筛选影响）
     const totalAssets = accounts.reduce((sum, acc) => sum + acc.balance, 0)
 
     // 账户数量
@@ -30,21 +48,21 @@ export function useAccountStats(): AccountStats {
       return acc
     }, {} as Record<AccountType, number>)
 
-    // 计算总收入
-    const totalIncome = transactions
+    // 计算总收入（根据日期筛选）
+    const totalIncome = filteredTransactions
       .filter(t => t.type === TransactionType.INCOME)
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
-    // 计算总支出
-    const totalExpense = transactions
+    // 计算总支出（根据日期筛选）
+    const totalExpense = filteredTransactions
       .filter(t => t.type === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
-    // 净收入
+    // 净收入（根据日期筛选）
     const netIncome = totalIncome - totalExpense
 
-    // 交易总数
-    const transactionCount = transactions.length
+    // 交易总数（根据日期筛选）
+    const transactionCount = filteredTransactions.length
 
     return {
       totalAssets,
@@ -55,5 +73,5 @@ export function useAccountStats(): AccountStats {
       netIncome,
       transactionCount,
     }
-  }, [accounts, transactions])
+  }, [accounts, transactions, options])
 }

@@ -103,3 +103,28 @@ export interface DashboardProfitSummary {
   month: number;               // 当前月份
   year: number;                // 当前年份
 }
+
+// 日期范围收益汇总接口
+export interface DateRangeProfitSummary {
+  totalProfit: number;          // 区间总收益
+  averageProfitRate: number;    // 加权平均收益率
+  monthCount: number;           // 月份数量
+  startYear: number;            // 起始年份
+  startMonth: number;           // 起始月份
+  endYear: number;              // 结束年份
+  endMonth: number;             // 结束月份
+  bestMonth?: {                 // 最佳月份
+    year: number;
+    month: number;
+    profit: number;
+    accountName: string;
+  };
+  worstMonth?: {                // 最差月份
+    year: number;
+    month: number;
+    profit: number;
+    accountName: string;
+  };
+  monthlyData: MonthlyProfit[]; // 月度详情数据
+  hasData: boolean;             // 是否有数据
+}

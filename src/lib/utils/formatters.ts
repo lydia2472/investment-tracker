@@ -1,10 +1,19 @@
-// 货币格式化
+// 货币格式化（添加铃钱图标）
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
+  const formatted = new Intl.NumberFormat('zh-CN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+  }).format(amount);
+
+  // 添加铃钱图标
+  return `💰 ${formatted}`;
+};
+
+// 紧凑货币格式（纯数字，用于表格等空间有限的地方）
+export const formatCurrencyCompact = (amount: number): string => {
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 };
 

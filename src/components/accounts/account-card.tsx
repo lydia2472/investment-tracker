@@ -1,10 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card } from 'animal-island-ui'
+import { Button } from 'animal-island-ui'
 import { AccountTypeBadge } from './account-type-badge'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import type { Account } from '@/types'
-import { TrendingUp, TrendingDown, Edit, Trash2 } from 'lucide-react'
+import { TrendingUpIcon, TrendingDownIcon, EditIcon, TrashIcon } from '@/lib/components/icon-adapter'
+import { iconClasses, cardClasses, buttonClasses } from '@/lib/utils/design-classes'
 
 interface AccountCardProps {
   account: Account
@@ -17,7 +18,7 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
   const isPositiveGrowth = balanceGrowth > 0
 
   return (
-    <Card className="group hover:scale-[1.02] transition-all duration-300 overflow-hidden">
+    <Card color="app-yellow" className={cn("group overflow-hidden", cardClasses.interactive)}>
       {/* Top gradient bar */}
       <div
         className="h-2 w-full"
@@ -26,11 +27,11 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
         }}
       />
 
-      <CardHeader className="pb-3">
+      <div className="p-6 pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
+              className={cn(iconClasses.containerLg, iconClasses.hover)}
               style={{
                 background: `linear-gradient(135deg, ${account.color}, ${account.color}cc)`,
                 boxShadow: `0 8px 16px ${account.color}40`,
@@ -48,8 +49,8 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
             </div>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-6 pt-0">
         <div className="space-y-4">
           {/* Balance display */}
           <div className="p-4 rounded-2xl bg-muted/50">
@@ -72,13 +73,13 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl",
               isPositiveGrowth
-                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
-                : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                ? "bg-[var(--color-profit)]/10 text-[var(--color-profit)]"
+                : "bg-[var(--color-loss)]/10 text-[var(--color-loss)]"
             )}>
               {isPositiveGrowth ? (
-                <TrendingUp className="h-4 w-4" />
+                <TrendingUpIcon className="h-4 w-4" />
               ) : (
-                <TrendingDown className="h-4 w-4" />
+                <TrendingDownIcon className="h-4 w-4" />
               )}
               <div className="flex flex-col">
                 <span className="text-xs font-semibold">
@@ -101,29 +102,30 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
           <div className="flex gap-2 pt-2">
             {onEdit && (
               <Button
-                variant="outline"
-                size="sm"
-                className="flex-1"
+                type="default"
+                size="small"
+                className="flex-1 border-2 border-[var(--color-profit)]/50"
                 onClick={() => onEdit(account)}
               >
-                <Edit className="h-4 w-4 mr-1" />
+                <EditIcon className="h-4 w-4 mr-1" />
                 编辑
               </Button>
             )}
             <Button
-              variant="default"
-              size="sm"
+              type="primary"
+              size="small"
               className={cn(
-                "flex-1 bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02]"
+                "flex-1 bg-gradient-to-r from-[var(--color-loss)] to-[var(--color-loss)] text-white shadow-lg shadow-[var(--color-loss)]/30 hover:shadow-xl hover:shadow-[var(--color-loss)]/40",
+                buttonClasses.interactive
               )}
               onClick={() => onDelete(account.id, account.name)}
             >
-              <Trash2 className="h-4 w-4 mr-1" />
+              <TrashIcon className="h-4 w-4 mr-1" />
               删除
             </Button>
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }

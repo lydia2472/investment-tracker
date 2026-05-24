@@ -1,5 +1,5 @@
 import { TransactionType, AccountType, TransactionCategory } from '@/types'
-import type { Transaction, Account, MonthlyProfit, SnapshotPair, DashboardProfitSummary } from '@/types'
+import type { Transaction, Account, MonthlyProfit, SnapshotPair, DashboardProfitSummary, DateRangeProfitSummary } from '@/types'
 import {
   endOfMonth,
   startOfMonth,
@@ -391,5 +391,120 @@ export function getCurrentMonthProfitSummary(
     hasData: true,
     month,
     year,
+  }
+}
+
+/**
+ * 验证日期范围是否有效
+ * 结束日期必须晚于或等于开始日期
+ */
+export function isValidDateRange(
+  startYear: number,
+  startMonth: number,
+  endYear: number,
+  endMonth: number
+): boolean {
+  const start = new Date(startYear, startMonth - 1)
+  const end = new Date(endYear, endMonth - 1)
+  return end >= start
+}
+
+/**
+ * 获取指定日期范围的收益汇总
+ * @param transactions 所有交易
+ * @param accounts 所有账户
+ * @param startYear 起始年份
+ * @param startMonth 起始月份
+ * @param endYear 结束年份
+ * @param endMonth 结束月份
+ */
+export function getDateRangeProfitSummary(
+  transactions: Transaction[],
+  accounts: Account[],
+  startYear: number,
+  startMonth: number,
+  endYear: number,
+  endMonth: number
+): DateRangeProfitSummary {
+  // 获取所有月度收益
+  const allProfits = calculateMonthlyProfits(transactions, accounts)
+
+  // 按日期范围过滤
+  const filteredProfits = allProfits.filter((profit) => {
+    const profitDate = new Date(profit.year, profit.month - 1)
+    const startDate = new Date(startYear, startMonth - 1)
+    const endDate = new Date(endYear, endMonth - 1)
+    return profitDate >= startDate && profitDate <= endDate
+  })
+
+  // 按月份聚合（多账户求和）
+  const monthlyAggregated = new Map<string, MonthlyProfit>()
+  filteredProfits.forEach((profit) => {
+    const key = `${profit.year}-${profit.month}`
+    if (!monthlyAggregated.has(key)) {
+      monthlyAggregated.set(key, { ...profit })
+    } else {
+      // 多账户月份：累加收益
+      const existing = monthlyAggregated.get(key)!
+      existing.calculatedProfit += profit.calculatedProfit
+      existing.profitRate = profit.profitRate // 使用加权平均
+    }
+  })
+
+  const monthlyData = Array.from(monthlyAggregated.values())
+
+  if (monthlyData.length === 0) {
+    return {
+      totalProfit: 0,
+      averageProfitRate: 0,
+      monthCount: 0,
+      startYear,
+      startMonth,
+      endYear,
+      endMonth,
+      monthlyData: [],
+      hasData: false,
+    }
+  }
+
+  // 计算总收益
+  const totalProfit = monthlyData.reduce((sum, m) => sum + m.calculatedProfit, 0)
+
+  // 计算加权平均收益率
+  const totalStartBalance = monthlyData.reduce((sum, m) => sum + m.startBalance, 0)
+  const averageProfitRate = totalStartBalance > 0
+    ? monthlyData.reduce((sum, m) => {
+        const weight = m.startBalance / totalStartBalance
+        return sum + (m.profitRate || 0) * weight
+      }, 0)
+    : 0
+
+  // 找出最佳和最差月份
+  const sortedByProfit = [...monthlyData].sort((a, b) => b.calculatedProfit - a.calculatedProfit)
+  const bestMonth = sortedByProfit[0]
+  const worstMonth = sortedByProfit[sortedByProfit.length - 1]
+
+  return {
+    totalProfit,
+    averageProfitRate,
+    monthCount: monthlyData.length,
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+    bestMonth: {
+      year: bestMonth.year,
+      month: bestMonth.month,
+      profit: bestMonth.calculatedProfit,
+      accountName: bestMonth.accountName,
+    },
+    worstMonth: {
+      year: worstMonth.year,
+      month: worstMonth.month,
+      profit: worstMonth.calculatedProfit,
+      accountName: worstMonth.accountName,
+    },
+    monthlyData,
+    hasData: true,
   }
 }

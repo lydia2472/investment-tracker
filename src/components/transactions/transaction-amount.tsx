@@ -16,13 +16,16 @@ export function TransactionAmount({ amount, balance, type }: TransactionAmountPr
   const displayValue = isSnapshot ? balance : amount
 
   return (
-    <span className={`font-medium ${
-      isIncomes
-        ? 'text-green-600'
-        : isExpense
-        ? 'text-red-600'
-        : 'text-muted-foreground'  // 快照和转账使用灰色
-    }`}>
+    <span
+      className={`font-medium ${
+        isIncomes
+          ? 'text-green-600'
+          : isExpense
+          ? 'text-red-600'
+          : ''
+      }`}
+      style={!isIncomes && !isExpense ? { color: '#794f27' } : undefined}
+    >
       {isIncomes && '+'}
       {isExpense && '-'}
       {displayValue !== undefined && displayValue !== null ? formatCurrency(displayValue) : '-'}

@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { Divider } from 'animal-island-ui'
 import { TransactionTable } from '@/components/transactions/transaction-table'
 import { TransactionFilters, type TransactionFilters as TransactionFiltersType } from '@/components/transactions/transaction-filters'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
 import { useTransactionActions } from '@/hooks/use-transaction-actions'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Button } from 'animal-island-ui'
+import { PlusIcon } from '@/lib/components/icon-adapter'
 
 export default function TransactionsPage() {
   const transactions = useTransactionStore((state) => state.transactions)
@@ -35,8 +36,8 @@ export default function TransactionsPage() {
         </div>
         <AddTransactionDialog
           trigger={
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button type="primary" className="bg-[#5ec850]">
+              <PlusIcon className="h-4 w-4 mr-2" />
               添加交易
             </Button>
           }
@@ -47,6 +48,8 @@ export default function TransactionsPage() {
         filters={filters}
         onFiltersChange={setFilters}
       />
+
+      <Divider type="line-brown" style={{ margin: '16px 0' }} />
 
       <TransactionTable
         transactions={transactions}

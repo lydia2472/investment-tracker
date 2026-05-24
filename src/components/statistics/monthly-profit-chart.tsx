@@ -69,16 +69,16 @@ export function MonthlyProfitChart({
     return Array.from(names)
   }, [data, selectedAccounts])
 
-  // 颜色调色板
+  // ACNH 颜色调色板
   const colors = [
-    '#10b981', // emerald-500
-    '#3b82f6', // blue-500
-    '#f59e0b', // amber-500
-    '#ef4444', // red-500
-    '#8b5cf6', // violet-500
-    '#ec4899', // pink-500
-    '#06b6d4', // cyan-500
-    '#f97316', // orange-500
+    '#5ec850', // 萝卜绿（profit green）
+    '#d4b030', // 铃钱金（bells gold）
+    '#7bc96a', // 叶子绿（leaf green）
+    '#e6b842', // 贝壳黄（shell yellow）
+    '#c49944', // 橡果棕（acorn brown）
+    '#ff6464', // 烂萝卜红（loss red）
+    '#7bc96a', // 薄荷绿
+    '#5ec850', // 萝卜绿
   ]
 
   // 自定义 Tooltip
@@ -117,15 +117,15 @@ export function MonthlyProfitChart({
     <div className="space-y-4">
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <CartesianGrid strokeDasharray="3 3" className="stroke-[#5ec850]/10" />
           <XAxis
             dataKey="month"
             className="text-xs"
-            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            tick={{ fill: '#c8e6c0' }}
           />
           <YAxis
-            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-            tickFormatter={(value) => `¥${value.toFixed(0)}`}
+            tick={{ fill: '#c8e6c0' }}
+            tickFormatter={(value) => `💰 ${value.toFixed(0)}`}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
@@ -146,11 +146,11 @@ export function MonthlyProfitChart({
       {/* 图例说明 */}
       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-emerald-500" />
+          <div className="h-3 w-3 rounded-full bg-[#5ec850]" />
           <span>盈利</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-red-500" />
+          <div className="h-3 w-3 rounded-full bg-[#ff6464]" />
           <span>亏损</span>
         </div>
         <p>💡 提示：月度收益 = 本月末快照余额 - 上月末快照余额</p>

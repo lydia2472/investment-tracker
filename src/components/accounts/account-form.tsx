@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input } from 'animal-island-ui'
+import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { AccountType } from '@/types'
@@ -203,18 +203,19 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            type="default"
             onClick={onCancel}
             disabled={isSubmitting}
-            className={cn('w-full sm:w-auto', 'mt-2 sm:mt-0')}
+            className={cn('w-full sm:w-auto', 'mt-2 sm:mt-0', 'border-2 border-[#5ec850]/50')}
           >
             取消
           </Button>
           <Button
-            type="submit"
+            htmlType="submit"
+            type="primary"
             disabled={isSubmitting}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-[#5ec850]"
           >
             {isSubmitting ? (
               <>创建中...</>

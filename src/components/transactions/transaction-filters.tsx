@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input } from 'animal-island-ui'
+import { Button } from 'animal-island-ui'
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { TransactionType, TransactionCategory } from '@/types'
 import { useAccountStore } from '@/lib/stores'
-import { Search, X, RotateCcw } from 'lucide-react'
+import { SearchIcon, XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
 
 export interface TransactionFilters {
   keyword?: string
@@ -77,7 +77,7 @@ export function TransactionFilters({
       {/* 关键词搜索 */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="搜索描述或备注..."
             value={localKeyword}
@@ -88,11 +88,12 @@ export function TransactionFilters({
         </div>
         <Button
           onClick={handleKeywordSubmit}
-          variant="outline"
-          size="icon"
+          type="default"
+          size="small"
+          className="border-2 border-[#5ec850]/50"
           title="应用搜索"
         >
-          <Search className="h-4 w-4" />
+          <SearchIcon className="h-4 w-4" />
         </Button>
       </div>
 
@@ -123,12 +124,12 @@ export function TransactionFilters({
           </Select>
           {filters.accountId && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              type="default"
+              size="small"
+              className="h-8 w-8 hover:bg-muted/50"
               onClick={() => clearFilter('accountId')}
             >
-              <X className="h-3 w-3" />
+              <XIcon className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -157,12 +158,12 @@ export function TransactionFilters({
           </Select>
           {filters.type && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              type="default"
+              size="small"
+              className="h-8 w-8 hover:bg-muted/50"
               onClick={() => clearFilter('type')}
             >
-              <X className="h-3 w-3" />
+              <XIcon className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -194,12 +195,12 @@ export function TransactionFilters({
           </Select>
           {filters.category && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              type="default"
+              size="small"
+              className="h-8 w-8 hover:bg-muted/50"
               onClick={() => clearFilter('category')}
             >
-              <X className="h-3 w-3" />
+              <XIcon className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -237,12 +238,12 @@ export function TransactionFilters({
           />
           {filters.dateRange && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              type="default"
+              size="small"
+              className="h-8 w-8 hover:bg-muted/50"
               onClick={() => clearFilter('dateRange')}
             >
-              <X className="h-3 w-3" />
+              <XIcon className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -250,12 +251,13 @@ export function TransactionFilters({
         {/* 重置所有过滤器 */}
         {hasFilters && (
           <Button
-            variant="outline"
-            size="icon"
+            type="default"
+            size="small"
+            className="border-2 border-[#5ec850]/50"
             onClick={resetAllFilters}
             title="重置所有过滤器"
           >
-            <RotateCcw className="h-4 w-4" />
+            <ChevronDownIcon className="h-4 w-4" />
           </Button>
         )}
       </div>

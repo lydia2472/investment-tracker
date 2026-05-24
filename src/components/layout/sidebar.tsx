@@ -3,38 +3,33 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard,
-  Wallet,
-  ArrowRightLeft,
-  BarChart3,
-  Sparkles,
-} from 'lucide-react'
+  HomeIcon,
+  ShellIcon,
+  ArrowRightLeftIcon,
+  BarChartIcon,
+} from '@/lib/components/icon-adapter'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const navItems = [
   {
     href: '/',
     label: '总览',
-    icon: LayoutDashboard,
-    gradient: 'from-emerald-500 to-green-500'
+    icon: HomeIcon
   },
   {
     href: '/accounts',
     label: '账户',
-    icon: Wallet,
-    gradient: 'from-emerald-500 to-green-500'
+    icon: ShellIcon
   },
   {
     href: '/transactions',
     label: '交易',
-    icon: ArrowRightLeft,
-    gradient: 'from-blue-500 to-cyan-500'
+    icon: ArrowRightLeftIcon
   },
   {
     href: '/statistics',
     label: '统计',
-    icon: BarChart3,
-    gradient: 'from-pink-500 to-rose-500'
+    icon: BarChartIcon
   },
 ]
 
@@ -42,25 +37,45 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="w-72 border-r glass">
-      {/* Logo Section with Gradient */}
-      <div className="p-6 border-b bg-gradient-to-r from-emerald-500/10 to-green-500/10">
+    <div className="w-[220px] min-w-[220px] border-r" style={{ backgroundColor: '#f8f8f0' }}>
+      {/* Logo Section - Official Specs */}
+      <div
+        className="px-4 pt-5 pb-3 border-b"
+        style={{
+          borderBottomColor: '#e8e2d6',
+          paddingBottom: '12px',
+          paddingTop: '20px',
+          paddingLeft: '16px',
+          paddingRight: '16px'
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#19c8b9' }}>
+            <img
+              src="/animal-crossing-icon.jpg"
+              alt="Animal Crossing Icon"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 dark:from-emerald-400 dark:to-green-400 bg-clip-text text-transparent">
+            <h1
+              className="font-[700]"
+              style={{
+                fontSize: '15px',
+                color: '#725d42',
+                letterSpacing: '-0.3px'
+              }}
+            >
               投资管理
             </h1>
-            <p className="text-xs text-muted-foreground">智能资产追踪</p>
+            <p className="text-xs" style={{ color: '#8a7b66' }}>智能资产追踪</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 h-[calc(100vh-7rem)]">
-        <nav className="p-4 space-y-2">
+      <ScrollArea className="flex-1 h-[calc(100vh-6.5rem)]">
+        <nav style={{ padding: '8px 0' }}>
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -68,33 +83,49 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  'group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer',
-                  isActive
-                    ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg scale-[1.02]`
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.02]'
-                )}
+                className="group flex items-center gap-3 cursor-pointer"
+                style={{
+                  height: '40px',
+                  padding: '0 16px',
+                  paddingLeft: '26px',
+                  margin: '1px 5px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.15s',
+                  color: isActive ? '#fff' : '#8a7b66',
+                  backgroundColor: isActive ? '#B7C6E5' : 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = '#d6dff0'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
               >
-                <Icon className={cn(
-                  "h-5 w-5 transition-transform duration-200",
-                  isActive && "scale-110",
-                  !isActive && "group-hover:scale-110"
-                )} />
-                <span className="relative">
-                  {item.label}
-                  {isActive && (
-                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-white/50 rounded-full" />
-                  )}
-                </span>
+                <Icon className="h-5 w-5" />
+                <span>{item.label}</span>
               </Link>
             )
           })}
         </nav>
 
         {/* Bottom Info Card */}
-        <div className="mx-4 mt-6 p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20">
-          <p className="text-xs text-muted-foreground mb-2">需要帮助?</p>
-          <p className="text-sm font-medium">查看使用指南</p>
+        <div
+          className="mx-4 mt-6"
+          style={{
+            padding: '16px',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(25, 200, 185, 0.1)',
+            border: '1px solid rgba(25, 200, 185, 0.2)'
+          }}
+        >
+          <p className="text-xs mb-2" style={{ color: '#8a7b66' }}>需要帮助?</p>
+          <p className="text-sm font-[600]" style={{ color: '#725d42' }}>查看使用指南</p>
         </div>
       </ScrollArea>
     </div>

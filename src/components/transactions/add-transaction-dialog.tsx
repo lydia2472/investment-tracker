@@ -64,6 +64,7 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
           balance: data.balance,
           description: data.description,
           note: data.note,
+          tags: data.tags,  // 新增：标签字段
           createdAt: data.date, // 使用 createdAt 存储用户选择的日期
         })
 

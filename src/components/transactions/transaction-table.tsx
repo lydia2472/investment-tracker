@@ -1,6 +1,6 @@
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Trash2, Receipt, Edit, FilterX } from 'lucide-react'
+import { Card } from 'animal-island-ui'
+import { Button } from 'animal-island-ui'
+import { TrashIcon, InfoIcon, EditIcon, XIcon } from '@/lib/components/icon-adapter'
 import { formatDate } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import { TransactionTypeBadge } from './transaction-type-badge'
@@ -89,39 +89,39 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   if (showNoTransactions) {
     return (
-      <Card>
-        <CardContent className="text-center py-12">
+      <Card color="app-blue">
+        <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
-              <Receipt className="h-8 w-8 text-muted-foreground" />
+              <InfoIcon className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground">暂无交易记录</p>
           </div>
-        </CardContent>
+        </div>
       </Card>
     )
   }
 
   if (showNoResults) {
     return (
-      <Card>
-        <CardContent className="text-center py-12">
+      <Card color="app-blue">
+        <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
-              <FilterX className="h-8 w-8 text-muted-foreground" />
+              <XIcon className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground">没有找到匹配的交易记录</p>
             <p className="text-sm text-muted-foreground mt-1">请尝试调整过滤条件</p>
           </div>
-        </CardContent>
+        </div>
       </Card>
     )
   }
 
   return (
-    <Card>
+    <Card color="app-blue" className="overflow-hidden" style={{ backgroundColor: '#8ac68a' }}>
       {hasFilters && (
-        <div className="px-6 py-3 border-b bg-muted/30">
+        <div className="px-6 py-3 border-b" style={{ backgroundColor: '#8ac68a' }}>
           <p className="text-sm text-muted-foreground">
             显示 <span className="font-semibold text-foreground">{filteredTransactions.length}</span> 条交易记录
             {filteredTransactions.length !== transactions.length && (
@@ -130,78 +130,77 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
           </p>
         </div>
       )}
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b bg-gradient-to-r from-emerald-500/10 to-green-500/10">
-              <tr>
-                <th className="text-left p-4 font-semibold">日期</th>
-                <th className="text-left p-4 font-semibold">账户</th>
-                <th className="text-left p-4 font-semibold">类型</th>
-                <th className="text-left p-4 font-semibold">描述</th>
-                <th className="text-right p-4 font-semibold">金额</th>
-                <th className="text-center p-4 font-semibold" colSpan={onEdit ? 2 : 1}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTransactions.map((txn, index) => (
-                <tr
-                  key={txn.id}
-                  className={cn(
-                    "border-b hover:bg-muted/50 transition-colors",
-                    index % 2 === 0 && "bg-muted/20"
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="border-b" style={{ backgroundColor: '#8ac68a' }}>
+            <tr>
+              <th className="text-left p-4 font-bold">日期</th>
+              <th className="text-left p-4 font-bold">账户</th>
+              <th className="text-left p-4 font-bold">类型</th>
+              <th className="text-left p-4 font-bold">描述</th>
+              <th className="text-right p-4 font-bold">金额</th>
+              <th className="text-center p-4 font-bold" colSpan={onEdit ? 2 : 1}>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedTransactions.map((txn, index) => (
+              <tr
+                key={txn.id}
+                className={cn(
+                  "border-b transition-colors",
+                  index % 2 === 0 ? "hover:bg-[#7bc96a]/30" : ""
+                )}
+                style={index % 2 === 0 ? { backgroundColor: 'rgba(138, 198, 138, 0.3)' } : undefined}
+              >
+                <td className="p-4 text-sm font-semibold">
+                  {formatDate(txn.createdAt)}
+                </td>
+                <td className="p-4 text-sm font-semibold">
+                  {getAccountName(txn.accountId)}
+                </td>
+                <td className="p-4">
+                  <TransactionTypeBadge type={txn.type} />
+                </td>
+                <td className="p-4 text-sm font-semibold">
+                  {txn.description || '-'}
+                  {txn.note && (
+                    <p className="text-xs text-muted-foreground mt-1">{txn.note}</p>
                   )}
-                >
-                  <td className="p-4 text-sm">
-                    {formatDate(txn.createdAt)}
-                  </td>
-                  <td className="p-4 text-sm">
-                    {getAccountName(txn.accountId)}
-                  </td>
-                  <td className="p-4">
-                    <TransactionTypeBadge type={txn.type} />
-                  </td>
-                  <td className="p-4 text-sm">
-                    {txn.description || '-'}
-                    {txn.note && (
-                      <p className="text-xs text-muted-foreground mt-1">{txn.note}</p>
-                    )}
-                  </td>
-                  <td className="p-4 text-sm text-right">
-                    <TransactionAmount
-                      amount={txn.amount}
-                      balance={txn.balance}
-                      type={txn.type}
-                    />
-                  </td>
-                  <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {onEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="group hover:bg-blue-50 hover:scale-110 transition-all duration-200"
-                          onClick={() => onEdit(txn.id)}
-                        >
-                          <Edit className="h-4 w-4 text-blue-600 group-hover:text-blue-700" />
-                        </Button>
-                      )}
+                </td>
+                <td className="p-4 text-sm text-right font-semibold">
+                  <TransactionAmount
+                    amount={txn.amount}
+                    balance={txn.balance}
+                    type={txn.type}
+                  />
+                </td>
+                <td className="p-4 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {onEdit && (
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="group hover:bg-red-50 hover:scale-110 transition-all duration-200"
-                        onClick={() => onDelete(txn.id)}
+                        type="default"
+                        size="small"
+                        className="group hover:bg-blue-50 hover:bg-muted/50 hover:scale-110 transition-all duration-200"
+                        onClick={() => onEdit(txn.id)}
                       >
-                        <Trash2 className="h-4 w-4 text-red-600 group-hover:text-red-700" />
+                        <EditIcon className="h-4 w-4 text-blue-600 group-hover:text-blue-700" />
                       </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
+                    )}
+                    <Button
+                      type="default"
+                      size="small"
+                      className="group hover:bg-red-50 hover:bg-muted/50 hover:scale-110 transition-all duration-200"
+                      onClick={() => onDelete(txn.id)}
+                    >
+                      <TrashIcon className="h-4 w-4 text-red-600 group-hover:text-red-700" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   )
 }

@@ -1,15 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import type { MonthlyProfit } from '@/types'
 import { formatCurrency } from '@/lib/utils/formatters'
 import {
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react'
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronRightIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+} from '@/lib/components/icon-adapter'
 
 interface MonthlyProfitTableProps {
   data: MonthlyProfit[]
@@ -82,9 +83,9 @@ export function MonthlyProfitTable({
   const renderSortIcon = (field: keyof MonthlyProfit) => {
     if (sortField !== field) return null
     return sortDirection === 'asc' ? (
-      <ChevronUp className="ml-1 h-3 w-3" />
+      <ChevronUpIcon className="ml-1 h-3 w-3" />
     ) : (
-      <ChevronDown className="ml-1 h-3 w-3" />
+      <ChevronDownIcon className="ml-1 h-3 w-3" />
     )
   }
 
@@ -99,11 +100,11 @@ export function MonthlyProfitTable({
     return (
       <div className="flex items-center gap-1">
         {isPositive ? (
-          <TrendingUp className="h-4 w-4 text-green-600" />
+          <TrendingUpIcon className="h-4 w-4 text-[#5ec850]" />
         ) : (
-          <TrendingDown className="h-4 w-4 text-red-600" />
+          <TrendingDownIcon className="h-4 w-4 text-[#ff6464]" />
         )}
-        <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
+        <span className={isPositive ? 'text-[#5ec850]' : 'text-[#ff6464]'}>
           {isPositive ? '+' : ''}
           {formatCurrency(profit.calculatedProfit)}
         </span>
@@ -190,15 +191,14 @@ export function MonthlyProfitTable({
               const firstProfit = profits[0]
 
               return (
-                <>
+                <React.Fragment key={monthKey}>
                   <tr
-                    key={monthKey}
                     className="border-b hover:bg-muted/30 cursor-pointer"
                     onClick={() => toggleMonth(monthKey)}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <ChevronRight
+                        <ChevronRightIcon
                           className={`h-4 w-4 transition-transform ${
                             isExpanded ? 'rotate-90' : ''
                           }`}
@@ -224,7 +224,7 @@ export function MonthlyProfitTable({
                           return (
                             <span
                               className={`font-semibold ${
-                                isPositive ? 'text-green-600' : 'text-red-600'
+                                isPositive ? 'text-[#5ec850]' : 'text-[#ff6464]'
                               }`}
                             >
                               {isPositive ? '+' : ''}
@@ -260,7 +260,7 @@ export function MonthlyProfitTable({
                         <td className="px-4 py-3 text-right">
                           <span
                             className={
-                              profit.netFlow >= 0 ? 'text-green-600' : 'text-red-600'
+                              profit.netFlow >= 0 ? 'text-[#5ec850]' : 'text-[#ff6464]'
                             }
                           >
                             {profit.netFlow >= 0 ? '+' : ''}
@@ -269,7 +269,7 @@ export function MonthlyProfitTable({
                         </td>
                       </tr>
                     ))}
-                </>
+                </React.Fragment>
               )
             })}
           </tbody>

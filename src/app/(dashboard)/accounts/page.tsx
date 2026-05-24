@@ -1,11 +1,12 @@
 'use client'
 
 import { useAccountStore } from '@/lib/stores'
+import { Divider } from 'animal-island-ui'
 import { AccountGrid } from '@/components/accounts/account-grid'
 import { AddAccountDialog } from '@/components/accounts/add-account-dialog'
 import { useAccountActions } from '@/hooks/use-account-actions'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Button } from 'animal-island-ui'
+import { PlusIcon } from '@/lib/components/icon-adapter'
 
 export default function AccountsPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -22,13 +23,15 @@ export default function AccountsPage() {
         </div>
         <AddAccountDialog
           trigger={
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button type="primary" className="bg-[#5ec850]">
+              <PlusIcon className="h-4 w-4 mr-2" />
               添加账户
             </Button>
           }
         />
       </div>
+
+      <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <AccountGrid
         accounts={accounts}

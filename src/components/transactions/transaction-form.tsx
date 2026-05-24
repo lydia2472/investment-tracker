@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input } from 'animal-island-ui'
+import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
 import { TransactionType, TransactionCategory } from '@/types'
 import { useAccountStore } from '@/lib/stores'
@@ -39,6 +39,7 @@ const baseTransactionSchema = z.object({
   toAccountId: z.string().optional(),
   description: z.string().optional(),
   note: z.string().optional(),
+  tags: z.array(z.string()).optional(),  // 新增：标签字段
   date: z.date(),
 })
 
@@ -424,21 +425,58 @@ export function TransactionForm({
           )}
         />
 
+        {/* 标签 */}
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                标签（可选）
+                {selectedType === TransactionType.SNAPSHOT && (
+                  <span className="ml-2 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                    💡 快照建议添加 "month-end" 标签
+                  </span>
+                )}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="输入标签，用逗号或空格分隔"
+                  value={field.value ? field.value.join(', ') : ''}
+                  onChange={(e) => {
+                    const tagsStr = e.target.value
+                    const tagsArray = tagsStr
+                      .split(/[,，\s]+/)
+                      .map(tag => tag.trim())
+                      .filter(tag => tag.length > 0)
+                    field.onChange(tagsArray)
+                  }}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground mt-1">
+                示例：month-end, 季度末, 年末
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* 按钮 */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            type="default"
             onClick={onCancel}
             disabled={isSubmitting}
-            className={cn('w-full sm:w-auto', 'mt-2 sm:mt-0')}
+            className={cn('w-full sm:w-auto', 'mt-2 sm:mt-0', 'border-2 border-[#5ec850]/50')}
           >
             取消
           </Button>
           <Button
-            type="submit"
+            htmlType="submit"
+            type="primary"
             disabled={isSubmitting}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-[#5ec850]"
           >
             {isSubmitting ? '提交中...' : mode === 'add' ? '添加交易' : '保存修改'}
           </Button>

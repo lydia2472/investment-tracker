@@ -1,8 +1,8 @@
 'use client'
 import * as React from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { MoonIcon, SunIcon } from '@/lib/components/icon-adapter'
 import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
+import { Button } from 'animal-island-ui'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -16,14 +16,15 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="ghost"
-      size="icon"
+      type="default"
+      size="small"
+      className="hover:bg-muted/50"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
     >
       {theme === 'dark' ? (
-        <Sun className="h-5 w-5" />
+        <SunIcon className="h-5 w-5" />
       ) : (
-        <Moon className="h-5 w-5" />
+        <MoonIcon className="h-5 w-5" />
       )}
     </Button>
   )
