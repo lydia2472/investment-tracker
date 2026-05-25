@@ -23,7 +23,7 @@ export function ProfitCard({ data }: ProfitCardProps) {
 
   if (!data.hasData) {
     return (
-      <Card color="app-blue" className="group">
+      <Card color="app-yellow" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">
             {isDateRange ? '期间收益' : '本月收益'}
@@ -45,7 +45,7 @@ export function ProfitCard({ data }: ProfitCardProps) {
   }
 
   const isPositive = data.totalProfit >= 0
-  const cardColor = isPositive ? 'app-green' : 'app-red'
+  const cardColor = 'app-yellow'
   const iconBgClass = isPositive ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-loss)]'
 
   return (

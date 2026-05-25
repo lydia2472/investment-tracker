@@ -71,11 +71,11 @@ body {
   font-family: var(--animal-font);
 }
 
-/* === 焦点状态（强制黄色，禁止蓝色）=== */
-*:focus-visible {
+/* === 焦点状态（已禁用）=== */
+/* *:focus-visible {
   outline: 2px solid var(--animal-focus-yellow) !important;
   outline-offset: 2px !important;
-}
+} */
 
 /* === 滚动条样式（ACNH 主题）=== */
 ::-webkit-scrollbar {

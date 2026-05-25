@@ -18,7 +18,7 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
   const isPositiveGrowth = balanceGrowth > 0
 
   return (
-    <Card color="app-yellow" className={cn("group overflow-hidden", cardClasses.interactive)}>
+    <Card className={cn("group overflow-hidden", cardClasses.interactive)} style={{ backgroundColor: account.color }}>
       {/* Top gradient bar */}
       <div
         className="h-2 w-full"
@@ -31,15 +31,44 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className={cn(iconClasses.containerLg, iconClasses.hover)}
-              style={{
-                background: `linear-gradient(135deg, ${account.color}, ${account.color}cc)`,
-                boxShadow: `0 8px 16px ${account.color}40`,
-              }}
+              className={cn(
+                "h-12 w-12 rounded-2xl transition-all duration-normal",
+                iconClasses.hover,
+                account.icon ? "overflow-hidden p-0" : "p-3 shadow-xl"
+              )}
+              style={
+                account.icon
+                  ? {
+                      background: 'transparent',
+                      boxShadow: 'none',
+                    }
+                  : {
+                      background: `linear-gradient(135deg, ${account.color}, ${account.color}cc)`,
+                      boxShadow: `0 8px 16px ${account.color}40`,
+                    }
+              }
             >
-              <span className="text-white text-lg font-bold">
-                {account.name.charAt(0).toUpperCase()}
-              </span>
+              {account.icon ? (
+                <img
+                  src={account.icon}
+                  alt={account.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Failed to load account icon:', account.icon, e)
+                    // 图片加载失败时回退到首字母显示
+                    e.currentTarget.style.display = 'none'
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      parent.style.background = `linear-gradient(135deg, ${account.color}, ${account.color}cc)`
+                      parent.style.boxShadow = `0 8px 16px ${account.color}40`
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-white text-lg font-bold">
+                  {account.name.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
             <div>
               <h3 className="font-semibold text-lg">{account.name}</h3>
@@ -106,8 +135,8 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
                 size="small"
                 className="flex-1 border-2 border-[var(--color-profit)]/50"
                 onClick={() => onEdit(account)}
+                icon={<EditIcon className="h-4 w-4" />}
               >
-                <EditIcon className="h-4 w-4 mr-1" />
                 编辑
               </Button>
             )}
@@ -119,8 +148,8 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
                 buttonClasses.interactive
               )}
               onClick={() => onDelete(account.id, account.name)}
+              icon={<TrashIcon className="h-4 w-4" />}
             >
-              <TrashIcon className="h-4 w-4 mr-1" />
               删除
             </Button>
           </div>

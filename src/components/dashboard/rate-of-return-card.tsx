@@ -13,12 +13,12 @@ interface RateOfReturnCardProps {
 
 export function RateOfReturnCard({ profitRate, hasData }: RateOfReturnCardProps) {
   const isPositive = profitRate >= 0
-  const cardColor = isPositive ? 'app-green' : 'app-red'
+  const cardColor = 'app-yellow'
   const iconBgClass = isPositive ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-loss)]'
 
   if (!hasData) {
     return (
-      <Card color="app-blue" className="group">
+      <Card color="app-yellow" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">
             收益率

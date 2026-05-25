@@ -32,7 +32,8 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
         balance: data.initialBalance,
         initialBalance: data.initialBalance,
         currency: data.currency || 'CNY',
-        color: data.color || '#3b82f6',
+        color: '#f0e8d8',
+        icon: data.icon,
         description: data.description,
       })
 

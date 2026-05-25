@@ -94,11 +94,11 @@ export function Sidebar() {
                   fontWeight: '600',
                   transition: 'all 0.15s',
                   color: isActive ? '#fff' : '#8a7b66',
-                  backgroundColor: isActive ? '#B7C6E5' : 'transparent'
+                  backgroundColor: isActive ? '#8ac68a' : 'transparent'
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = '#d6dff0'
+                    e.currentTarget.style.backgroundColor = '#c8e8c8'
                   }
                 }}
                 onMouseLeave={(e) => {

@@ -21,7 +21,7 @@ import {
 import { Input } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
-import { ColorPicker } from '@/components/ui/color-picker'
+import { IconPicker } from '@/components/ui/icon-picker'
 import { AccountType } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ const accountFormSchema = z.object({
   type: z.nativeEnum(AccountType),
   initialBalance: z.number().min(0, '初始余额不能为负'),
   currency: z.string().min(1, '货币必填'),
-  color: z.string().min(1, '颜色必填'),
+  icon: z.string().optional(),
   description: z.string().optional(),
 })
 
@@ -66,7 +66,7 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
       type: AccountType.BANK,
       initialBalance: 0,
       currency: 'CNY',
-      color: '#3b82f6',
+      icon: undefined,
       description: '',
     },
   })
@@ -168,12 +168,12 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
 
         <FormField
           control={form.control}
-          name="color"
+          name="icon"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>账户颜色</FormLabel>
+              <FormLabel>账户图标（可选）</FormLabel>
               <FormControl>
-                <ColorPicker
+                <IconPicker
                   value={field.value}
                   onChange={field.onChange}
                 />

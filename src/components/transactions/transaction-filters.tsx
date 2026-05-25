@@ -12,10 +12,9 @@ import {
 } from '@/components/ui/select'
 import { TransactionType, TransactionCategory } from '@/types'
 import { useAccountStore } from '@/lib/stores'
-import { SearchIcon, XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
+import { XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
 
 export interface TransactionFilters {
-  keyword?: string
   accountId?: string
   type?: TransactionType
   category?: TransactionCategory
@@ -35,37 +34,16 @@ export function TransactionFilters({
   onFiltersChange,
 }: TransactionFiltersProps) {
   const accounts = useAccountStore((state) => state.accounts)
-  const [localKeyword, setLocalKeyword] = useState(filters.keyword || '')
-
-  // 处理关键词搜索（按 Enter 键应用）
-  const handleKeywordChange = (value: string) => {
-    setLocalKeyword(value)
-  }
-
-  const handleKeywordSubmit = () => {
-    onFiltersChange({ ...filters, keyword: localKeyword || undefined })
-  }
-
-  const handleKeywordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleKeywordSubmit()
-    }
-  }
 
   // 清除单个过滤条件
   const clearFilter = (key: keyof TransactionFilters) => {
     const newFilters = { ...filters }
     delete newFilters[key]
     onFiltersChange(newFilters)
-
-    if (key === 'keyword') {
-      setLocalKeyword('')
-    }
   }
 
   // 重置所有过滤条件
   const resetAllFilters = () => {
-    setLocalKeyword('')
     onFiltersChange({})
   }
 
@@ -74,29 +52,6 @@ export function TransactionFilters({
 
   return (
     <div className="space-y-4">
-      {/* 关键词搜索 */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索描述或备注..."
-            value={localKeyword}
-            onChange={(e) => handleKeywordChange(e.target.value)}
-            onKeyDown={handleKeywordKeyDown}
-            className="pl-9"
-          />
-        </div>
-        <Button
-          onClick={handleKeywordSubmit}
-          type="default"
-          size="small"
-          className="border-2 border-[#5ec850]/50"
-          title="应用搜索"
-        >
-          <SearchIcon className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* 过滤器行 */}
       <div className="flex flex-wrap gap-2">
         {/* 账户过滤 */}

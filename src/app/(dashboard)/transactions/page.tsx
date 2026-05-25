@@ -36,8 +36,7 @@ export default function TransactionsPage() {
         </div>
         <AddTransactionDialog
           trigger={
-            <Button type="primary" className="bg-[#5ec850]">
-              <PlusIcon className="h-4 w-4 mr-2" />
+            <Button type="primary" className="bg-[#5ec850]" icon={<PlusIcon className="h-4 w-4" />}>
               添加交易
             </Button>
           }

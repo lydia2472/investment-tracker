@@ -57,19 +57,6 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
         }
       }
 
-      // 关键词搜索（搜索描述和备注）
-      if (filters.keyword) {
-        const searchTerm = filters.keyword.toLowerCase()
-        const searchableText = [
-          txn.description || '',
-          txn.note || '',
-        ].join(' ').toLowerCase()
-
-        if (!searchableText.includes(searchTerm)) {
-          return false
-        }
-      }
-
       return true
     })
   }, [transactions, filters])
@@ -89,7 +76,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   if (showNoTransactions) {
     return (
-      <Card color="app-blue">
+      <Card color="app-green">
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
@@ -104,7 +91,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   if (showNoResults) {
     return (
-      <Card color="app-blue">
+      <Card color="app-green">
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
@@ -119,7 +106,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
   }
 
   return (
-    <Card color="app-blue" className="overflow-hidden" style={{ backgroundColor: '#8ac68a' }}>
+    <Card color="app-green" className="overflow-hidden" style={{ backgroundColor: '#8ac68a' }}>
       {hasFilters && (
         <div className="px-6 py-3 border-b" style={{ backgroundColor: '#8ac68a' }}>
           <p className="text-sm text-muted-foreground">
