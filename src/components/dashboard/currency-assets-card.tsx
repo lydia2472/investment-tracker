@@ -42,7 +42,7 @@ export function CurrencyAssetsCard({ data }: CurrencyAssetsCardProps) {
       >
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">
-            多币种资产
+            各币种资产
           </h3>
           <div className={cn(iconClasses.container, 'bg-[var(--color-profit)]')}>
             <WalletIcon className="h-full w-full text-white" />
@@ -137,13 +137,13 @@ function CurrencyDetailItem({ currency }: { currency: CurrencyStatistics }) {
       <div className="grid grid-cols-2 gap-2 mt-3">
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">收入</div>
-          <div className="text-sm font-semibold text-green-300">
+          <div className="text-sm font-semibold text-green-700">
             +{currency.symbol} {formatCurrencyCompact(currency.totalIncome)}
           </div>
         </div>
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">支出</div>
-          <div className="text-sm font-semibold text-red-300">
+          <div className="text-sm font-semibold text-red-700">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
         </div>
@@ -155,7 +155,7 @@ function CurrencyDetailItem({ currency }: { currency: CurrencyStatistics }) {
           <span className="text-white/70">净收入</span>
           <span className={cn(
             "font-bold",
-            currency.netIncome >= 0 ? "text-green-300" : "text-red-300"
+            currency.netIncome >= 0 ? "text-green-700" : "text-red-700"
           )}>
             {currency.netIncome >= 0 ? '+' : ''}
             {currency.symbol} {formatCurrencyCompact(Math.abs(currency.netIncome))}

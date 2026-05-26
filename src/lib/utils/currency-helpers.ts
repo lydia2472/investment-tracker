@@ -12,8 +12,8 @@ const CURRENCY_CONFIG = {
 
 /**
  * 按货币分组账户和交易数据，计算各货币的统计信息
- * 收入包含 INCOME, DEPOSIT, TRANSFER_IN 类型
- * 支出包含 CONSUMPTION, TRANSFER_OUT, LOAN 类型
+ * 收入包含 INCOME, DEPOSIT 类型
+ * 支出包含 CONSUMPTION, LOAN 类型
  */
 export function groupByCurrency(
   accounts: Account[],
@@ -36,21 +36,19 @@ export function groupByCurrency(
     if (currency) {
       if (!acc[currency]) {
         acc[currency] = {
-          income: 0,           // INCOME + DEPOSIT + TRANSFER_IN
-          expense: 0,          // CONSUMPTION + TRANSFER_OUT + LOAN
+          income: 0,           // INCOME + DEPOSIT
+          expense: 0,          // CONSUMPTION + LOAN
         }
       }
 
-      // 统计收入类型（INCOME, DEPOSIT, TRANSFER_IN）
+      // 统计收入类型（INCOME, DEPOSIT）
       if (transaction.type === TransactionType.INCOME ||
-          transaction.type === TransactionType.DEPOSIT ||
-          transaction.type === TransactionType.TRANSFER_IN) {
+          transaction.type === TransactionType.DEPOSIT) {
         acc[currency].income += (transaction.amount || 0)
       }
 
-      // 支出统计（CONSUMPTION, TRANSFER_OUT, LOAN）
+      // 支出统计（CONSUMPTION, LOAN）
       if (transaction.type === TransactionType.CONSUMPTION ||
-          transaction.type === TransactionType.TRANSFER_OUT ||
           transaction.type === TransactionType.LOAN) {
         acc[currency].expense += (transaction.amount || 0)
       }
@@ -77,8 +75,8 @@ export function groupByCurrency(
       currency: currencyCode,
       symbol: config.symbol,
       totalAssets: currencyAccounts.reduce((sum, acc) => sum + acc.balance, 0),
-      totalIncome: data.income,                    // INCOME + DEPOSIT + TRANSFER_IN
-      totalExpense: data.expense,                  // CONSUMPTION + TRANSFER_OUT + LOAN
+      totalIncome: data.income,                    // INCOME + DEPOSIT
+      totalExpense: data.expense,                  // CONSUMPTION + LOAN
       accountCount: currencyAccounts.length,
       netIncome: data.income - data.expense,
     }

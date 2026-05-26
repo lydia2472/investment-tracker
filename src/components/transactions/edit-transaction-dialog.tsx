@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { isValid } from 'date-fns'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
 import {
   Dialog,
@@ -43,11 +44,14 @@ export function EditTransactionDialog({
 
     // 收入类型：减少余额
     if (txn.type === TransactionType.INCOME ||
-        txn.type === TransactionType.DEPOSIT) {
+        txn.type === TransactionType.DEPOSIT ||
+        txn.type === TransactionType.TRANSFER_IN) {
       newBalance -= txn.amount || 0
     }
     // 支出类型：增加余额
-    else if (txn.type === TransactionType.CONSUMPTION) {
+    else if (txn.type === TransactionType.CONSUMPTION ||
+             txn.type === TransactionType.TRANSFER_OUT ||
+             txn.type === TransactionType.LOAN) {
       newBalance += txn.amount || 0
     }
     // 快照不回退（历史数据）
@@ -64,11 +68,14 @@ export function EditTransactionDialog({
 
     // 收入类型：增加余额
     if (data.type === TransactionType.INCOME ||
-        data.type === TransactionType.DEPOSIT) {
+        data.type === TransactionType.DEPOSIT ||
+        data.type === TransactionType.TRANSFER_IN) {
       newBalance += data.amount || 0
     }
     // 支出类型：减少余额
-    else if (data.type === TransactionType.CONSUMPTION) {
+    else if (data.type === TransactionType.CONSUMPTION ||
+             data.type === TransactionType.TRANSFER_OUT ||
+             data.type === TransactionType.LOAN) {
       newBalance -= data.amount || 0
     } else if (data.type === TransactionType.SNAPSHOT) {
       newBalance = data.balance || 0
@@ -125,7 +132,12 @@ export function EditTransactionDialog({
         description: transaction.description,
         note: transaction.note,
         tags: transaction.tags,  // 新增：标签字段
-        date: transaction.createdAt,
+        date: (() => {
+          const dateValue = transaction.createdAt instanceof Date
+            ? transaction.createdAt
+            : new Date(transaction.createdAt)
+          return isValid(dateValue) ? dateValue : new Date()
+        })(),
       }
     : undefined
 

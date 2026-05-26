@@ -103,8 +103,7 @@ export function calculateProfitForPeriod(
   const periodIncome = periodTransactions
     .filter((txn) =>
       txn.type === TransactionType.INCOME ||
-      txn.type === TransactionType.DEPOSIT ||
-      txn.type === TransactionType.TRANSFER_IN
+      txn.type === TransactionType.DEPOSIT
     )
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
@@ -465,4 +464,137 @@ export function getDateRangeProfitSummary(
     monthlyData,
     hasData: true,
   }
+}
+
+/**
+ * 查找账户的最新月末快照
+ * @param transactions - 所有交易
+ * @param accountId - 账户ID
+ * @returns 最新的月末快照，如果没有则返回 null
+ */
+export function findLatestMonthEndSnapshot(
+  transactions: Transaction[],
+  accountId: string
+): Transaction | null {
+  const accountSnapshots = transactions.filter(
+    (txn) =>
+      txn.accountId === accountId &&
+      txn.type === TransactionType.SNAPSHOT &&
+      (txn.tags?.includes('month-end') ?? false)
+  )
+
+  if (accountSnapshots.length === 0) {
+    return null
+  }
+
+  // 按创建时间降序排序，返回最新的
+  return accountSnapshots.sort((a, b) => {
+    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+    return dateB.getTime() - dateA.getTime()
+  })[0]
+}
+
+/**
+ * 从最新月末快照更新账户余额
+ * @param transactions - 所有交易
+ * @param accountId - 账户ID
+ * @param currentBalance - 当前余额
+ * @param account - 可选的账户对象（用于无快照时重算）
+ * @returns 新余额（来自快照）或当前余额（无快照时）
+ */
+export function updateAccountBalanceFromSnapshot(
+  transactions: Transaction[],
+  accountId: string,
+  currentBalance: number,
+  account?: Account
+): number {
+  const latestSnapshot = findLatestMonthEndSnapshot(transactions, accountId)
+
+  if (latestSnapshot && latestSnapshot.balance !== undefined) {
+    // 有月末快照：使用快照余额
+    return latestSnapshot.balance
+  }
+
+  // 无月末快照：基于交易历史重新计算
+  if (account) {
+    return calculateBalanceFromHistory(account, transactions)
+  }
+
+  // 回退：返回当前余额（如果 account 未提供）
+  return currentBalance
+}
+
+/**
+ * 从最新月末快照更新所有账户余额
+ * @param transactions - 所有交易
+ * @param accounts - 所有账户
+ * @returns 需要更新的账户余额映射 (accountId -> newBalance)
+ */
+export function updateAllAccountsFromSnapshots(
+  transactions: Transaction[],
+  accounts: Account[]
+): Map<string, number> {
+  const updates = new Map<string, number>()
+
+  accounts.forEach((account) => {
+    // 传递 account 对象以访问 initialBalance
+    const newBalance = updateAccountBalanceFromSnapshot(
+      transactions,
+      account.id,
+      account.balance,
+      account  // 传递整个账户对象
+    )
+
+    // 只记录需要更新的账户
+    if (newBalance !== account.balance) {
+      updates.set(account.id, newBalance)
+    }
+  })
+
+  return updates
+}
+
+/**
+ * 从初始余额和交易历史重新计算账户余额
+ * @param account - 账户对象（包含 initialBalance）
+ * @param transactions - 所有交易
+ * @returns 计算出的余额
+ */
+export function calculateBalanceFromHistory(
+  account: Account,
+  transactions: Transaction[]
+): number {
+  // 从初始余额开始
+  let calculatedBalance = account.initialBalance
+
+  // 筛选该账户的所有交易
+  const accountTransactions = transactions.filter(
+    (txn) => txn.accountId === account.id
+  )
+
+  // 计算总收入
+  const totalIncome = accountTransactions
+    .filter(
+      (txn) =>
+        txn.type === TransactionType.INCOME ||
+        txn.type === TransactionType.DEPOSIT ||
+        txn.type === TransactionType.TRANSFER_IN
+    )
+    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+  // 计算总支出
+  const totalExpense = accountTransactions
+    .filter(
+      (txn) =>
+        txn.type === TransactionType.CONSUMPTION ||
+        txn.type === TransactionType.TRANSFER_OUT ||
+        txn.type === TransactionType.LOAN
+    )
+    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+  // 最终余额 = 初始余额 + 收入 - 支出
+  calculatedBalance = calculatedBalance + totalIncome - totalExpense
+
+  return calculatedBalance
 }

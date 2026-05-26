@@ -143,7 +143,7 @@ function SingleProfitView({
           <span className="text-xs text-white/70">收益率:</span>
           <span className={cn(
             "text-sm font-bold",
-            profit.profitRate >= 0 ? "text-green-300" : "text-red-300"
+            profit.profitRate >= 0 ? "text-green-700" : "text-red-700"
           )}>
             {profit.profitRate >= 0 ? '+' : ''}
             {profit.profitRate.toFixed(2)}%
@@ -184,7 +184,7 @@ function ProfitDetailItem({
         <div className="flex items-center gap-1">
           <span className={cn(
             "text-xl font-bold",
-            isProfit ? "text-green-300" : "text-red-300"
+            isProfit ? "text-green-700" : "text-red-700"
           )}>
             {isProfit ? '+' : '-'}
             {symbol} {formatCurrencyCompact(Math.abs(profit.totalProfit))}
@@ -192,7 +192,7 @@ function ProfitDetailItem({
           {profit.profitRate !== 0 && (
             <span className={cn(
               "text-xs px-2 py-1 rounded-lg",
-              profit.profitRate >= 0 ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"
+              profit.profitRate >= 0 ? "bg-green-500/20 text-green-700" : "bg-red-500/20 text-red-700"
             )}>
               {profit.profitRate >= 0 ? '+' : ''}{profit.profitRate.toFixed(1)}%
             </span>
@@ -207,7 +207,7 @@ function ProfitDetailItem({
             <span className="text-white/70">加权收益率</span>
             <span className={cn(
               "font-bold",
-              profit.profitRate >= 0 ? "text-green-300" : "text-red-300"
+              profit.profitRate >= 0 ? "text-green-700" : "text-red-700"
             )}>
               {profit.profitRate >= 0 ? '+' : ''}
               {profit.profitRate.toFixed(2)}%
@@ -226,7 +226,7 @@ function ProfitDetailItem({
             </span>
             <span className={cn(
               "text-xs font-bold",
-              topAccount.profit >= 0 ? "text-green-300" : "text-red-300"
+              topAccount.profit >= 0 ? "text-green-700" : "text-red-700"
             )}>
               {topAccount.profit >= 0 ? '+' : '-'}
               {symbol} {formatCurrencyCompact(Math.abs(topAccount.profit))}

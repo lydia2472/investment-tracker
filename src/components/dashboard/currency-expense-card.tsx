@@ -150,7 +150,7 @@ function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
           </span>
         </div>
         <div className="text-right">
-          <div className="text-xl font-bold text-red-300">
+          <div className="text-xl font-bold text-red-700">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
           <div className="text-xs text-white/70 mt-1">
@@ -163,7 +163,7 @@ function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">收入</div>
-          <div className="text-sm font-semibold text-green-300">
+          <div className="text-sm font-semibold text-green-700">
             +{currency.symbol} {formatCurrencyCompact(currency.totalIncome)}
           </div>
         </div>
@@ -171,7 +171,7 @@ function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
           <div className="text-xs text-white/70">净支出</div>
           <div className={cn(
             "text-sm font-semibold",
-            currency.netIncome < 0 ? "text-red-300" : "text-green-300"
+            currency.netIncome < 0 ? "text-red-700" : "text-green-700"
           )}>
             {currency.netIncome < 0 ? '-' : '+'}
             {currency.symbol} {formatCurrencyCompact(Math.abs(currency.netIncome))}

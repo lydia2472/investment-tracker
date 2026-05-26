@@ -13,8 +13,7 @@ export function useTransactionTotals(transactions: Transaction[]): TransactionTo
     // 筛选收入交易
     const incomeTransactions = transactions.filter(t =>
       t.type === TransactionType.INCOME ||
-      t.type === TransactionType.DEPOSIT ||
-      t.type === TransactionType.TRANSFER_IN
+      t.type === TransactionType.DEPOSIT
     )
 
     // 筛选支出交易

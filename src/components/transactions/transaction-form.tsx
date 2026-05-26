@@ -25,7 +25,7 @@ import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
 import { TransactionType } from '@/types'
 import { useAccountStore } from '@/lib/stores'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { cn } from '@/lib/utils/cn'
 import { TagInput } from '@/components/tags'
 
@@ -322,7 +322,10 @@ export function TransactionForm({
               <FormControl>
                 <Input
                   type="date"
-                  value={format(field.value instanceof Date ? field.value : new Date(field.value), 'yyyy-MM-dd')}
+                  value={(() => {
+                    const dateValue = field.value instanceof Date ? field.value : new Date(field.value)
+                    return isValid(dateValue) ? format(dateValue, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                  })()}
                   onChange={(e) => field.onChange(new Date(e.target.value))}
                 />
               </FormControl>

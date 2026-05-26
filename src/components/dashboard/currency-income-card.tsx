@@ -145,7 +145,7 @@ function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
           </span>
         </div>
         <div className="text-right">
-          <div className="text-xl font-bold text-green-300">
+          <div className="text-xl font-bold text-green-700">
             +{currency.symbol} {formatCurrencyCompact(currency.totalIncome)}
           </div>
           <div className="text-xs text-white/70 mt-1">工资收入</div>
@@ -156,13 +156,13 @@ function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">支出</div>
-          <div className="text-sm font-semibold text-red-300">
+          <div className="text-sm font-semibold text-red-700">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
         </div>
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">净收入</div>
-          <div className="text-sm font-semibold text-green-300">
+          <div className="text-sm font-semibold text-green-700">
             +{currency.symbol} {formatCurrencyCompact(currency.netIncome)}
           </div>
         </div>

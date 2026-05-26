@@ -86,8 +86,8 @@ export function RecentTransactions({ transactions, accounts, limit = 5 }: Recent
                 </div>
                 <span className={cn(
                   "font-bold text-sm",
-                  isIncome && "text-[var(--color-profit)]",
-                  isExpense && "text-[var(--color-loss)]",
+                  isIncome && "text-green-700",
+                  isExpense && "text-red-700",
                   !isIncome && !isExpense && "opacity-80"
                 )}>
                   {isIncome && '+'}

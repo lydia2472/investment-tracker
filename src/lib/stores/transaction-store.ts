@@ -66,7 +66,7 @@ export const useTransactionStore = create<TransactionState>()(
                    transactionData.type === TransactionType.LOAN) {
             newBalance -= transactionData.amount || 0;
           }
-          // 快照：设置绝对余额
+          // 快照：设置绝对余额（包括月末快照）
           else if (transactionData.type === TransactionType.SNAPSHOT) {
             newBalance = transactionData.balance || newBalance;
           }
