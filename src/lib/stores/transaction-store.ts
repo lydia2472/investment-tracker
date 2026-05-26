@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { TransactionType, TransactionCategory } from '@/types';
+import { TransactionType } from '@/types';
 import type { Transaction } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { useAccountStore } from './account-store';
 
 interface TransactionState {
   transactions: Transaction[];
+  migrated: boolean;
+  simplified: boolean;  // 标记是否已简化为4种类型
   addTransaction: (
     transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Date }
   ) => void;
@@ -21,12 +23,16 @@ interface TransactionState {
     description?: string,
     date?: Date
   ) => void;
+  migrateTransactions: () => void;
+  simplifyTransactionTypes: () => void;  // 新增：简化交易类型
 }
 
 export const useTransactionStore = create<TransactionState>()(
   persist(
     (set, get) => ({
       transactions: [],
+      migrated: false,
+      simplified: false,  // 标记是否已简化为4种类型
 
       addTransaction: (transactionData) => {
         const newTransaction: Transaction = {
@@ -48,11 +54,20 @@ export const useTransactionStore = create<TransactionState>()(
         if (account) {
           let newBalance = account.balance;
 
-          if (transactionData.type === TransactionType.INCOME) {
+          // 收入类型：增加余额
+          if (transactionData.type === TransactionType.INCOME ||
+              transactionData.type === TransactionType.DEPOSIT ||
+              transactionData.type === TransactionType.TRANSFER_IN) {
             newBalance += transactionData.amount || 0;
-          } else if (transactionData.type === TransactionType.EXPENSE) {
+          }
+          // 支出类型：减少余额
+          else if (transactionData.type === TransactionType.CONSUMPTION ||
+                   transactionData.type === TransactionType.TRANSFER_OUT ||
+                   transactionData.type === TransactionType.LOAN) {
             newBalance -= transactionData.amount || 0;
-          } else if (transactionData.type === TransactionType.SNAPSHOT) {
+          }
+          // 快照：设置绝对余额
+          else if (transactionData.type === TransactionType.SNAPSHOT) {
             newBalance = transactionData.balance || newBalance;
           }
 
@@ -83,9 +98,13 @@ export const useTransactionStore = create<TransactionState>()(
           let balanceAdjustment = 0;
 
           // 计算旧交易对余额的影响
-          if (oldTransaction.type === TransactionType.INCOME) {
+          if (oldTransaction.type === TransactionType.INCOME ||
+              oldTransaction.type === TransactionType.DEPOSIT ||
+              oldTransaction.type === TransactionType.TRANSFER_IN) {
             balanceAdjustment -= oldTransaction.amount || 0;
-          } else if (oldTransaction.type === TransactionType.EXPENSE) {
+          } else if (oldTransaction.type === TransactionType.CONSUMPTION ||
+                     oldTransaction.type === TransactionType.TRANSFER_OUT ||
+                     oldTransaction.type === TransactionType.LOAN) {
             balanceAdjustment += oldTransaction.amount || 0;
           }
           // SNAPSHOT 不计入，因为快照是设置绝对值
@@ -94,9 +113,13 @@ export const useTransactionStore = create<TransactionState>()(
           const newType = updates.type ?? oldTransaction.type;
           const newAmount = updates.amount ?? oldTransaction.amount;
 
-          if (newType === TransactionType.INCOME) {
+          if (newType === TransactionType.INCOME ||
+              newType === TransactionType.DEPOSIT ||
+              newType === TransactionType.TRANSFER_IN) {
             balanceAdjustment += newAmount || 0;
-          } else if (newType === TransactionType.EXPENSE) {
+          } else if (newType === TransactionType.CONSUMPTION ||
+                     newType === TransactionType.TRANSFER_OUT ||
+                     newType === TransactionType.LOAN) {
             balanceAdjustment -= newAmount || 0;
           }
           // SNAPSHOT 不计入
@@ -131,10 +154,14 @@ export const useTransactionStore = create<TransactionState>()(
           let newBalance = account.balance;
 
           // 反向操作：回退交易对余额的影响
-          if (transaction.type === TransactionType.INCOME) {
+          if (transaction.type === TransactionType.INCOME ||
+              transaction.type === TransactionType.DEPOSIT ||
+              transaction.type === TransactionType.TRANSFER_IN) {
             // 删除收入：余额减少
             newBalance -= transaction.amount || 0;
-          } else if (transaction.type === TransactionType.EXPENSE) {
+          } else if (transaction.type === TransactionType.CONSUMPTION ||
+                     transaction.type === TransactionType.TRANSFER_OUT ||
+                     transaction.type === TransactionType.LOAN) {
             // 删除支出：余额增加
             newBalance += transaction.amount || 0;
           } else if (transaction.type === TransactionType.SNAPSHOT) {
@@ -163,28 +190,191 @@ export const useTransactionStore = create<TransactionState>()(
       transfer: (fromAccountId, toAccountId, amount, description, date) => {
         const { addTransaction } = get();
         const transactionDate = date || new Date();
+        const transferId = uuidv4(); // 生成共享ID用于链接
 
-        // 转出记录
+        // 获取账户名称
+        const fromAccount = useAccountStore.getState().accounts.find(acc => acc.id === fromAccountId);
+        const toAccount = useAccountStore.getState().accounts.find(acc => acc.id === toAccountId);
+        const fromAccountName = fromAccount?.name || fromAccountId;
+        const toAccountName = toAccount?.name || toAccountId;
+
+        // 源账户：TRANSFER_OUT（转出）
         addTransaction({
           accountId: fromAccountId,
-          type: TransactionType.EXPENSE,
-          category: TransactionCategory.TRANSFER_OUT,
+          type: TransactionType.TRANSFER_OUT,
           amount,
           transferToAccountId: toAccountId,
-          description: description || '转账',
+          transferPairId: transferId,
+          description: description || `转账至 ${toAccountName}`,
           createdAt: transactionDate,
         });
 
-        // 转入记录
+        // 目标账户：TRANSFER_IN（转入）
         addTransaction({
           accountId: toAccountId,
-          type: TransactionType.INCOME,
-          category: TransactionCategory.TRANSFER_IN,
+          type: TransactionType.TRANSFER_IN,
           amount,
           transferFromAccountId: fromAccountId,
-          description: description || '转账',
+          transferPairId: transferId,
+          description: description || `从 ${fromAccountName} 转入`,
           createdAt: transactionDate,
         });
+      },
+
+      migrateTransactions: () => {
+        const { transactions, migrated } = get();
+
+        // 避免重复迁移
+        if (migrated) {
+          console.log('Transactions already migrated');
+          return;
+        }
+
+        console.log('Starting transaction migration...');
+        let migrationCount = 0;
+
+        transactions.forEach((txn) => {
+          // 类型断言以支持旧数据格式
+          const oldTxn = txn as any;
+          const oldType = oldTxn.type as string;
+          const oldCategory = oldTxn.category as string;
+
+          let newType: TransactionType = txn.type;
+          let shouldRemoveCategory = false;
+
+          // 根据 type + category 映射到新 type
+          switch (oldType) {
+            case 'income': // 旧类型 INCOME
+              if (oldCategory === 'deposit') {
+                newType = TransactionType.DEPOSIT;
+                shouldRemoveCategory = true;
+              }
+              // Note: investment_gain and transfer_in categories removed in type simplification
+              break;
+
+            case 'salary': // 旧类型 SALARY
+              if (oldCategory === 'deposit') {
+                newType = TransactionType.DEPOSIT;
+                shouldRemoveCategory = true;
+              } else if (oldCategory === 'salary') {
+                shouldRemoveCategory = true;
+              }
+              break;
+
+            case 'expense': // 旧类型 EXPENSE
+              if (oldCategory === 'withdraw') {
+                newType = TransactionType.CONSUMPTION;  // WITHDRAW mapped to CONSUMPTION
+                shouldRemoveCategory = true;
+              }
+              // Note: investment_loss and transfer_out categories removed in type simplification
+              break;
+
+            case 'snapshot': // SNAPSHOT
+              shouldRemoveCategory = true;
+              break;
+          }
+
+          // 更新类型
+          if (newType !== txn.type) {
+            set((state) => ({
+              transactions: state.transactions.map((t) =>
+                t.id === txn.id
+                  ? { ...t, type: newType as any, updatedAt: new Date() }
+                  : t
+              ),
+            }));
+            migrationCount++;
+          }
+
+          // 移除分类字段
+          if (oldCategory && shouldRemoveCategory) {
+            set((state) => ({
+              transactions: state.transactions.map((t) => {
+                if (t.id === txn.id) {
+                  const { category, ...rest } = t as any;
+                  return { ...rest, updatedAt: new Date() };
+                }
+                return t;
+              }),
+            }));
+          }
+        });
+
+        // 标记迁移完成
+        set({ migrated: true });
+        console.log(`Transaction migration completed. Updated ${migrationCount} transactions.`);
+      },
+
+      simplifyTransactionTypes: () => {
+        const { transactions, simplified } = get();
+
+        // 避免重复简化
+        if (simplified) {
+          console.log('Transaction types already simplified');
+          return;
+        }
+
+        console.log('Starting transaction type simplification (9 types → 4 types)...');
+        let updateCount = 0;
+        let deleteCount = 0;
+
+        // 第一遍：更新类型映射
+        set((state) => ({
+          transactions: state.transactions.map((txn) => {
+            const oldTxn = txn as any;
+            const oldType = oldTxn.type as string;
+            let newType: TransactionType | null = txn.type;
+            let shouldUpdate = false;
+
+            // 类型映射
+            switch (oldType) {
+              case 'withdraw':  // WITHDRAW → CONSUMPTION
+                newType = TransactionType.CONSUMPTION;
+                shouldUpdate = true;
+                break;
+
+              case 'transfer_in':  // TRANSFER_IN → DEPOSIT (保持不变)
+                newType = TransactionType.DEPOSIT;
+                shouldUpdate = true;
+                break;
+
+              case 'transfer_out':  // TRANSFER_OUT → CONSUMPTION
+                newType = TransactionType.CONSUMPTION;
+                shouldUpdate = true;
+                break;
+
+              case 'investment_gain':  // INVESTMENT_GAIN → 删除
+                console.warn(`删除投资收益交易: ${txn.id} - ${txn.description || '无描述'}`);
+                deleteCount++;
+                return null;
+
+              case 'investment_loss':  // INVESTMENT_LOSS → 删除
+                console.warn(`删除投资损失交易: ${txn.id} - ${txn.description || '无描述'}`);
+                deleteCount++;
+                return null;
+
+              case 'transfer':  // TRANSFER 父类型 → 删除
+                console.warn(`删除转账父类型交易: ${txn.id} - ${txn.description || '无描述'}`);
+                deleteCount++;
+                return null;
+
+              default:
+                // SALARY, DEPOSIT, SNAPSHOT, CONSUMPTION - 无变化
+                break;
+            }
+
+            if (shouldUpdate && newType) {
+              updateCount++;
+              return { ...txn, type: newType, updatedAt: new Date() };
+            }
+
+            return txn;
+          }).filter(txn => txn !== null) as Transaction[],
+        }));
+
+        // 标记简化完成
+        set({ simplified: true });
+        console.log(`Transaction type simplification completed. Updated ${updateCount} transactions, deleted ${deleteCount} transactions.`);
       },
     }),
     {

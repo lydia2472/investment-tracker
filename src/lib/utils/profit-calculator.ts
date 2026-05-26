@@ -1,4 +1,4 @@
-import { TransactionType, AccountType, TransactionCategory } from '@/types'
+import { TransactionType, AccountType } from '@/types'
 import type { Transaction, Account, MonthlyProfit, SnapshotPair, DashboardProfitSummary, DateRangeProfitSummary } from '@/types'
 import {
   endOfMonth,
@@ -68,43 +68,9 @@ export function getPeriodTransactions(
     // 排除快照交易
     if (txn.type === TransactionType.SNAPSHOT) return false
 
-    // 排除转账交易（只记录单边）
-    if (txn.type === TransactionType.TRANSFER) return false
-
     return txnDate >= start && txnDate <= end
   })
 }
-
-/**
- * 计算指定期间的转入总额
- * 找出所有 TRANSFER_IN 类型的交易并汇总
- */
-export function calculateTransferInAmount(
-  transactions: Transaction[],
-  startDate: Date,
-  endDate: Date,
-  accountId: string
-): number {
-  const start = startDate instanceof Date ? startDate : new Date(startDate)
-  const end = endDate instanceof Date ? endDate : new Date(endDate)
-
-  return transactions
-    .filter((txn) => {
-      if (txn.accountId !== accountId) return false
-
-      const txnDate = txn.createdAt instanceof Date
-        ? txn.createdAt
-        : new Date(txn.createdAt)
-
-      // 只统计 TRANSFER_IN 类型的收入交易
-      return txn.type === TransactionType.INCOME &&
-             txn.category === TransactionCategory.TRANSFER_IN &&
-             txnDate >= start &&
-             txnDate <= end
-    })
-    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-}
-
 
 /**
  * 计算指定快照对的月度收益
@@ -114,8 +80,7 @@ export function calculateProfitForPeriod(
   endSnapshot: Transaction,
   periodTransactions: Transaction[],
   accountName: string,
-  accountType: AccountType,
-  allTransactions: Transaction[]  // 新增：完整交易列表，用于计算转入金额
+  accountType: AccountType
 ): MonthlyProfit {
   const startDate = startSnapshot.createdAt instanceof Date
     ? startSnapshot.createdAt
@@ -127,21 +92,8 @@ export function calculateProfitForPeriod(
   const startBalance = startSnapshot.balance || 0
   const endBalance = endSnapshot.balance || 0
 
-  // 根据账户类型应用不同的收益计算公式
-  let calculatedProfit: number
-  if (accountType === AccountType.CASH) {
-    // 现金账户：简化公式（期末 - 期初）
-    calculatedProfit = endBalance - startBalance
-  } else {
-    // 其他账户：扣除转入金额
-    const transferInAmount = calculateTransferInAmount(
-      allTransactions,
-      startDate,
-      endDate,
-      endSnapshot.accountId
-    )
-    calculatedProfit = endBalance - startBalance - transferInAmount
-  }
+  // 计算收益（期末 - 期初）
+  const calculatedProfit = endBalance - startBalance
 
   // 计算收益率（处理除零情况）
   const profitRate = startBalance > 0
@@ -149,11 +101,18 @@ export function calculateProfitForPeriod(
     : 0
 
   const periodIncome = periodTransactions
-    .filter((txn) => txn.type === TransactionType.INCOME)
+    .filter((txn) =>
+      txn.type === TransactionType.INCOME ||
+      txn.type === TransactionType.DEPOSIT ||
+      txn.type === TransactionType.TRANSFER_IN
+    )
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
   const periodExpense = periodTransactions
-    .filter((txn) => txn.type === TransactionType.EXPENSE)
+    .filter((txn) =>
+      txn.type === TransactionType.CONSUMPTION ||
+      txn.type === TransactionType.TRANSFER_OUT
+    )
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
   return {
@@ -252,14 +211,13 @@ export function calculateAccountMonthlyProfits(
       account.id
     )
 
-    // 计算收益（传入完整交易列表和账户类型）
+    // 计算收益
     const profit = calculateProfitForPeriod(
       previousSnapshot,
       currentSnapshot,
       periodTransactions,
       account.name,
-      account.type,
-      transactions  // 传入完整交易列表用于计算转入金额
+      account.type
     )
 
     profits.push(profit)

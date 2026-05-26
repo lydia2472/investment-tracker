@@ -6,13 +6,15 @@ import { useAccountStats } from '@/hooks/use-account-stats'
 import { Divider } from 'animal-island-ui'
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
 import { DateFilterBar } from '@/components/dashboard/date-filter-bar'
-import { StatsCard } from '@/components/dashboard/stats-card'
-import { ProfitCard } from '@/components/dashboard/profit-card'
-import { RateOfReturnCard } from '@/components/dashboard/rate-of-return-card'
 import { AccountListPreview } from '@/components/dashboard/account-list-preview'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
-import { ShellIcon, TrendingUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
+import { CurrencyAssetsCard } from '@/components/dashboard/currency-assets-card'
+import { CurrencyIncomeCard } from '@/components/dashboard/currency-income-card'
+import { CurrencyExpenseCard } from '@/components/dashboard/currency-expense-card'
+import { CurrencyProfitCard } from '@/components/dashboard/currency-profit-card'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
+import { groupByCurrency } from '@/lib/utils/currency-helpers'
+import { calculateProfitsByCurrency } from '@/lib/utils/currency-profit-helpers'
 
 export default function DashboardPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -93,9 +95,32 @@ export default function DashboardPage() {
     }
   }, [transactions, accounts, dateRange])
 
-  // 根据日期筛选状态显示不同的描述文本
-  const incomeDescription = dateRange ? '筛选范围收入' : '累计收入'
-  const expenseDescription = dateRange ? '筛选范围支出' : '累计支出'
+  // 计算月度收益和货币收益统计
+  const monthlyProfits = useMemo(() => {
+    return calculateMonthlyProfits(transactions, accounts)
+  }, [transactions, accounts])
+
+  const profitsByCurrency = useMemo(() => {
+    return calculateProfitsByCurrency(monthlyProfits, accounts)
+  }, [monthlyProfits, accounts])
+
+  // 计算多币种汇总
+  const currencySummary = useMemo(() => {
+    // 按日期筛选交易
+    const filteredTransactions = (() => {
+      if (!dateRange?.startDate && !dateRange?.endDate) {
+        return transactions
+      }
+      return transactions.filter(t => {
+        const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
+        if (dateRange.startDate && txnDate < dateRange.startDate) return false
+        if (dateRange.endDate && txnDate > dateRange.endDate) return false
+        return true
+      })
+    })()
+
+    return groupByCurrency(accounts, filteredTransactions)
+  }, [accounts, transactions, dateRange])
 
   return (
     <div className="space-y-6">
@@ -111,37 +136,18 @@ export default function DashboardPage() {
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatsCard
-          title="总资产"
-          value={stats.totalAssets}
-          icon={ShellIcon}
-          description={`${stats.accountCount} 个账户`}
-          variant="green"
-        />
-        <StatsCard
-          title="总收入"
-          value={stats.totalIncome}
-          icon={TrendingUpIcon}
-          description={incomeDescription}
-          variant="green"
-        />
-        <StatsCard
-          title="总支出"
-          value={stats.totalExpense}
-          icon={TrendingDownIcon}
-          description={expenseDescription}
-          variant="red"
-        />
+      <div className="grid gap-4 md:grid-cols-2">
+        <CurrencyAssetsCard data={currencySummary} />
+        <CurrencyIncomeCard data={currencySummary} />
       </div>
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ProfitCard data={profitSummary} />
-        <RateOfReturnCard
-          profitRate={profitSummary.profitRate}
-          hasData={profitSummary.hasData}
+        <CurrencyExpenseCard data={currencySummary} />
+        <CurrencyProfitCard
+          profitData={profitsByCurrency}
+          currencyData={currencySummary}
         />
       </div>
 

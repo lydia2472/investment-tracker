@@ -1,6 +1,6 @@
 'use client'
 import { useTransactionStore } from '@/lib/stores'
-import { TransactionType, TransactionCategory, AccountStatistics } from '@/types'
+import { TransactionType, AccountStatistics } from '@/types'
 import { useMemo } from 'react'
 
 export function useAccountStatistics(): AccountStatistics {
@@ -13,30 +13,32 @@ export function useAccountStatistics(): AccountStatistics {
       netIncome: 0,
       transactionCount: transactions.length,
       depositCount: 0,
-      withdrawCount: 0,
-      investmentGain: 0,
-      investmentLoss: 0,
+      consumptionCount: 0,
     }
 
     transactions.forEach((txn) => {
+      // 收入类型：INCOME, DEPOSIT, TRANSFER_IN
       if (txn.type === TransactionType.INCOME && txn.amount) {
         stats.totalIncome += txn.amount
-        if (txn.category === TransactionCategory.DEPOSIT) {
-          stats.depositCount++
-        }
-        if (txn.category === TransactionCategory.INVESTMENT_GAIN) {
-          stats.investmentGain += txn.amount
-        }
       }
 
-      if (txn.type === TransactionType.EXPENSE && txn.amount) {
+      if (txn.type === TransactionType.DEPOSIT && txn.amount) {
+        stats.totalIncome += txn.amount
+        stats.depositCount++
+      }
+
+      if (txn.type === TransactionType.TRANSFER_IN && txn.amount) {
+        stats.totalIncome += txn.amount
+      }
+
+      // 支出类型：CONSUMPTION, TRANSFER_OUT
+      if (txn.type === TransactionType.CONSUMPTION && txn.amount) {
         stats.totalExpense += txn.amount
-        if (txn.category === TransactionCategory.WITHDRAW) {
-          stats.withdrawCount++
-        }
-        if (txn.category === TransactionCategory.INVESTMENT_LOSS) {
-          stats.investmentLoss += txn.amount
-        }
+        stats.consumptionCount++
+      }
+
+      if (txn.type === TransactionType.TRANSFER_OUT && txn.amount) {
+        stats.totalExpense += txn.amount
       }
     })
 

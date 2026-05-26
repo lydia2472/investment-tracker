@@ -8,8 +8,13 @@ interface TransactionAmountProps {
 }
 
 export function TransactionAmount({ amount, balance, type }: TransactionAmountProps) {
-  const isIncomes = type === TransactionType.INCOME
-  const isExpense = type === TransactionType.EXPENSE
+  const isIncomes = type === TransactionType.INCOME ||
+                    type === TransactionType.DEPOSIT ||
+                    type === TransactionType.TRANSFER_IN
+  const isExpense = type === TransactionType.CONSUMPTION ||
+                   type === TransactionType.TRANSFER_OUT ||
+                   type === TransactionType.LOAN
+  const isTransfer = type === TransactionType.TRANSFER
   const isSnapshot = type === TransactionType.SNAPSHOT
 
   // 快照显示balance，其他类型显示amount
@@ -22,12 +27,15 @@ export function TransactionAmount({ amount, balance, type }: TransactionAmountPr
           ? 'text-green-600'
           : isExpense
           ? 'text-red-600'
+          : isTransfer
+          ? 'text-blue-600'
           : ''
       }`}
-      style={!isIncomes && !isExpense ? { color: '#794f27' } : undefined}
+      style={!isIncomes && !isExpense && !isTransfer ? { color: '#794f27' } : undefined}
     >
       {isIncomes && '+'}
       {isExpense && '-'}
+      {isTransfer && '→'}
       {displayValue !== undefined && displayValue !== null ? formatCurrency(displayValue) : '-'}
     </span>
   )

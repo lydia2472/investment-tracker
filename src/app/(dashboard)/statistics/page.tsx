@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Ba
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
+import { TransactionType } from '@/types'
 
 export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -22,11 +23,11 @@ export default function StatisticsPage() {
 
   // Income vs Expense data
   const totalIncome = transactions
-    .filter(t => t.type === 'income')
+    .filter(t => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT)
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   const totalExpense = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.type === TransactionType.CONSUMPTION)
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   const incomeExpenseData = [

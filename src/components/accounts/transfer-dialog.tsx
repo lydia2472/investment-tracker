@@ -1,0 +1,214 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from 'animal-island-ui'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Input } from 'animal-island-ui'
+import { Label } from '@/components/ui/label'
+import { useTransactionStore } from '@/lib/stores'
+import { useAccountStore } from '@/lib/stores'
+import { toast } from 'sonner'
+import { ArrowRightLeftIcon } from '@/lib/components/icon-adapter'
+
+interface TransferDialogProps {
+  trigger?: React.ReactNode
+  fromAccountId?: string
+}
+
+export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fromAccount, setFromAccount] = useState<string>(fromAccountId || '')
+  const [toAccount, setToAccount] = useState('')
+  const [amount, setAmount] = useState<number>(0)
+  const [description, setDescription] = useState('')
+
+  const transfer = useTransactionStore((state) => state.transfer)
+  const accounts = useAccountStore((state) => state.accounts)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validation
+    if (!fromAccount || !toAccount) {
+      toast.error('请选择转出和转入账户')
+      return
+    }
+
+    if (fromAccount === toAccount) {
+      toast.error('转出和转入账户不能相同')
+      return
+    }
+
+    if (!amount || amount <= 0) {
+      toast.error('请输入有效的转账金额')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      transfer(
+        fromAccount,
+        toAccount,
+        amount,
+        description || '转账',
+        new Date()
+      )
+
+      const fromAccountData = accounts.find((acc) => acc.id === fromAccount)
+      const toAccountData = accounts.find((acc) => acc.id === toAccount)
+
+      toast.success('转账成功', {
+        description: `已从 ${fromAccountData?.name || '未知账户'} 转账 ${amount.toFixed(2)} 到 ${toAccountData?.name || '未知账户'}`,
+      })
+
+      // Reset form
+      setFromAccount(fromAccountId || '')
+      setToAccount('')
+      setAmount(0)
+      setDescription('')
+      setOpen(false)
+    } catch (error) {
+      console.error('转账失败:', error)
+      toast.error('转账失败', {
+        description: '请检查输入信息后重试',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // 过滤可用账户（排除已选的转出账户）
+  const availableToAccounts = accounts.filter((acc) => acc.id !== fromAccount)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button
+            type="default"
+            size="small"
+            className="flex-1"
+            icon={<ArrowRightLeftIcon className="h-4 w-4" />}
+          >
+            转账
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>账户转账</DialogTitle>
+          <DialogDescription>
+            在两个账户之间转账资金
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 转出账户 */}
+          <div className="space-y-2">
+            <Label htmlFor="from-account">转出账户</Label>
+            <Select value={fromAccount} onValueChange={setFromAccount} required>
+              <SelectTrigger id="from-account">
+                <SelectValue placeholder="选择转出账户" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{account.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({account.currency} {account.balance.toFixed(2)})
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 转入账户 */}
+          <div className="space-y-2">
+            <Label htmlFor="to-account">转入账户</Label>
+            <Select value={toAccount} onValueChange={setToAccount} required>
+              <SelectTrigger id="to-account">
+                <SelectValue placeholder="选择转入账户" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableToAccounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{account.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({account.currency} {account.balance.toFixed(2)})
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 转账金额 */}
+          <div className="space-y-2">
+            <Label htmlFor="amount">转账金额</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              value={amount || ''}
+              onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+              required
+            />
+          </div>
+
+          {/* 描述 */}
+          <div className="space-y-2">
+            <Label htmlFor="description">描述（可选）</Label>
+            <Input
+              id="description"
+              type="text"
+              placeholder="转账说明"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="default"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              取消
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              disabled={isSubmitting}
+              className="bg-[#5ec850]"
+            >
+              {isSubmitting ? '转账中...' : '确认转账'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

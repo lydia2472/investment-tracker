@@ -20,11 +20,18 @@ export class TransactionService {
    */
   static calculateIncomeExpense(transactions: Transaction[]): IncomeExpenseResult {
     const income = transactions
-      .filter(t => t.type === TransactionType.INCOME)
+      .filter(t =>
+        t.type === TransactionType.INCOME ||
+        t.type === TransactionType.DEPOSIT ||
+        t.type === TransactionType.TRANSFER_IN
+      )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
     const expense = transactions
-      .filter(t => t.type === TransactionType.EXPENSE)
+      .filter(t =>
+        t.type === TransactionType.CONSUMPTION ||
+        t.type === TransactionType.TRANSFER_OUT
+      )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
     return {
@@ -131,12 +138,16 @@ export class TransactionService {
       const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
       const dateKey = date.toISOString().split('T')[0]
 
-      if (txn.type === TransactionType.INCOME) {
+      if (txn.type === TransactionType.INCOME ||
+          txn.type === TransactionType.DEPOSIT ||
+          txn.type === TransactionType.TRANSFER_IN) {
         balance += (txn.amount || 0)
-      } else if (txn.type === TransactionType.EXPENSE) {
+      } else if (txn.type === TransactionType.CONSUMPTION ||
+                 txn.type === TransactionType.TRANSFER_OUT ||
+                 txn.type === TransactionType.LOAN) {
         balance -= (txn.amount || 0)
       }
-      // 快照和转账不影响总余额
+      // 快照不影响总余额
 
       dailyBalances[dateKey] = balance
     })

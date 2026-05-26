@@ -23,20 +23,20 @@ import {
 import { Input } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
-import { TransactionType, TransactionCategory } from '@/types'
+import { TransactionType } from '@/types'
 import { useAccountStore } from '@/lib/stores'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils/cn'
+import { TagInput } from '@/components/tags'
 
 // 基础 schema - 所有字段都标记为可选
 const baseTransactionSchema = z.object({
   accountId: z.string().optional(),
+  fromAccountId: z.string().optional(),  // 转账专用：转出账户
+  toAccountId: z.string().optional(),    // 转账专用：转入账户
   type: z.nativeEnum(TransactionType),
-  category: z.nativeEnum(TransactionCategory).optional(),
   amount: z.number().optional(),
   balance: z.number().optional(),
-  fromAccountId: z.string().optional(),
-  toAccountId: z.string().optional(),
   description: z.string().optional(),
   note: z.string().optional(),
   tags: z.array(z.string()).optional(),  // 新增：标签字段
@@ -53,8 +53,11 @@ const transactionFormSchema = baseTransactionSchema.refine(
              data.amount !== undefined &&
              data.amount > 0
     }
-    // 非转账类型：必须有 accountId
-    return !!data.accountId
+    // 非快照类型：必须有 accountId
+    if (data.type !== TransactionType.SNAPSHOT) {
+      return !!data.accountId
+    }
+    return true
   },
   {
     message: "请填写完整的转账信息",
@@ -63,24 +66,6 @@ const transactionFormSchema = baseTransactionSchema.refine(
 )
 
 export type TransactionFormData = z.infer<typeof transactionFormSchema>
-
-// 分类选项配置
-const categoryOptions: Record<TransactionType, Array<{value: TransactionCategory, label: string}>> = {
-  [TransactionType.INCOME]: [
-    { value: TransactionCategory.DEPOSIT, label: '存款' },
-    { value: TransactionCategory.INVESTMENT_GAIN, label: '投资收益' },
-    { value: TransactionCategory.TRANSFER_IN, label: '转入' },
-  ],
-  [TransactionType.EXPENSE]: [
-    { value: TransactionCategory.WITHDRAW, label: '取款' },
-    { value: TransactionCategory.INVESTMENT_LOSS, label: '投资损失' },
-    { value: TransactionCategory.TRANSFER_OUT, label: '转出' },
-  ],
-  [TransactionType.TRANSFER]: [],
-  [TransactionType.SNAPSHOT]: [
-    { value: TransactionCategory.SNAPSHOT, label: '余额快照' },
-  ],
-}
 
 interface TransactionFormProps {
   mode: 'add' | 'edit'
@@ -102,7 +87,7 @@ export function TransactionForm({
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      type: TransactionType.INCOME,
+      type: TransactionType.DEPOSIT,
       date: new Date(),
       ...initialData,
     },
@@ -113,7 +98,6 @@ export function TransactionForm({
   // 当交易类型改变时，清空相关字段
   useEffect(() => {
     if (mode === 'add') {
-      form.setValue('category', undefined)
       form.setValue('amount', undefined)
       form.setValue('balance', undefined)
       form.setValue('fromAccountId', undefined)
@@ -143,8 +127,13 @@ export function TransactionForm({
         return
       }
 
-      // 收入和支出需要金额
-      if ((data.type === TransactionType.INCOME || data.type === TransactionType.EXPENSE) && !data.amount) {
+      // 收入和支出类型需要金额：INCOME, DEPOSIT, TRANSFER_IN, CONSUMPTION, TRANSFER_OUT, LOAN
+      if ((data.type === TransactionType.INCOME ||
+           data.type === TransactionType.DEPOSIT ||
+           data.type === TransactionType.TRANSFER_IN ||
+           data.type === TransactionType.CONSUMPTION ||
+           data.type === TransactionType.TRANSFER_OUT ||
+           data.type === TransactionType.LOAN) && !data.amount) {
         toast.error('请输入金额')
         return
       }
@@ -162,8 +151,62 @@ export function TransactionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {/* 账户选择（转账类型时不显示） */}
-        {selectedType !== TransactionType.TRANSFER && (
+        {/* 账户选择（快照类型时不显示） */}
+        {selectedType === TransactionType.TRANSFER ? (
+          <>
+            {/* 转出账户 */}
+            <FormField
+              control={form.control}
+              name="fromAccountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>转出账户</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择转出账户" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* 转入账户 */}
+            <FormField
+              control={form.control}
+              name="toAccountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>转入账户</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择转入账户" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        ) : selectedType !== TransactionType.SNAPSHOT && (
           <FormField
             control={form.control}
             name="accountId"
@@ -209,7 +252,11 @@ export function TransactionForm({
                 </FormControl>
                 <SelectContent>
                   <SelectItem value={TransactionType.INCOME}>收入</SelectItem>
-                  <SelectItem value={TransactionType.EXPENSE}>支出</SelectItem>
+                  <SelectItem value={TransactionType.DEPOSIT}>存款</SelectItem>
+                  <SelectItem value={TransactionType.TRANSFER_IN}>转入</SelectItem>
+                  <SelectItem value={TransactionType.CONSUMPTION}>消费</SelectItem>
+                  <SelectItem value={TransactionType.TRANSFER_OUT}>转出</SelectItem>
+                  <SelectItem value={TransactionType.LOAN}>放贷</SelectItem>
                   <SelectItem value={TransactionType.TRANSFER}>转账</SelectItem>
                   <SelectItem value={TransactionType.SNAPSHOT}>快照</SelectItem>
                 </SelectContent>
@@ -219,129 +266,27 @@ export function TransactionForm({
           )}
         />
 
-        {/* 收入/支出类型字段 */}
-        {(selectedType === TransactionType.INCOME || selectedType === TransactionType.EXPENSE) && (
-          <>
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>分类</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择分类" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categoryOptions[selectedType].map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>金额</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
-
-        {/* 转账类型字段 */}
-        {selectedType === TransactionType.TRANSFER && (
-          <>
-            <FormField
-              control={form.control}
-              name="fromAccountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>转出账户</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择转出账户" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="toAccountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>转入账户</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择转入账户" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>转账金额</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
+        {/* 需要金额的字段：所有类型 except SNAPSHOT */}
+        {selectedType !== TransactionType.SNAPSHOT && (
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>金额</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
         {/* 快照类型字段 */}
@@ -440,21 +385,14 @@ export function TransactionForm({
                 )}
               </FormLabel>
               <FormControl>
-                <Input
-                  placeholder="输入标签，用逗号或空格分隔"
-                  value={field.value ? field.value.join(', ') : ''}
-                  onChange={(e) => {
-                    const tagsStr = e.target.value
-                    const tagsArray = tagsStr
-                      .split(/[,，\s]+/)
-                      .map(tag => tag.trim())
-                      .filter(tag => tag.length > 0)
-                    field.onChange(tagsArray)
-                  }}
+                <TagInput
+                  value={field.value || []}
+                  onChange={field.onChange}
+                  placeholder="输入标签，按回车或逗号添加"
                 />
               </FormControl>
               <p className="text-xs text-muted-foreground mt-1">
-                示例：month-end, 季度末, 年末
+                从全局标签中选择或输入新标签
               </p>
               <FormMessage />
             </FormItem>
@@ -464,19 +402,10 @@ export function TransactionForm({
         {/* 按钮 */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
           <Button
-            htmlType="button"
-            type="default"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            className={cn('w-full sm:w-auto', 'mt-2 sm:mt-0', 'border-2 border-[#5ec850]/50')}
-          >
-            取消
-          </Button>
-          <Button
             htmlType="submit"
             type="primary"
             disabled={isSubmitting}
-            className="w-full sm:w-auto bg-[#5ec850]"
+            className="w-full sm:w-auto bg-[#5ec850] border-2 border-[#5ec850]"
           >
             {isSubmitting ? '提交中...' : mode === 'add' ? '添加交易' : '保存修改'}
           </Button>

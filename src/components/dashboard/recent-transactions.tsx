@@ -2,6 +2,7 @@ import { Card } from 'animal-island-ui'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import type { Transaction, Account } from '@/types'
+import { TransactionType } from '@/types'
 import { ArrowDownIcon, ArrowUpIcon, InfoIcon } from '@/lib/components/icon-adapter'
 import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
 
@@ -50,8 +51,9 @@ export function RecentTransactions({ transactions, accounts, limit = 5 }: Recent
         <div className="space-y-3">
           {sortedTransactions.map((txn) => {
             const account = accounts.find(a => a.id === txn.accountId)
-            const isIncome = txn.type === 'income'
-            const isExpense = txn.type === 'expense'
+            const isIncome = txn.type === TransactionType.INCOME ||
+                            txn.type === TransactionType.DEPOSIT
+            const isExpense = txn.type === TransactionType.CONSUMPTION
 
             // 使用统一颜色变量
             const getIconBg = (type?: string) => {

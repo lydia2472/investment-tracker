@@ -1,20 +1,20 @@
 // 交易类型枚举
 export enum TransactionType {
-  INCOME = 'income',
-  EXPENSE = 'expense',
-  TRANSFER = 'transfer',
-  SNAPSHOT = 'snapshot'
-}
+  // 收入类型
+  INCOME = 'income',          // 收入
+  DEPOSIT = 'deposit',        // 存款
+  TRANSFER_IN = 'transfer_in', // 转入
 
-// 收入/支出分类
-export enum TransactionCategory {
-  DEPOSIT = 'deposit',
-  WITHDRAW = 'withdraw',
-  INVESTMENT_GAIN = 'investment_gain',
-  INVESTMENT_LOSS = 'investment_loss',
-  TRANSFER_OUT = 'transfer_out',
-  TRANSFER_IN = 'transfer_in',
-  SNAPSHOT = 'snapshot'
+  // 支出类型
+  CONSUMPTION = 'consumption', // 消费
+  TRANSFER_OUT = 'transfer_out', // 转出
+  LOAN = 'loan',              // 放贷
+
+  // 转账类型
+  TRANSFER = 'transfer',  // 转账（配对创建交易）
+
+  // 特殊类型
+  SNAPSHOT = 'snapshot'   // 余额快照
 }
 
 // 账户类型
@@ -45,11 +45,11 @@ export interface Transaction {
   id: string;
   accountId: string;
   type: TransactionType;
-  category: TransactionCategory;
   amount?: number;
   balance?: number;
   transferToAccountId?: string;
   transferFromAccountId?: string;
+  transferPairId?: string;      // 用于链接转账对
   description?: string;
   note?: string;
   tags?: string[];
@@ -65,9 +65,7 @@ export interface AccountStatistics {
   transactionCount: number;
   lastTransactionDate?: Date;
   depositCount: number;
-  withdrawCount: number;
-  investmentGain: number;
-  investmentLoss: number;
+  consumptionCount: number;
 }
 
 // 月度收益接口
@@ -127,4 +125,22 @@ export interface DateRangeProfitSummary {
   };
   monthlyData: MonthlyProfit[]; // 月度详情数据
   hasData: boolean;             // 是否有数据
+}
+
+// 货币统计接口
+export interface CurrencyStatistics {
+  currency: string              // 货币代码 (CNY, USD, EUR, HKD, JPY)
+  symbol: string                // 货币符号 (¥, $, €, HK$, ¥)
+  totalAssets: number           // 该货币总资产
+  totalIncome: number           // 该货币总收入（只包含 SALARY 类型）
+  totalExpense: number          // 该货币总支出（默认排除 TRANSFER_OUT）
+  accountCount: number          // 该货币账户数量
+  netIncome: number             // 净收入 = totalIncome - totalExpense
+}
+
+// 多币种汇总接口
+export interface MultiCurrencySummary {
+  currencies: CurrencyStatistics[]  // 各货币统计数组
+  currencyCount: number             // 货币种类数量
+  hasMultipleCurrencies: boolean    // 是否为多币种
 }

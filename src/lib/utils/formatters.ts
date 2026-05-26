@@ -1,12 +1,11 @@
-// 货币格式化（添加铃钱图标）
+// 货币格式化
 export const formatCurrency = (amount: number): string => {
   const formatted = new Intl.NumberFormat('zh-CN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 
-  // 添加铃钱图标
-  return `💰 ${formatted}`;
+  return formatted;
 };
 
 // 紧凑货币格式（纯数字，用于表格等空间有限的地方）
@@ -74,4 +73,12 @@ export const formatRelativeTime = (date: Date): string => {
 // 百分比格式化
 export const formatPercentage = (value: number, decimals: number = 2): string => {
   return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}%`
+};
+
+// 格式化货币用于统计显示（无表情符号，保留小数）
+export const formatCurrencyForStats = (amount: number): string => {
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
 };

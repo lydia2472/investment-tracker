@@ -48,14 +48,21 @@ export function useAccountStats(options?: UseAccountStatsOptions): AccountStats 
       return acc
     }, {} as Record<AccountType, number>)
 
-    // 计算总收入（根据日期筛选）
+    // 计算总收入（INCOME, DEPOSIT, TRANSFER_IN 类型）
     const totalIncome = filteredTransactions
-      .filter(t => t.type === TransactionType.INCOME)
+      .filter(t =>
+        t.type === TransactionType.INCOME ||
+        t.type === TransactionType.DEPOSIT ||
+        t.type === TransactionType.TRANSFER_IN
+      )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
-    // 计算总支出（根据日期筛选）
+    // 计算总支出（CONSUMPTION, TRANSFER_OUT 类型）
     const totalExpense = filteredTransactions
-      .filter(t => t.type === TransactionType.EXPENSE)
+      .filter(t =>
+        t.type === TransactionType.CONSUMPTION ||
+        t.type === TransactionType.TRANSFER_OUT
+      )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
     // 净收入（根据日期筛选）

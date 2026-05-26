@@ -1,6 +1,7 @@
 import { Card } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { AccountTypeBadge } from './account-type-badge'
+import { TransferDialog } from './transfer-dialog'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import type { Account } from '@/types'
@@ -128,23 +129,24 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 pt-2">
+          <div className="grid grid-cols-3 gap-2 pt-2">
             {onEdit && (
               <Button
                 type="default"
                 size="small"
-                className="flex-1 border-2 border-[var(--color-profit)]/50"
+                className="border-2 border-[var(--color-profit)]/50"
                 onClick={() => onEdit(account)}
                 icon={<EditIcon className="h-4 w-4" />}
               >
                 编辑
               </Button>
             )}
+            <TransferDialog fromAccountId={account.id} />
             <Button
               type="primary"
               size="small"
               className={cn(
-                "flex-1 bg-gradient-to-r from-[var(--color-loss)] to-[var(--color-loss)] text-white shadow-lg shadow-[var(--color-loss)]/30 hover:shadow-xl hover:shadow-[var(--color-loss)]/40",
+                "bg-gradient-to-r from-[var(--color-loss)] to-[var(--color-loss)] text-white shadow-lg shadow-[var(--color-loss)]/30 hover:shadow-xl hover:shadow-[var(--color-loss)]/40",
                 buttonClasses.interactive
               )}
               onClick={() => onDelete(account.id, account.name)}

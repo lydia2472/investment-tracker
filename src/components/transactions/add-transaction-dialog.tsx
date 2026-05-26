@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { TransactionForm, TransactionFormData } from './transaction-form'
 import { toast } from 'sonner'
-import { TransactionType, TransactionCategory } from '@/types'
+import { TransactionType } from '@/types'
 
 interface AddTransactionDialogProps {
   trigger?: React.ReactNode
@@ -52,14 +52,13 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
         const toAccount = accounts.find((acc) => acc.id === data.toAccountId)
 
         toast.success('转账成功', {
-          description: `已从 ${fromAccount?.name || '未知账户'} 转账 ¥${data.amount?.toFixed(2) || '0.00'} 到 ${toAccount?.name || '未知账户'}`,
+          description: `已从 ${fromAccount?.name || '未知账户'} 转账 ${data.amount.toFixed(2)} 到 ${toAccount?.name || '未知账户'}`,
         })
       } else {
         // 处理其他类型（ accountId 已在 handleSubmit 中验证）
         addTransaction({
           accountId: data.accountId!, // 类型断言：已在 handleSubmit 中验证
           type: data.type,
-          category: data.category || TransactionCategory.DEPOSIT, // 提供默认值
           amount: data.amount,
           balance: data.balance,
           description: data.description,

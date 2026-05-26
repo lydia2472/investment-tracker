@@ -10,14 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { TransactionType, TransactionCategory } from '@/types'
-import { useAccountStore } from '@/lib/stores'
+import { TransactionType } from '@/types'
+import { useAccountStore, useTagStore } from '@/lib/stores'
 import { XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
+import { cn } from '@/lib/utils/cn'
+import { MultiSelect } from '@/components/ui/multi-select'
 
 export interface TransactionFilters {
   accountId?: string
   type?: TransactionType
-  category?: TransactionCategory
+  tags?: string[]
   dateRange?: {
     from: Date
     to: Date
@@ -34,6 +36,7 @@ export function TransactionFilters({
   onFiltersChange,
 }: TransactionFiltersProps) {
   const accounts = useAccountStore((state) => state.accounts)
+  const availableTags = useTagStore((state) => state.availableTags)
 
   // 清除单个过滤条件
   const clearFilter = (key: keyof TransactionFilters) => {
@@ -106,7 +109,11 @@ export function TransactionFilters({
             <SelectContent>
               <SelectItem value="all">所有类型</SelectItem>
               <SelectItem value={TransactionType.INCOME}>收入</SelectItem>
-              <SelectItem value={TransactionType.EXPENSE}>支出</SelectItem>
+              <SelectItem value={TransactionType.DEPOSIT}>存款</SelectItem>
+              <SelectItem value={TransactionType.TRANSFER_IN}>转入</SelectItem>
+              <SelectItem value={TransactionType.CONSUMPTION}>消费</SelectItem>
+              <SelectItem value={TransactionType.TRANSFER_OUT}>转出</SelectItem>
+              <SelectItem value={TransactionType.LOAN}>放贷</SelectItem>
               <SelectItem value={TransactionType.TRANSFER}>转账</SelectItem>
               <SelectItem value={TransactionType.SNAPSHOT}>快照</SelectItem>
             </SelectContent>
@@ -123,37 +130,24 @@ export function TransactionFilters({
           )}
         </div>
 
-        {/* 分类过滤 */}
+        {/* 标签过滤 */}
         <div className="flex items-center gap-1">
-          <Select
-            value={filters.category || 'all'}
-            onValueChange={(value) => {
-              onFiltersChange({
-                ...filters,
-                category: value === 'all' ? undefined : (value as TransactionCategory),
-              })
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="所有分类" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有分类</SelectItem>
-              <SelectItem value={TransactionCategory.DEPOSIT}>存款</SelectItem>
-              <SelectItem value={TransactionCategory.WITHDRAW}>取款</SelectItem>
-              <SelectItem value={TransactionCategory.INVESTMENT_GAIN}>投资收益</SelectItem>
-              <SelectItem value={TransactionCategory.INVESTMENT_LOSS}>投资损失</SelectItem>
-              <SelectItem value={TransactionCategory.TRANSFER_IN}>转入</SelectItem>
-              <SelectItem value={TransactionCategory.TRANSFER_OUT}>转出</SelectItem>
-              <SelectItem value={TransactionCategory.SNAPSHOT}>快照</SelectItem>
-            </SelectContent>
-          </Select>
-          {filters.category && (
+          <MultiSelect
+            options={availableTags}
+            value={filters.tags || []}
+            onChange={(tags) => onFiltersChange({
+              ...filters,
+              tags: tags.length > 0 ? tags : undefined
+            })}
+            placeholder="选择标签"
+            specialOption={{ value: "__BLANK__", label: "无标签" }}
+          />
+          {filters.tags && filters.tags.length > 0 && (
             <Button
               type="default"
               size="small"
               className="h-8 w-8 hover:bg-muted/50"
-              onClick={() => clearFilter('category')}
+              onClick={() => clearFilter('tags')}
             >
               <XIcon className="h-3 w-3" />
             </Button>

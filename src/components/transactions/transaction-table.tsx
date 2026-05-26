@@ -7,7 +7,10 @@ import { TransactionTypeBadge } from './transaction-type-badge'
 import { TransactionAmount } from './transaction-amount'
 import type { Transaction, Account } from '@/types'
 import type { TransactionFilters } from './transaction-filters'
+import { TransactionType } from '@/types'
 import { useMemo } from 'react'
+import { useTransactionTotals } from '@/hooks/use-transaction-totals'
+import { TransactionTotalsDisplay } from './transaction-totals'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -35,13 +38,16 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
       }
 
       // 交易类型过滤
-      if (filters.type && txn.type !== filters.type) {
-        return false
-      }
-
-      // 分类过滤
-      if (filters.category && txn.category !== filters.category) {
-        return false
+      if (filters.type) {
+        if (filters.type === TransactionType.TRANSFER) {
+          // 筛选转账时，显示所有转账对（有transferPairId的交易）
+          const isTransfer = !!(txn.transferToAccountId || txn.transferFromAccountId || txn.transferPairId)
+          if (!isTransfer) {
+            return false
+          }
+        } else if (txn.type !== filters.type) {
+          return false
+        }
       }
 
       // 日期范围过滤
@@ -57,9 +63,45 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
         }
       }
 
+      // 标签过滤
+      if (filters.tags && filters.tags.length > 0) {
+        const hasBlankTagFilter = filters.tags.includes("__BLANK__")
+        const regularTags = filters.tags.filter(tag => tag !== "__BLANK__")
+
+        // 如果选择了"无标签"选项
+        if (hasBlankTagFilter) {
+          // 交易无标签：包含（符合条件）
+          const hasNoTags = !txn.tags || txn.tags.length === 0
+
+          // 交易有选中标签：包含（符合条件）
+          const hasMatchingRegularTag = regularTags.some((filterTag) =>
+            txn.tags?.includes(filterTag)
+          )
+
+          // OR 逻辑：无标签 OR 有匹配标签
+          if (!hasNoTags && !hasMatchingRegularTag) {
+            return false
+          }
+        } else {
+          // 原有逻辑：只筛选有标签的交易
+          if (!txn.tags || txn.tags.length === 0) {
+            return false
+          }
+          const hasMatchingTag = filters.tags.some((filterTag) =>
+            txn.tags?.includes(filterTag)
+          )
+          if (!hasMatchingTag) {
+            return false
+          }
+        }
+      }
+
       return true
     })
   }, [transactions, filters])
+
+  // Calculate totals for filtered transactions
+  const totals = useTransactionTotals(filteredTransactions)
 
   const sortedTransactions = [...filteredTransactions].sort(
     (a, b) => {
@@ -107,10 +149,16 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   return (
     <Card color="app-green" className="overflow-hidden" style={{ backgroundColor: '#8ac68a' }}>
+      {/* 显示金额统计 - 仅当有筛选结果时显示 */}
+      {filteredTransactions.length > 0 && (
+        <TransactionTotalsDisplay totals={totals} />
+      )}
+
+      {/* 显示筛选结果数量 - 仅当有筛选条件时显示 */}
       {hasFilters && (
         <div className="px-6 py-3 border-b" style={{ backgroundColor: '#8ac68a' }}>
-          <p className="text-sm text-muted-foreground">
-            显示 <span className="font-semibold text-foreground">{filteredTransactions.length}</span> 条交易记录
+          <p className="text-sm text-foreground">
+            显示 <span className="font-bold">{filteredTransactions.length}</span> 条交易记录
             {filteredTransactions.length !== transactions.length && (
               <span className="ml-2">（共 {transactions.length} 条）</span>
             )}
@@ -125,6 +173,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
               <th className="text-left p-4 font-bold">账户</th>
               <th className="text-left p-4 font-bold">类型</th>
               <th className="text-left p-4 font-bold">描述</th>
+              <th className="text-left p-4 font-bold">标签</th>
               <th className="text-right p-4 font-bold">金额</th>
               <th className="text-center p-4 font-bold" colSpan={onEdit ? 2 : 1}>操作</th>
             </tr>
@@ -152,6 +201,22 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                   {txn.description || '-'}
                   {txn.note && (
                     <p className="text-xs text-muted-foreground mt-1">{txn.note}</p>
+                  )}
+                </td>
+                <td className="p-4">
+                  {txn.tags && txn.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {txn.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
                   )}
                 </td>
                 <td className="p-4 text-sm text-right font-semibold">

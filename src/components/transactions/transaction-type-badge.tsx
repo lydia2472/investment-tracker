@@ -3,14 +3,23 @@ import { TransactionType } from '@/types'
 
 const transactionTypeLabels: Record<TransactionType, string> = {
   [TransactionType.INCOME]: '收入',
-  [TransactionType.EXPENSE]: '支出',
+  [TransactionType.DEPOSIT]: '存款',
+  [TransactionType.TRANSFER_IN]: '转入',
+  [TransactionType.CONSUMPTION]: '消费',
+  [TransactionType.TRANSFER_OUT]: '转出',
+  [TransactionType.LOAN]: '放贷',
   [TransactionType.TRANSFER]: '转账',
   [TransactionType.SNAPSHOT]: '快照',
 }
 
 const getTransactionTypeVariant = (type: TransactionType): 'default' | 'secondary' | 'destructive' | 'outline' => {
-  if (type === TransactionType.INCOME) return 'default'
-  if (type === TransactionType.EXPENSE) return 'destructive'
+  if (type === TransactionType.INCOME ||
+      type === TransactionType.DEPOSIT ||
+      type === TransactionType.TRANSFER_IN) return 'default'
+  if (type === TransactionType.CONSUMPTION ||
+      type === TransactionType.TRANSFER_OUT ||
+      type === TransactionType.LOAN) return 'destructive'
+  if (type === TransactionType.TRANSFER) return 'outline'
   return 'secondary'
 }
 

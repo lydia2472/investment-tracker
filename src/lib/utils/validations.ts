@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AccountType, TransactionType, TransactionCategory } from '@/types'
+import { AccountType, TransactionType } from '@/types'
 
 export const accountSchema = z.object({
   name: z.string().min(1, '账户名称必填'),
@@ -13,11 +13,11 @@ export const accountSchema = z.object({
 export const transactionSchema = z.object({
   accountId: z.string().min(1, '请选择账户'),
   type: z.nativeEnum(TransactionType),
-  category: z.nativeEnum(TransactionCategory),
   amount: z.number().optional(),
   balance: z.number().optional(),
   description: z.string().optional(),
   note: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   date: z.date().default(() => new Date()),
 })
 
