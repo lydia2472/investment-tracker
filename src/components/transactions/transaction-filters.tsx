@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TransactionType } from '@/types'
-import { useAccountStore, useTagStore } from '@/lib/stores'
+import { useAccountStore } from '@/lib/stores'
+import { useAvailableTags } from '@/hooks/use-tag-assets'
 import { XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils/cn'
 import { MultiSelect } from '@/components/ui/multi-select'
@@ -37,7 +38,7 @@ export function TransactionFilters({
   onFiltersChange,
 }: TransactionFiltersProps) {
   const accounts = useAccountStore((state) => state.accounts)
-  const availableTags = useTagStore((state) => state.availableTags)
+  const availableTags = useAvailableTags()
 
   // 清除单个过滤条件
   const clearFilter = (key: keyof TransactionFilters) => {
