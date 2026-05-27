@@ -7,14 +7,16 @@ import { formatCurrencyCompact } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import { iconClasses } from '@/lib/utils/design-classes'
 import { getPriorityCurrency, formatPriorityCurrencyDisplay } from '@/lib/utils/currency-priority-helpers'
-import type { MultiCurrencySummary, CurrencyStatistics } from '@/types'
+import type { MultiCurrencySummary, CurrencyStatistics, Account } from '@/types'
 
 interface CurrencyAssetsCardProps {
   data: MultiCurrencySummary
+  accounts: Account[]  // 新增
+  onAccountClick?: (account: Account) => void  // 新增
   dateRange?: { startDate?: Date; endDate?: Date }  // 可选：日期筛选
 }
 
-export function CurrencyAssetsCard({ data }: CurrencyAssetsCardProps) {
+export function CurrencyAssetsCard({ data, accounts, onAccountClick }: CurrencyAssetsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 单币种时降级为普通StatsCard样式
@@ -79,6 +81,8 @@ export function CurrencyAssetsCard({ data }: CurrencyAssetsCardProps) {
               <CurrencyDetailItem
                 key={currency.currency}
                 currency={currency}
+                accounts={accounts}
+                onAccountClick={onAccountClick}
               />
             ))}
           </div>
@@ -115,7 +119,18 @@ function SingleCurrencyView({ currency }: {
 }
 
 // 单个货币明细项
-function CurrencyDetailItem({ currency }: { currency: CurrencyStatistics }) {
+function CurrencyDetailItem({
+  currency,
+  accounts,
+  onAccountClick
+}: {
+  currency: CurrencyStatistics
+  accounts: Account[]
+  onAccountClick?: (account: Account) => void
+}) {
+  // 过滤出该币种的账户
+  const currencyAccounts = accounts.filter(a => a.currency === currency.currency)
+
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-2">
       {/* 货币标题 */}
@@ -131,6 +146,30 @@ function CurrencyDetailItem({ currency }: { currency: CurrencyStatistics }) {
         <span className="text-xl font-bold text-white">
           {currency.symbol} {formatCurrencyCompact(currency.totalAssets)}
         </span>
+      </div>
+
+      {/* 账户列表 */}
+      <div className="space-y-2 mt-3">
+        {currencyAccounts.map(account => (
+          <div
+            key={account.id}
+            className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/15 cursor-pointer transition-all"
+            onClick={() => onAccountClick?.(account)}
+          >
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                style={{ background: account.color }}
+              >
+                {account.name.charAt(0)}
+              </div>
+              <span className="text-sm text-white">{account.name}</span>
+            </div>
+            <span className="text-sm font-bold text-white">
+              {formatCurrencyCompact(account.balance)}
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* 收支明细 */}

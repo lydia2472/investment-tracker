@@ -7,6 +7,8 @@ import { TransactionTable } from '@/components/transactions/transaction-table'
 import { TransactionFilters, type TransactionFilters as TransactionFiltersType } from '@/components/transactions/transaction-filters'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
+import { ExportDialog } from '@/components/transactions/export-dialog'
+import { ImportDialog } from '@/components/transactions/import-dialog'
 import { useTransactionActions } from '@/hooks/use-transaction-actions'
 import { Button } from 'animal-island-ui'
 import { PlusIcon } from '@/lib/components/icon-adapter'
@@ -19,6 +21,31 @@ export default function TransactionsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [filters, setFilters] = useState<TransactionFiltersType>({})
+
+  // 根据筛选条件过滤交易
+  const getFilteredTransactions = () => {
+    return transactions.filter(txn => {
+      if (filters.accountId && txn.accountId !== filters.accountId) return false
+      if (filters.type && txn.type !== filters.type) return false
+      if (filters.tags && filters.tags.length > 0) {
+        if (!txn.tags || txn.tags.length === 0) return false
+        const hasAllTags = filters.tags.every(tag => txn.tags?.includes(tag))
+        if (!hasAllTags) return false
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase()
+        const account = accounts.find(a => a.id === txn.accountId)
+        const accountName = account?.name.toLowerCase() || ''
+        const description = (txn.description || '').toLowerCase()
+        if (!accountName.includes(searchLower) && !description.includes(searchLower)) {
+          return false
+        }
+      }
+      return true
+    })
+  }
+
+  const filteredTransactions = getFilteredTransactions()
 
   const handleEdit = (id: string) => {
     setEditingTransactionId(id)
@@ -34,13 +61,21 @@ export default function TransactionsPage() {
             查看和管理所有交易流水
           </p>
         </div>
-        <AddTransactionDialog
-          trigger={
-            <Button type="primary" className="bg-[#5ec850]" icon={<PlusIcon className="h-4 w-4" />}>
-              添加交易
-            </Button>
-          }
-        />
+        <div className="flex gap-2">
+          <ExportDialog
+            transactions={transactions}
+            filteredTransactions={filteredTransactions}
+            accounts={accounts}
+          />
+          <ImportDialog />
+          <AddTransactionDialog
+            trigger={
+              <Button type="primary" className="bg-[#5ec850]" icon={<PlusIcon className="h-4 w-4" />}>
+                添加交易
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <TransactionFilters

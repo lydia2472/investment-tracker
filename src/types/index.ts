@@ -144,3 +144,57 @@ export interface MultiCurrencySummary {
   currencyCount: number             // 货币种类数量
   hasMultipleCurrencies: boolean    // 是否为多币种
 }
+
+// 导入交易数据接口（用于导入，id 为可选）
+export interface TransactionImport {
+  id?: string;
+  accountId: string;
+  type: TransactionType;
+  amount?: number;
+  balance?: number;
+  transferToAccountId?: string;
+  transferFromAccountId?: string;
+  transferPairId?: string;
+  description?: string;
+  note?: string;
+  tags?: string[];
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+}
+
+// 导入账户数据接口
+export interface AccountImport {
+  id?: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  initialBalance: number;
+  currency: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+// 导入验证结果
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+// 导入结果
+export interface ImportResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: Array<{ index: number; row: any; error: string }>;
+}
+
+// 导入账户结果
+export interface AccountImportResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: Array<{ index: number; row: AccountImport; error: string }>;
+}

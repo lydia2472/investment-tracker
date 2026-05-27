@@ -12,13 +12,16 @@ import { CurrencyAssetsCard } from '@/components/dashboard/currency-assets-card'
 import { CurrencyIncomeCard } from '@/components/dashboard/currency-income-card'
 import { CurrencyExpenseCard } from '@/components/dashboard/currency-expense-card'
 import { CurrencyProfitCard } from '@/components/dashboard/currency-profit-card'
+import { AccountDetailDialog } from '@/components/dashboard/account-detail-dialog'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
 import { groupByCurrency } from '@/lib/utils/currency-helpers'
 import { calculateProfitsByCurrency } from '@/lib/utils/currency-profit-helpers'
+import type { Account } from '@/types'
 
 export default function DashboardPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
 
   // 日期范围状态（undefined = 全部数据）
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -137,7 +140,11 @@ export default function DashboardPage() {
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <CurrencyAssetsCard data={currencySummary} />
+        <CurrencyAssetsCard
+          data={currencySummary}
+          accounts={accounts}
+          onAccountClick={setSelectedAccount}
+        />
         <CurrencyIncomeCard data={currencySummary} />
       </div>
 
@@ -157,6 +164,14 @@ export default function DashboardPage() {
         <AccountListPreview accounts={accounts} limit={5} />
         <RecentTransactions transactions={transactions} accounts={accounts} limit={5} />
       </div>
+
+      {/* 账户明细弹窗 */}
+      <AccountDetailDialog
+        account={selectedAccount}
+        transactions={transactions}
+        open={!!selectedAccount}
+        onClose={() => setSelectedAccount(null)}
+      />
     </div>
   )
 }

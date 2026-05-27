@@ -50,6 +50,8 @@ const LUCIDE_ICONS = {
   MoreVerticalIcon: LucideIcons.MoreVertical,
   TurnipIcon: LucideIcons.Carrot,
   WalletIcon: LucideIcons.Wallet,
+  DownloadIcon: LucideIcons.Download,
+  UploadIcon: LucideIcons.Upload,
 } as const
 
 // animal-island-ui 图标工厂
@@ -109,3 +111,5 @@ export const AlertIcon = createLucideIcon(LUCIDE_ICONS.AlertIcon)
 export const MoreVerticalIcon = createLucideIcon(LUCIDE_ICONS.MoreVerticalIcon)
 export const TurnipIcon = createLucideIcon(LUCIDE_ICONS.TurnipIcon)
 export const WalletIcon = createLucideIcon(LUCIDE_ICONS.WalletIcon)
+export const DownloadIcon = createLucideIcon(LUCIDE_ICONS.DownloadIcon)
+export const UploadIcon = createLucideIcon(LUCIDE_ICONS.UploadIcon)

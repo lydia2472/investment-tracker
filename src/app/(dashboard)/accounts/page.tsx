@@ -4,6 +4,8 @@ import { useAccountStore } from '@/lib/stores'
 import { Divider } from 'animal-island-ui'
 import { AccountGrid } from '@/components/accounts/account-grid'
 import { AddAccountDialog } from '@/components/accounts/add-account-dialog'
+import { ExportDialog } from '@/components/accounts/export-dialog'
+import { ImportDialog } from '@/components/accounts/import-dialog'
 import { useAccountActions } from '@/hooks/use-account-actions'
 import { Button } from 'animal-island-ui'
 import { PlusIcon } from '@/lib/components/icon-adapter'
@@ -21,13 +23,17 @@ export default function AccountsPage() {
             管理您的所有投资账户
           </p>
         </div>
-        <AddAccountDialog
-          trigger={
-            <Button type="primary" className="bg-[#5ec850]" icon={<PlusIcon className="h-4 w-4" />}>
-              添加账户
-            </Button>
-          }
-        />
+        <div className="flex gap-2">
+          <ExportDialog accounts={accounts} />
+          <ImportDialog />
+          <AddAccountDialog
+            trigger={
+              <Button type="primary" className="bg-[#5ec850]" icon={<PlusIcon className="h-4 w-4" />}>
+                添加账户
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />

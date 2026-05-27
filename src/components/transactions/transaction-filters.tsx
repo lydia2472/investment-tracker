@@ -20,6 +20,7 @@ export interface TransactionFilters {
   accountId?: string
   type?: TransactionType
   tags?: string[]
+  search?: string
   dateRange?: {
     from: Date
     to: Date
