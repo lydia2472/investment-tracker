@@ -187,8 +187,10 @@ export interface ValidationResult {
 export interface ImportResult {
   total: number;
   success: number;
+  updated: number;  // 新增：更新的数量
   failed: number;
   errors: Array<{ index: number; row: any; error: string }>;
+  updates: number[];  // 新增：需要更新的记录索引
 }
 
 // 导入账户结果

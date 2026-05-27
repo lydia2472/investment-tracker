@@ -14,6 +14,7 @@ interface TransactionState {
   ) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
+  deleteMultiple: (ids: string[]) => void;
   getTransaction: (id: string) => Transaction | undefined;
   getTransactionsByAccount: (accountId: string) => Transaction[];
   transfer: (
@@ -177,6 +178,59 @@ export const useTransactionStore = create<TransactionState>()(
             updateBalance(transaction.accountId, newBalance);
           }
         }
+      },
+
+      deleteMultiple: (ids) => {
+        const updateBalance = useAccountStore.getState().updateBalance;
+        const getAccount = useAccountStore.getState().getAccount;
+
+        // 先收集所有要删除的交易
+        const transactionsToDelete = ids
+          .map((id) => get().transactions.find((txn) => txn.id === id))
+          .filter((txn) => txn !== undefined) as Transaction[];
+
+        if (transactionsToDelete.length === 0) return;
+
+        // 批量删除交易
+        set((state) => ({
+          transactions: state.transactions.filter((txn) => !ids.includes(txn.id)),
+        }));
+
+        // 按账户分组，更新每个账户的余额
+        const accountBalanceChanges = new Map<string, number>();
+
+        transactionsToDelete.forEach((transaction) => {
+          const currentChange = accountBalanceChanges.get(transaction.accountId) || 0;
+
+          if (transaction.type === TransactionType.INCOME ||
+              transaction.type === TransactionType.DEPOSIT ||
+              transaction.type === TransactionType.TRANSFER_IN) {
+            // 删除收入：余额减少
+            accountBalanceChanges.set(
+              transaction.accountId,
+              currentChange - (transaction.amount || 0)
+            );
+          } else if (transaction.type === TransactionType.CONSUMPTION ||
+                     transaction.type === TransactionType.TRANSFER_OUT ||
+                     transaction.type === TransactionType.LOAN) {
+            // 删除支出：余额增加
+            accountBalanceChanges.set(
+              transaction.accountId,
+              currentChange + (transaction.amount || 0)
+            );
+          } else if (transaction.type === TransactionType.SNAPSHOT) {
+            // 删除快照：不自动调整余额
+            console.warn(`删除快照 ${transaction.id} 不会自动调整余额`);
+          }
+        });
+
+        // 应用余额变更
+        accountBalanceChanges.forEach((balanceChange, accountId) => {
+          const account = getAccount(accountId);
+          if (account) {
+            updateBalance(accountId, account.balance + balanceChange);
+          }
+        });
       },
 
       getTransaction: (id) => {

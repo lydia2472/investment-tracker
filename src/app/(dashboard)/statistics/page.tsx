@@ -6,6 +6,9 @@ import { Tabs } from 'animal-island-ui'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
+import { TagFilterBar } from '@/components/statistics/tag-filter-bar'
+import { TagAssetsChart } from '@/components/statistics/tag-assets-chart'
+import { useTagAssets, useAvailableTags } from '@/hooks/use-tag-assets'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
 import { TransactionType } from '@/types'
 
@@ -13,6 +16,13 @@ export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+
+  // 获取可用标签
+  const availableTags = useAvailableTags()
+
+  // 获取标签资产数据
+  const tagAssetsByCurrency = useTagAssets({ tagFilter: selectedTags })
 
   // Account distribution data
   const accountData = accounts.map((account) => ({
@@ -203,6 +213,59 @@ export default function StatisticsPage() {
                     />
                   </div>
                 </Card>
+              </div>
+            ),
+          },
+          {
+            key: 'tag-assets',
+            label: '标签统计',
+            children: (
+              <div className="space-y-4">
+                {/* Tag Filter */}
+                <Card color="app-yellow">
+                  <div className="p-6 pb-3">
+                    <h3 className="font-semibold text-lg">标签筛选</h3>
+                  </div>
+                  <div className="p-6 pt-0">
+                    <TagFilterBar
+                      availableTags={availableTags}
+                      value={selectedTags}
+                      onChange={setSelectedTags}
+                    />
+                  </div>
+                </Card>
+
+                <Divider type="line-yellow" style={{ margin: '24px 0' }} />
+
+                {/* Tag Assets Charts by Currency */}
+                {tagAssetsByCurrency.length === 0 ? (
+                  <Card color="app-yellow">
+                    <div className="p-6">
+                      <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                        暂无标签资产数据
+                      </div>
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {tagAssetsByCurrency.map((currencyData) => (
+                      <Card key={currencyData.currency} color="app-yellow">
+                        <div className="p-6 pb-3">
+                          <h3 className="font-semibold text-lg">
+                            {currencyData.currency} 资产分布（按标签）
+                          </h3>
+                        </div>
+                        <div className="p-6 pt-0">
+                          <TagAssetsChart
+                            data={currencyData.tagAssets}
+                            totalAssets={currencyData.totalAssets}
+                            currency={currencyData.currency}
+                          />
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             ),
           },

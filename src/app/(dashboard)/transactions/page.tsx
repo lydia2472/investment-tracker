@@ -17,10 +17,12 @@ export default function TransactionsPage() {
   const transactions = useTransactionStore((state) => state.transactions)
   const accounts = useAccountStore((state) => state.accounts)
   const { handleDelete } = useTransactionActions()
+  const { deleteMultiple } = useTransactionStore((state) => state)
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [filters, setFilters] = useState<TransactionFiltersType>({})
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // 根据筛选条件过滤交易
   const getFilteredTransactions = () => {
@@ -52,6 +54,23 @@ export default function TransactionsPage() {
     setEditDialogOpen(true)
   }
 
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return
+
+    const confirmed = window.confirm(
+      `确定要删除选中的 ${selectedIds.size} 条交易吗？此操作不可撤销。`
+    )
+
+    if (confirmed) {
+      deleteMultiple(Array.from(selectedIds))
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -78,6 +97,30 @@ export default function TransactionsPage() {
         </div>
       </div>
 
+      {/* 批量操作栏 */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg flex items-center justify-between">
+          <div className="text-sm font-medium">
+            已选择 <span className="text-blue-600 dark:text-blue-300">{selectedIds.size}</span> 条交易
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="primary"
+              danger
+              onClick={handleBatchDelete}
+            >
+              批量删除
+            </Button>
+            <Button
+              type="default"
+              onClick={handleClearSelection}
+            >
+              清除选择
+            </Button>
+          </div>
+        </div>
+      )}
+
       <TransactionFilters
         filters={filters}
         onFiltersChange={setFilters}
@@ -91,6 +134,8 @@ export default function TransactionsPage() {
         filters={filters}
         onDelete={handleDelete}
         onEdit={handleEdit}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
       />
 
       <EditTransactionDialog

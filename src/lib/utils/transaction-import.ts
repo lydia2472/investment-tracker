@@ -153,7 +153,15 @@ function mapCSVRowToTransactionImport(
   }
 
   if (!finalAccountId) {
-    throw new Error('无法确定账户ID，请确保账户名称正确或直接提供账户ID')
+    // 改进错误消息，明确指出是账户不存在，并列出可用账户
+    const accountName = getValue('accountName')
+    const availableAccounts = Array.from(accountNameToId.keys()).join(', ')
+
+    throw new Error(
+      `账户名称 "${accountName}" 在系统中不存在。\n` +
+      `请先在账户管理中创建该账户，或使用已有的账户名称。\n\n` +
+      `系统中的可用账户: ${availableAccounts || '(无)'}`
+    )
   }
 
   // 解析交易类型
@@ -196,11 +204,35 @@ function mapCSVRowToTransactionImport(
   // 解析标签
   const tags = tagsStr ? tagsStr.split(';').map(t => t.trim()).filter(t => t) : []
 
-  // 解析日期
+  // 解析日期 - 支持多种格式
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined
-    const date = parse(dateStr, 'yyyy-MM-dd HH:mm:ss', new Date())
-    return isValid(date) ? date : undefined
+
+    // 清理字符串：去除引号、多余空格
+    const cleanedStr = dateStr.toString().trim().replace(/^['"]|['"]$/g, '')
+
+    // 尝试多种格式
+    const formats = [
+      'yyyy-MM-dd HH:mm:ss',
+      'yyyy-MM-dd',
+      'yyyy/MM/dd HH:mm:ss',
+      'yyyy/MM/dd',
+      "yyyy-MM-dd'T'HH:mm:ss",
+    ]
+
+    for (const format of formats) {
+      try {
+        const date = parse(cleanedStr, format, new Date())
+        if (isValid(date)) {
+          return date
+        }
+      } catch (e) {
+        // 继续尝试下一个格式
+      }
+    }
+
+    // 所有格式都失败，返回 undefined
+    return undefined
   }
 
   const createdAt = parseDate(createdAtStr) || new Date()
@@ -278,11 +310,26 @@ export function importTransactions(
   const result: ImportResult = {
     total: importedData.length,
     success: 0,
+    updated: 0,
     failed: 0,
     errors: [],
+    updates: [],
   }
 
-  const existingIds = new Set(existingTransactions.map(t => t.id))
+  // 创建业务主键映射：accountId + createdAt -> transactionId
+  const businessKeyMap = new Map<string, string>()
+  existingTransactions.forEach(t => {
+    // 将 createdAt 转换为字符串格式，确保时区一致
+    const dateKey = formatDateKey(t.createdAt)
+    const key = `${t.accountId}:${dateKey}`
+    businessKeyMap.set(key, t.id)
+  })
+
+  // 辅助函数：格式化日期为字符串（忽略时间部分）
+  function formatDateKey(date: Date | string): string {
+    const d = date instanceof Date ? date : new Date(date)
+    return d.toISOString().split('T')[0] // yyyy-mm-dd 格式
+  }
 
   importedData.forEach((data, index) => {
     // 验证数据
@@ -309,20 +356,24 @@ export function importTransactions(
       return
     }
 
-    // 检查是否已存在（根据 ID）
-    const id = data.id || uuidv4()
-    if (data.id && existingIds.has(data.id)) {
-      result.failed++
-      result.errors.push({
-        index,
-        row: data,
-        error: '交易 ID 已存在，已跳过',
-      })
-      return
-    }
+    // 检查是否已存在（根据 accountId + createdAt）
+    const dateKey = formatDateKey(data.createdAt!)
+    const businessKey = `${data.accountId}:${dateKey}`
 
-    // 验证通过，标记为成功
-    result.success++
+    const existingId = businessKeyMap.get(businessKey)
+
+    if (existingId) {
+      // 找到重复，使用现有ID进行更新
+      data.id = existingId
+      result.updated++
+      result.updates.push(index)
+    } else {
+      // 新记录，生成新ID或使用提供的ID
+      if (!data.id) {
+        data.id = uuidv4()
+      }
+      result.success++
+    }
   })
 
   return result
@@ -335,12 +386,18 @@ export function convertImportedToTransaction(data: TransactionImport): Transacti
   const id = data.id || uuidv4()
   const now = new Date()
 
+  // 对于快照交易，如果没有 balance 但有 amount，则使用 amount 作为 balance
+  let balance = data.balance
+  if (data.type === TransactionType.SNAPSHOT && balance === undefined && data.amount !== undefined) {
+    balance = data.amount
+  }
+
   return {
     id,
     accountId: data.accountId,
     type: data.type,
     amount: data.amount,
-    balance: data.balance,
+    balance: balance,
     transferToAccountId: data.transferToAccountId,
     transferFromAccountId: data.transferFromAccountId,
     transferPairId: data.transferPairId,

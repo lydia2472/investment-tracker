@@ -18,9 +18,11 @@ interface TransactionTableProps {
   filters?: TransactionFilters
   onDelete: (id: string) => void
   onEdit?: (id: string) => void
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
 }
 
-export function TransactionTable({ transactions, accounts, filters, onDelete, onEdit }: TransactionTableProps) {
+export function TransactionTable({ transactions, accounts, filters, onDelete, onEdit, selectedIds = new Set(), onSelectionChange }: TransactionTableProps) {
   const getAccountName = (accountId: string) => {
     return accounts.find((acc) => acc.id === accountId)?.name || '未知账户'
   }
@@ -169,6 +171,27 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
         <table className="w-full">
           <thead className="border-b" style={{ backgroundColor: '#8ac68a' }}>
             <tr>
+              {onSelectionChange && (
+                <th className="p-4 font-bold">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded"
+                    checked={selectedIds.size === sortedTransactions.length && sortedTransactions.length > 0}
+                    ref={(input) => {
+                      if (input) {
+                        input.indeterminate = selectedIds.size > 0 && selectedIds.size < sortedTransactions.length
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        onSelectionChange(new Set(sortedTransactions.map(t => t.id)))
+                      } else {
+                        onSelectionChange(new Set())
+                      }
+                    }}
+                  />
+                </th>
+              )}
               <th className="text-left p-4 font-bold">日期</th>
               <th className="text-left p-4 font-bold">账户</th>
               <th className="text-left p-4 font-bold">类型</th>
@@ -188,6 +211,24 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                 )}
                 style={index % 2 === 0 ? { backgroundColor: 'rgba(138, 198, 138, 0.3)' } : undefined}
               >
+                {onSelectionChange && (
+                  <td className="p-4">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded"
+                      checked={selectedIds.has(txn.id)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedIds)
+                        if (e.target.checked) {
+                          newSelected.add(txn.id)
+                        } else {
+                          newSelected.delete(txn.id)
+                        }
+                        onSelectionChange(newSelected)
+                      }}
+                    />
+                  </td>
+                )}
                 <td className="p-4 text-sm font-semibold">
                   {formatDate(txn.createdAt)}
                 </td>

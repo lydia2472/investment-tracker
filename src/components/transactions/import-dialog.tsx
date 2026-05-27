@@ -28,6 +28,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const addTransaction = useTransactionStore((state) => state.addTransaction)
+  const updateTransaction = useTransactionStore((state) => state.updateTransaction)
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
   const existingAccountIds = accounts.map(a => a.id)
@@ -68,21 +69,33 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
       setImportResult(result)
 
-      // 如果有成功的数据，执行导入
-      if (result.success > 0) {
+      // 如果有成功的数据或需要更新的数据，执行导入
+      if (result.success > 0 || result.updated > 0) {
         let addedCount = 0
+        let updatedCount = 0
         importedData.forEach((data, index) => {
           // 跳过有错误的记录
           const hasError = result.errors.some(e => e.index === index)
+          const needsUpdate = result.updates?.includes(index)
+
           if (!hasError) {
             const transaction = convertImportedToTransaction(data)
-            addTransaction(transaction)
-            addedCount++
+
+            if (needsUpdate) {
+              // 更新现有交易
+              updateTransaction(transaction.id, transaction)
+              updatedCount++
+            } else {
+              // 添加新交易
+              addTransaction(transaction)
+              addedCount++
+            }
           }
         })
 
+        const message = `成功导入 ${addedCount} 条交易${updatedCount > 0 ? `，更新 ${updatedCount} 条交易` : ''}${result.failed > 0 ? `，${result.failed} 条失败` : ''}`
         toast.success(`导入成功`, {
-          description: `成功导入 ${addedCount} 条交易${result.failed > 0 ? `，${result.failed} 条失败` : ''}`,
+          description: message,
         })
 
         if (onImportSuccess) {
@@ -167,6 +180,9 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
                 </div>
                 <div className="flex-1 text-green-600">
                   <span className="font-medium">成功:</span> {importResult.success} 条
+                </div>
+                <div className="flex-1 text-blue-600">
+                  <span className="font-medium">更新:</span> {importResult.updated} 条
                 </div>
                 <div className="flex-1 text-red-600">
                   <span className="font-medium">失败:</span> {importResult.failed} 条

@@ -1,4 +1,4 @@
-import { Transaction, Account } from '@/types'
+import { Transaction, Account, TransactionType } from '@/types'
 import { format } from 'date-fns'
 
 /**
@@ -11,25 +11,30 @@ export function exportTransactionsToJSON(
   // 创建账户ID到名称的映射
   const accountMap = new Map(accounts.map(acc => [acc.id, acc.name]))
 
-  const data = transactions.map(txn => ({
-    ...txn,
-    // 添加账户名称
-    accountName: accountMap.get(txn.accountId) || '',
-    // 添加转账相关账户名称
-    transferToAccountName: txn.transferToAccountId
-      ? (accountMap.get(txn.transferToAccountId) || '')
-      : '',
-    transferFromAccountName: txn.transferFromAccountId
-      ? (accountMap.get(txn.transferFromAccountId) || '')
-      : '',
-    // 日期格式化
-    createdAt: txn.createdAt instanceof Date
-      ? txn.createdAt.toISOString()
-      : txn.createdAt,
-    updatedAt: txn.updatedAt instanceof Date
-      ? txn.updatedAt.toISOString()
-      : txn.updatedAt,
-  }))
+  const data = transactions.map(txn => {
+    // 解构并排除 balance 字段
+    const { balance, ...txnWithoutBalance } = txn
+
+    return {
+      ...txnWithoutBalance,
+      // 添加账户名称
+      accountName: accountMap.get(txn.accountId) || '',
+      // 添加转账相关账户名称
+      transferToAccountName: txn.transferToAccountId
+        ? (accountMap.get(txn.transferToAccountId) || '')
+        : '',
+      transferFromAccountName: txn.transferFromAccountId
+        ? (accountMap.get(txn.transferFromAccountId) || '')
+        : '',
+      // 日期格式化
+      createdAt: txn.createdAt instanceof Date
+        ? txn.createdAt.toISOString()
+        : txn.createdAt,
+      updatedAt: txn.updatedAt instanceof Date
+        ? txn.updatedAt.toISOString()
+        : txn.updatedAt,
+    }
+  })
   return JSON.stringify(data, null, 2)
 }
 
@@ -50,7 +55,6 @@ export function exportTransactionsToCSV(
     '账户ID',
     '交易类型',
     '金额',
-    '余额',
     '转账目标账户名称',
     '转账来源账户名称',
     '转账配对ID',
@@ -77,13 +81,30 @@ export function exportTransactionsToCSV(
       return value
     }
 
+    // 根据交易类型计算显示金额
+    let displayAmount: string | number
+
+    if (txn.type === TransactionType.SNAPSHOT) {
+      // Snapshot 使用 balance 字段
+      displayAmount = txn.balance ?? ''
+    } else {
+      // 判断是否为支出类交易
+      const isExpense =
+        txn.type === TransactionType.CONSUMPTION ||
+        txn.type === TransactionType.TRANSFER_OUT ||
+        txn.type === TransactionType.LOAN
+
+      const amount = txn.amount ?? 0
+      // 支出类显示为负数，收入类保持正数
+      displayAmount = isExpense ? -Math.abs(amount) : amount
+    }
+
     return [
       txn.id,
       accountMap.get(txn.accountId) || '',
       txn.accountId,
       txn.type,
-      txn.amount ?? '',
-      txn.balance ?? '',
+      displayAmount,
       accountMap.get(txn.transferToAccountId || '') || '',
       accountMap.get(txn.transferFromAccountId || '') || '',
       txn.transferPairId ?? '',
