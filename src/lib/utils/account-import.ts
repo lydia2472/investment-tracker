@@ -1,5 +1,6 @@
 import { AccountImport, ValidationResult, AccountImportResult, Account } from '@/types'
-import { AccountType } from '@/types'
+import { AccountType, RiskLevel } from '@/types'
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { v4 as uuidv4 } from 'uuid'
 import { isValid, parse } from 'date-fns'
 
@@ -103,6 +104,7 @@ function createHeaderMap(headers: string[]): Map<string, number> {
     if (normalized === '当前余额' || normalized === '余额' || normalized === 'balance') map.set('balance', index)
     if (normalized === '初始余额' || normalized === 'initialbalance') map.set('initialBalance', index)
     if (normalized === '货币' || normalized === 'currency') map.set('currency', index)
+    if (normalized === '风险等级' || normalized === '风险' || normalized === 'risklevel') map.set('riskLevel', index)
     if (normalized === '描述' || normalized === 'description') map.set('description', index)
     if (normalized === '主题色' || normalized === '颜色' || normalized === 'color') map.set('color', index)
     if (normalized === '图标' || normalized === 'icon') map.set('icon', index)
@@ -130,6 +132,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const description = getValue('description')
   const color = getValue('color')
   const icon = getValue('icon')
+  const riskLevelStr = getValue('riskLevel')
   const createdAtStr = getValue('createdAt')
   const updatedAtStr = getValue('updatedAt')
 
@@ -146,6 +149,23 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     type = AccountType.OTHER
   } else {
     throw new Error(`无效的账户类型: ${typeStr}`)
+  }
+
+  // 解析风险等级
+  let riskLevel: RiskLevel | undefined
+  if (riskLevelStr) {
+    const levelLower = riskLevelStr.toLowerCase().trim()
+    if (levelLower === 'high' || levelLower === '高' || levelLower === '高风险') {
+      riskLevel = RiskLevel.HIGH
+    } else if (levelLower === 'medium' || levelLower === '中' || levelLower === '中风险') {
+      riskLevel = RiskLevel.MEDIUM
+    } else if (levelLower === 'low' || levelLower === '低' || levelLower === '低风险') {
+      riskLevel = RiskLevel.LOW
+    }
+    // 如果解析失败，使用默认值
+    if (!riskLevel) {
+      riskLevel = getDefaultRiskLevel()
+    }
   }
 
   // 解析余额
@@ -169,6 +189,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     description: description || undefined,
     color: color || undefined,
     icon: icon || undefined,
+    riskLevel: riskLevel || undefined,
     createdAt: parseDate(createdAtStr),
     updatedAt: parseDate(updatedAtStr)
   }
@@ -289,6 +310,7 @@ export function convertImportedToAccount(data: AccountImport): Account {
     description: data.description || '',
     color: data.color || '#5ec850',
     icon: data.icon,
+    riskLevel: data.riskLevel || getDefaultRiskLevel(),
     createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt ? new Date(data.createdAt) : now),
     updatedAt: data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt ? new Date(data.updatedAt) : now),
   }

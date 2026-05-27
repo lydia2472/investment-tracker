@@ -25,6 +25,13 @@ export enum AccountType {
   OTHER = 'other'
 }
 
+// 风险等级
+export enum RiskLevel {
+  HIGH = 'high',      // 高风险
+  MEDIUM = 'medium',  // 中风险
+  LOW = 'low'        // 低风险
+}
+
 // 账户接口
 export interface Account {
   id: string;
@@ -36,6 +43,7 @@ export interface Account {
   description?: string;
   color: string;
   icon?: string;
+  riskLevel: RiskLevel;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,6 +181,7 @@ export interface AccountImport {
   description?: string;
   color?: string;
   icon?: string;
+  riskLevel?: RiskLevel;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

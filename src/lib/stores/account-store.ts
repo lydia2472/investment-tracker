@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Account } from '@/types';
+import { RiskLevel } from '@/types';
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AccountState {
@@ -20,6 +22,7 @@ export const useAccountStore = create<AccountState>()(
       addAccount: (accountData) => {
         const newAccount: Account = {
           ...accountData,
+          riskLevel: accountData.riskLevel || getDefaultRiskLevel(),
           id: uuidv4(),
           createdAt: new Date(),
           updatedAt: new Date(),

@@ -1,6 +1,7 @@
 import { Card } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { AccountTypeBadge } from './account-type-badge'
+import { RiskLevelBadge } from './risk-level-badge'
 import { TransferDialog } from './transfer-dialog'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
@@ -93,6 +94,7 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
           {/* Account info */}
           <div className="flex gap-2 flex-wrap">
             <AccountTypeBadge type={account.type} />
+            <RiskLevelBadge level={account.riskLevel} />
             <span className="text-xs bg-muted px-3 py-1.5 rounded-xl font-medium">
               {account.currency}
             </span>

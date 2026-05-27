@@ -22,7 +22,8 @@ import { Input } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
 import { IconPicker } from '@/components/ui/icon-picker'
-import { AccountType } from '@/types'
+import { AccountType, RiskLevel } from '@/types'
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { cn } from '@/lib/utils'
 
 // 本地 schema 定义，避免类型推断问题
@@ -31,6 +32,7 @@ const accountFormSchema = z.object({
   type: z.nativeEnum(AccountType),
   initialBalance: z.number().min(0, '初始余额不能为负'),
   currency: z.string().min(1, '货币必填'),
+  riskLevel: z.nativeEnum(RiskLevel),
   icon: z.string().optional(),
   description: z.string().optional(),
 })
@@ -52,6 +54,12 @@ const currencyOptions = [
   { value: 'JPY', label: 'JPY (日元)', symbol: '¥' },
 ]
 
+const riskLevelOptions = [
+  { value: RiskLevel.HIGH, label: '高风险', description: '股票、基金等波动性大的投资' },
+  { value: RiskLevel.MEDIUM, label: '中风险', description: '混合型投资、稳健理财' },
+  { value: RiskLevel.LOW, label: '低风险', description: '银行存款、货币基金等' },
+]
+
 interface AccountFormProps {
   onSubmit: (data: AccountFormData) => void
   onCancel: () => void
@@ -66,6 +74,7 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
       type: AccountType.BANK,
       initialBalance: 0,
       currency: 'CNY',
+      riskLevel: getDefaultRiskLevel(),
       icon: undefined,
       description: '',
     },
@@ -157,6 +166,34 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
                   {currencyOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="riskLevel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>风险等级</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择风险等级" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {riskLevelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{option.label}</span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

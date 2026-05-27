@@ -34,6 +34,7 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
         currency: data.currency || 'CNY',
         color: '#f0e8d8',
         icon: data.icon,
+        riskLevel: data.riskLevel,
         description: data.description,
       })
 

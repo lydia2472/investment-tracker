@@ -19,7 +19,7 @@ const ANIMAL_ISLAND_ICONS = {
   MapIcon: 'icon-map',
 } as const
 
-// lucide-react 图标映射（25 个）
+// lucide-react 图标映射（27 个）
 const LUCIDE_ICONS = {
   ShellIcon: LucideIcons.Shell,
   ArrowRightLeftIcon: LucideIcons.ArrowLeftRight,
@@ -46,7 +46,11 @@ const LUCIDE_ICONS = {
   MoonIcon: LucideIcons.Moon,
   SunIcon: LucideIcons.Sun,
   CheckIcon: LucideIcons.Check,
+  CheckCircleIcon: LucideIcons.CheckCircle,
   AlertIcon: LucideIcons.AlertTriangle,
+  AlertTriangleIcon: LucideIcons.AlertTriangle,
+  ShieldIcon: LucideIcons.Shield,
+  ShieldCheckIcon: LucideIcons.ShieldCheck,
   MoreVerticalIcon: LucideIcons.MoreVertical,
   TurnipIcon: LucideIcons.Carrot,
   WalletIcon: LucideIcons.Wallet,
@@ -107,7 +111,11 @@ export const SettingsIcon = createLucideIcon(LUCIDE_ICONS.SettingsIcon)
 export const MoonIcon = createLucideIcon(LUCIDE_ICONS.MoonIcon)
 export const SunIcon = createLucideIcon(LUCIDE_ICONS.SunIcon)
 export const CheckIcon = createLucideIcon(LUCIDE_ICONS.CheckIcon)
+export const CheckCircleIcon = createLucideIcon(LUCIDE_ICONS.CheckCircleIcon)
 export const AlertIcon = createLucideIcon(LUCIDE_ICONS.AlertIcon)
+export const AlertTriangleIcon = createLucideIcon(LUCIDE_ICONS.AlertTriangleIcon)
+export const ShieldIcon = createLucideIcon(LUCIDE_ICONS.ShieldIcon)
+export const ShieldCheckIcon = createLucideIcon(LUCIDE_ICONS.ShieldCheckIcon)
 export const MoreVerticalIcon = createLucideIcon(LUCIDE_ICONS.MoreVerticalIcon)
 export const TurnipIcon = createLucideIcon(LUCIDE_ICONS.TurnipIcon)
 export const WalletIcon = createLucideIcon(LUCIDE_ICONS.WalletIcon)

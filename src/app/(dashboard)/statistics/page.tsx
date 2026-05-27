@@ -10,7 +10,8 @@ import { TagFilterBar } from '@/components/statistics/tag-filter-bar'
 import { TagAssetsChart } from '@/components/statistics/tag-assets-chart'
 import { useTagAssets, useAvailableTags } from '@/hooks/use-tag-assets'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
-import { TransactionType } from '@/types'
+import { TransactionType, RiskLevel } from '@/types'
+import { getRiskLevelLabel, getRiskLevelColor, RISK_LEVEL_CONFIG } from '@/lib/utils/risk-level-helpers'
 
 export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -44,6 +45,37 @@ export default function StatisticsPage() {
     { name: '总收入', 收入: totalIncome, 支出: 0 },
     { name: '总支出', 收入: 0, 支出: totalExpense },
   ]
+
+  // Risk distribution data
+  const riskDistribution = useMemo(() => {
+    const distribution = {
+      [RiskLevel.HIGH]: 0,
+      [RiskLevel.MEDIUM]: 0,
+      [RiskLevel.LOW]: 0,
+    }
+
+    accounts.forEach((account) => {
+      distribution[account.riskLevel] += account.balance
+    })
+
+    return [
+      {
+        name: getRiskLevelLabel(RiskLevel.HIGH),
+        value: distribution[RiskLevel.HIGH],
+        color: getRiskLevelColor(RiskLevel.HIGH),
+      },
+      {
+        name: getRiskLevelLabel(RiskLevel.MEDIUM),
+        value: distribution[RiskLevel.MEDIUM],
+        color: getRiskLevelColor(RiskLevel.MEDIUM),
+      },
+      {
+        name: getRiskLevelLabel(RiskLevel.LOW),
+        value: distribution[RiskLevel.LOW],
+        color: getRiskLevelColor(RiskLevel.LOW),
+      },
+    ].filter((item) => item.value > 0)
+  }, [accounts])
 
   // Calculate monthly profits
   const monthlyProfits = useMemo(() => {
@@ -266,6 +298,47 @@ export default function StatisticsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            ),
+          },
+          {
+            key: 'risk-analysis',
+            label: '风险分析',
+            children: (
+              <div className="space-y-4">
+                <Card color="app-yellow">
+                  <div className="p-6 pb-3">
+                    <h3 className="font-semibold text-lg">资产风险分布</h3>
+                  </div>
+                  <div className="p-6 pt-0">
+                    {accounts.length === 0 ? (
+                      <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                        暂无数据
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={400}>
+                        <PieChart>
+                          <Pie
+                            data={riskDistribution}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            outerRadius={120}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {riskDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: any) => [`¥${Number(value ?? 0).toFixed(2)}`, '资产']} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </Card>
               </div>
             ),
           },
