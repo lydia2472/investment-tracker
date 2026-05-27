@@ -319,13 +319,14 @@ export function convertImportedToAccount(data: AccountImport): Account {
 
 /**
  * 将导入数据转换为账户更新数据
+ * 注意：只更新 initialBalance，保留系统中的 current balance
  */
 export function convertImportedToAccountUpdate(data: AccountImport): Partial<Account> {
   return {
     name: data.name,
     type: data.type,
-    balance: data.balance,
-    initialBalance: data.initialBalance,
+    // balance 不更新，保留系统中的当前余额
+    initialBalance: data.balance,  // CSV中的当前余额 → 系统的初始余额
     currency: data.currency,
     description: data.description || '',
     color: data.color || '#5ec850',
