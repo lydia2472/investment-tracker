@@ -88,8 +88,16 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
             if (existingAccount) {
               // 更新现有账户
               const update = convertImportedToAccountUpdate(data)
+              console.log('更新账户:', existingAccount.name, 'ID:', existingAccount.id, '更新数据:', update)
+              console.log('更新前余额:', existingAccount.initialBalance)
               updateAccount(existingAccount.id, update)
               updatedCount++
+
+              // 验证更新是否生效
+              setTimeout(() => {
+                const updated = useAccountStore.getState().accounts.find(a => a.id === existingAccount.id)
+                console.log('更新后余额:', updated?.initialBalance)
+              }, 100)
             } else {
               // 添加新账户
               const account = convertImportedToAccount(data)
