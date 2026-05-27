@@ -120,7 +120,9 @@ function createHeaderMap(headers: string[]): Map<string, number> {
 function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, number>): AccountImport {
   const getValue = (key: string): string => {
     const index = headerMap.get(key)
-    return index !== undefined && index < values.length ? values[index] : ''
+    const value = index !== undefined && index < values.length ? values[index] : ''
+    console.log(`  读取字段 ${key}:`, value, `(索引: ${index})`)
+    return value
   }
 
   const id = getValue('id')
@@ -135,6 +137,8 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const riskLevelStr = getValue('riskLevel')
   const createdAtStr = getValue('createdAt')
   const updatedAtStr = getValue('updatedAt')
+
+  console.log(`解析账户: ${name}, balanceStr: ${balanceStr}, initialBalanceStr: ${initialBalanceStr}`)
 
   // 解析账户类型
   let type: AccountType
@@ -172,6 +176,8 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const balance = parseFloat(balanceStr) || 0
   const initialBalance = parseFloat(initialBalanceStr) || 0
 
+  console.log(`解析数值: balance = ${balance} (from "${balanceStr}"), initialBalance = ${initialBalance} (from "${initialBalanceStr}")`)
+
   // 解析日期
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined
@@ -179,7 +185,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     return isValid(date) ? date : undefined
   }
 
-  return {
+  const result = {
     id: id || undefined,
     name: name.trim(),
     type,
@@ -193,6 +199,9 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     createdAt: parseDate(createdAtStr),
     updatedAt: parseDate(updatedAtStr)
   }
+
+  console.log('最终解析结果:', result)
+  return result
 }
 
 /**
