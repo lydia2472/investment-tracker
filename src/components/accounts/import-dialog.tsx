@@ -29,7 +29,6 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
   const addAccount = useAccountStore((state) => state.addAccount)
   const updateAccount = useAccountStore((state) => state.updateAccount)
-  const accounts = useAccountStore((state) => state.accounts)
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -62,8 +61,11 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         throw new Error('不支持的文件格式，请使用 JSON 或 CSV 文件')
       }
 
+      // 使用 get() 获取最新的 accounts
+      const currentAccounts = useAccountStore.getState().accounts
+
       // 验证并导入
-      const result = importAccounts(accounts, importedData)
+      const result = importAccounts(currentAccounts, importedData)
 
       setImportResult(result)
 
@@ -72,9 +74,9 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         let addedCount = 0
         let updatedCount = 0
 
-        // 创建账户名称到账户的映射（不区分大小写）
+        // 使用最新的 currentAccounts 创建映射
         const existingAccountsByName = new Map<string, Account>()
-        accounts.forEach(acc => {
+        currentAccounts.forEach(acc => {
           existingAccountsByName.set(acc.name.toLowerCase(), acc)
         })
 
@@ -129,7 +131,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     } finally {
       setIsProcessing(false)
     }
-  }, [selectedFile, accounts, addAccount, onImportSuccess])
+  }, [selectedFile, addAccount, updateAccount, onImportSuccess])
 
   const handleReset = () => {
     setSelectedFile(null)
