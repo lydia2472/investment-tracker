@@ -162,19 +162,19 @@ export function AccountForm({
         />
 
         {mode === 'edit' && currentBalance !== undefined && (
-          <FormItem>
-            <FormLabel>当前余额</FormLabel>
-            <FormControl>
-              <Input
-                value={formatCurrency(currentBalance)}
-                disabled
-                className="bg-muted"
-              />
-            </FormControl>
+          <div className="space-y-2">
+            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              当前余额
+            </label>
+            <Input
+              value={formatCurrency(currentBalance)}
+              disabled
+              className="bg-muted"
+            />
             <p className="text-xs text-muted-foreground">
               余额通过交易记录自动更新
             </p>
-          </FormItem>
+          </div>
         )}
 
         <FormField
