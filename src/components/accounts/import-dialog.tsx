@@ -39,6 +39,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
   }, [])
 
   const handleImport = useCallback(async () => {
+    console.log('=== 开始导入 ===')
     if (!selectedFile) {
       toast.error('请选择要导入的文件')
       return
@@ -48,6 +49,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     try {
       // 读取文件内容
       const content = await selectedFile.text()
+      console.log('文件内容长度:', content.length)
 
       // 根据文件扩展名选择解析器
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase()
@@ -60,17 +62,21 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       } else {
         throw new Error('不支持的文件格式，请使用 JSON 或 CSV 文件')
       }
+      console.log('解析到的数据:', importedData)
 
       // 使用 get() 获取最新的 accounts
       const currentAccounts = useAccountStore.getState().accounts
+      console.log('当前系统中的账户:', currentAccounts)
 
       // 验证并导入
       const result = importAccounts(currentAccounts, importedData)
+      console.log('导入验证结果:', result)
 
       setImportResult(result)
 
       // 如果有成功的数据，执行导入
       if (result.success > 0 || result.updated > 0) {
+        console.log('开始执行导入操作...')
         let addedCount = 0
         let updatedCount = 0
 
@@ -79,11 +85,15 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         currentAccounts.forEach(acc => {
           existingAccountsByName.set(acc.name.toLowerCase(), acc)
         })
+        console.log('账户名称映射:', Array.from(existingAccountsByName.keys()))
 
         importedData.forEach((data, index) => {
           const hasError = result.errors.some(e => e.index === index)
+          console.log(`处理第 ${index} 条数据:`, data, '是否有错误:', hasError)
+
           if (!hasError) {
             const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
+            console.log('查找结果:', existingAccount ? `找到现有账户: ${existingAccount.name}` : '未找到现有账户')
 
             if (existingAccount) {
               // 更新现有账户
@@ -101,11 +111,14 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
             } else {
               // 添加新账户
               const account = convertImportedToAccount(data)
+              console.log('添加新账户:', account.name)
               addAccount(account)
               addedCount++
             }
           }
         })
+
+        console.log('导入完成: 新增', addedCount, '个, 更新', updatedCount, '个')
 
         // 更新成功提示，显示新增和更新的数量
         const messages = []
