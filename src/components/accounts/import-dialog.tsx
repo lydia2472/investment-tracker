@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { parseImportedAccountJSON, parseImportedAccountCSV, importAccounts, convertImportedToAccount } from '@/lib/utils/account-import'
+import { parseImportedAccountJSON, parseImportedAccountCSV, importAccounts, convertImportedToAccount, convertImportedToAccountUpdate } from '@/lib/utils/account-import'
 import { useAccountStore } from '@/lib/stores'
 import type { Account, AccountImportResult } from '@/types'
 import { toast } from 'sonner'
@@ -28,6 +28,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const addAccount = useAccountStore((state) => state.addAccount)
+  const updateAccount = useAccountStore((state) => state.updateAccount)
   const accounts = useAccountStore((state) => state.accounts)
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,19 +68,42 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       setImportResult(result)
 
       // 如果有成功的数据，执行导入
-      if (result.success > 0) {
+      if (result.success > 0 || result.updated > 0) {
         let addedCount = 0
+        let updatedCount = 0
+
+        // 创建账户名称到账户的映射（不区分大小写）
+        const existingAccountsByName = new Map<string, Account>()
+        accounts.forEach(acc => {
+          existingAccountsByName.set(acc.name.toLowerCase(), acc)
+        })
+
         importedData.forEach((data, index) => {
           const hasError = result.errors.some(e => e.index === index)
           if (!hasError) {
-            const account = convertImportedToAccount(data)
-            addAccount(account)
-            addedCount++
+            const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
+
+            if (existingAccount) {
+              // 更新现有账户
+              const update = convertImportedToAccountUpdate(data)
+              updateAccount(existingAccount.id, update)
+              updatedCount++
+            } else {
+              // 添加新账户
+              const account = convertImportedToAccount(data)
+              addAccount(account)
+              addedCount++
+            }
           }
         })
 
+        // 更新成功提示，显示新增和更新的数量
+        const messages = []
+        if (addedCount > 0) messages.push(`新增 ${addedCount} 个`)
+        if (updatedCount > 0) messages.push(`更新 ${updatedCount} 个`)
+
         toast.success(`导入成功`, {
-          description: `成功导入 ${addedCount} 个账户${result.failed > 0 ? `，${result.failed} 个失败` : ''}`,
+          description: `${messages.join('，')}账户${result.failed > 0 ? `，${result.failed} 个失败` : ''}`,
         })
 
         if (onImportSuccess) {
@@ -157,12 +181,15 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           {/* 导入结果 */}
           {importResult && (
             <div className="space-y-3">
-              <div className="flex gap-4 text-sm">
+              <div className="flex gap-2 text-sm">
                 <div className="flex-1">
                   <span className="font-medium">总计:</span> {importResult.total} 个
                 </div>
                 <div className="flex-1 text-green-600">
-                  <span className="font-medium">成功:</span> {importResult.success} 个
+                  <span className="font-medium">新增:</span> {importResult.success} 个
+                </div>
+                <div className="flex-1 text-blue-600">
+                  <span className="font-medium">更新:</span> {importResult.updated} 个
                 </div>
                 <div className="flex-1 text-red-600">
                   <span className="font-medium">失败:</span> {importResult.failed} 个
@@ -212,7 +239,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           <div className="text-xs text-muted-foreground space-y-1">
             <div>• 支持的文件格式: JSON、CSV</div>
             <div>• 必填字段: name（账户名称）、type（账户类型）、balance（余额）、initialBalance（初始余额）、currency（货币）</div>
-            <div>• 已存在的账户 ID 会被自动跳过</div>
+            <div>• 同名账户将被更新，其他账户将被新增</div>
           </div>
         </div>
       </DialogContent>

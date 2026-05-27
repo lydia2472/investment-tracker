@@ -206,6 +206,7 @@ export interface ImportResult {
 export interface AccountImportResult {
   total: number;
   success: number;
+  updated: number;  // 更新的账户数
   failed: number;
   errors: Array<{ index: number; row: AccountImport; error: string }>;
 }

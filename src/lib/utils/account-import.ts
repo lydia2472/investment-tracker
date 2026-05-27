@@ -254,11 +254,16 @@ export function importAccounts(
   const result: AccountImportResult = {
     total: importedData.length,
     success: 0,
+    updated: 0,
     failed: 0,
     errors: [],
   }
 
-  const existingIds = new Set(existingAccounts.map(a => a.id))
+  // 创建账户名称到账户的映射（不区分大小写）
+  const existingAccountsByName = new Map<string, Account>()
+  existingAccounts.forEach(acc => {
+    existingAccountsByName.set(acc.name.toLowerCase(), acc)
+  })
 
   importedData.forEach((data, index) => {
     // 验证数据
@@ -274,20 +279,16 @@ export function importAccounts(
       return
     }
 
-    // 检查是否已存在（根据 ID）
-    const id = data.id || uuidv4()
-    if (data.id && existingIds.has(data.id)) {
-      result.failed++
-      result.errors.push({
-        index,
-        row: data,
-        error: '账户 ID 已存在，已跳过',
-      })
-      return
-    }
+    // 根据账户名称查找现有账户
+    const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
 
-    // 验证通过，标记为成功
-    result.success++
+    if (existingAccount) {
+      // 找到同名账户，标记为更新
+      result.updated++
+    } else {
+      // 没有找到，标记为新增
+      result.success++
+    }
   })
 
   return result
@@ -313,5 +314,22 @@ export function convertImportedToAccount(data: AccountImport): Account {
     riskLevel: data.riskLevel,
     createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt ? new Date(data.createdAt) : now),
     updatedAt: data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt ? new Date(data.updatedAt) : now),
+  }
+}
+
+/**
+ * 将导入数据转换为账户更新数据
+ */
+export function convertImportedToAccountUpdate(data: AccountImport): Partial<Account> {
+  return {
+    name: data.name,
+    type: data.type,
+    balance: data.balance,
+    initialBalance: data.initialBalance,
+    currency: data.currency,
+    description: data.description || '',
+    color: data.color || '#5ec850',
+    icon: data.icon,
+    riskLevel: data.riskLevel,
   }
 }
