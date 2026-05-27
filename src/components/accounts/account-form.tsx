@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { IconPicker } from '@/components/ui/icon-picker'
 import { AccountType, RiskLevel } from '@/types'
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
+import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils'
 
 // 本地 schema 定义，避免类型推断问题
@@ -64,12 +65,22 @@ interface AccountFormProps {
   onSubmit: (data: AccountFormData) => void
   onCancel: () => void
   isSubmitting?: boolean
+  mode?: 'create' | 'edit'
+  defaultValues?: Partial<AccountFormData>
+  currentBalance?: number // 仅在编辑模式下使用
 }
 
-export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: AccountFormProps) {
+export function AccountForm({
+  onSubmit,
+  onCancel,
+  isSubmitting = false,
+  mode = 'create',
+  defaultValues,
+  currentBalance
+}: AccountFormProps) {
   const form = useForm<AccountFormData>({
     resolver: zodResolver(accountFormSchema),
-    defaultValues: {
+    defaultValues: defaultValues || {
       name: '',
       type: AccountType.BANK,
       initialBalance: 0,
@@ -149,6 +160,22 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
             </FormItem>
           )}
         />
+
+        {mode === 'edit' && currentBalance !== undefined && (
+          <FormItem>
+            <FormLabel>当前余额</FormLabel>
+            <FormControl>
+              <Input
+                value={formatCurrency(currentBalance)}
+                disabled
+                className="bg-muted"
+              />
+            </FormControl>
+            <p className="text-xs text-muted-foreground">
+              余额通过交易记录自动更新
+            </p>
+          </FormItem>
+        )}
 
         <FormField
           control={form.control}
@@ -255,9 +282,9 @@ export function AccountForm({ onSubmit, onCancel, isSubmitting = false }: Accoun
             className="w-full sm:w-auto bg-[#5ec850]"
           >
             {isSubmitting ? (
-              <>创建中...</>
+              <>{mode === 'edit' ? '保存中...' : '创建中...'}</>
             ) : (
-              <>创建账户</>
+              <>{mode === 'edit' ? '保存更改' : '创建账户'}</>
             )}
           </Button>
         </div>
