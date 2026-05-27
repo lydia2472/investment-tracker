@@ -94,7 +94,7 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
           {/* Account info */}
           <div className="flex gap-2 flex-wrap">
             <AccountTypeBadge type={account.type} />
-            <RiskLevelBadge level={account.riskLevel} />
+            {account.riskLevel && <RiskLevelBadge level={account.riskLevel} />}
             <span className="text-xs bg-muted px-3 py-1.5 rounded-xl font-medium">
               {account.currency}
             </span>

@@ -310,7 +310,7 @@ export function convertImportedToAccount(data: AccountImport): Account {
     description: data.description || '',
     color: data.color || '#5ec850',
     icon: data.icon,
-    riskLevel: data.riskLevel || getDefaultRiskLevel(),
+    riskLevel: data.riskLevel,
     createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt ? new Date(data.createdAt) : now),
     updatedAt: data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt ? new Date(data.updatedAt) : now),
   }

@@ -22,7 +22,7 @@ export const useAccountStore = create<AccountState>()(
       addAccount: (accountData) => {
         const newAccount: Account = {
           ...accountData,
-          riskLevel: accountData.riskLevel || getDefaultRiskLevel(),
+          riskLevel: accountData.riskLevel ?? getDefaultRiskLevel(),
           id: uuidv4(),
           createdAt: new Date(),
           updatedAt: new Date(),

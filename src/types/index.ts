@@ -43,7 +43,7 @@ export interface Account {
   description?: string;
   color: string;
   icon?: string;
-  riskLevel: RiskLevel;
+  riskLevel?: RiskLevel;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -55,7 +55,9 @@ export default function StatisticsPage() {
     }
 
     accounts.forEach((account) => {
-      distribution[account.riskLevel] += account.balance
+      if (account.riskLevel) {
+        distribution[account.riskLevel] += account.balance
+      }
     })
 
     return [
