@@ -1,5 +1,6 @@
 import { Account } from '@/types'
 import { format } from 'date-fns'
+import { getRiskLevelLabel } from '@/lib/utils/risk-level-helpers'
 
 /**
  * 将账户数据导出为 JSON 格式
@@ -31,6 +32,7 @@ export function exportAccountsToCSV(accounts: Account[]): string {
     '描述',
     '主题色',
     '图标',
+    '风险等级',
     '创建时间',
     '更新时间'
   ]
@@ -59,6 +61,7 @@ export function exportAccountsToCSV(accounts: Account[]): string {
       escapeCSV(acc.description),
       escapeCSV(acc.color),
       escapeCSV(acc.icon),
+      acc.riskLevel ? getRiskLevelLabel(acc.riskLevel) : '',
       formatDate(acc.createdAt),
       formatDate(acc.updatedAt)
     ].join(',')
