@@ -208,6 +208,7 @@ export default function DashboardPage() {
       <CurrencyMonthlyProfitTable
         monthlyProfits={monthlyProfits}
         accounts={accounts}
+        dateRange={dateRange}
       />
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
