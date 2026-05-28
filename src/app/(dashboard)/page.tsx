@@ -12,6 +12,7 @@ import { CurrencyAssetsCard } from '@/components/dashboard/currency-assets-card'
 import { CurrencyIncomeCard } from '@/components/dashboard/currency-income-card'
 import { CurrencyExpenseCard } from '@/components/dashboard/currency-expense-card'
 import { CurrencyProfitCard } from '@/components/dashboard/currency-profit-card'
+import { CurrencyMonthlyProfitTable } from '@/components/dashboard/currency-monthly-profit-table'
 import { AccountDetailDialog } from '@/components/dashboard/account-detail-dialog'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
 import { groupByCurrency } from '@/lib/utils/currency-helpers'
@@ -131,10 +132,11 @@ export default function DashboardPage() {
     return calculateProfitsByCurrency(
       monthlyProfits,
       accounts,
-      selectedYear,
-      selectedMonth
+      dateRange ? undefined : selectedYear,   // dateRange 优先
+      dateRange ? undefined : selectedMonth,  // dateRange 优先
+      dateRange                               // 传递日期范围
     )
-  }, [monthlyProfits, accounts, selectedYear, selectedMonth])
+  }, [monthlyProfits, accounts, selectedYear, selectedMonth, dateRange])
 
   // 计算多币种汇总
   const currencySummary = useMemo(() => {
@@ -151,7 +153,7 @@ export default function DashboardPage() {
       })
     })()
 
-    return groupByCurrency(accounts, filteredTransactions)
+    return groupByCurrency(accounts, filteredTransactions, dateRange?.endDate)
   }, [accounts, transactions, dateRange])
 
   return (
@@ -173,14 +175,21 @@ export default function DashboardPage() {
           data={currencySummary}
           accounts={accounts}
           onAccountClick={setSelectedAccount}
+          dateRange={dateRange}
         />
-        <CurrencyIncomeCard data={currencySummary} />
+        <CurrencyIncomeCard
+          data={currencySummary}
+          dateRange={dateRange}
+        />
       </div>
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <CurrencyExpenseCard data={currencySummary} />
+        <CurrencyExpenseCard
+          data={currencySummary}
+          dateRange={dateRange}
+        />
         <CurrencyProfitCard
           profitData={profitsByCurrency}
           currencyData={currencySummary}
@@ -189,8 +198,17 @@ export default function DashboardPage() {
           selectedMonth={selectedMonth}
           onYearChange={setSelectedYear}
           onMonthChange={setSelectedMonth}
+          dateRange={dateRange}
         />
       </div>
+
+      <Divider type="line-yellow" style={{ margin: '24px 0' }} />
+
+      {/* 各货币月度收益明细 */}
+      <CurrencyMonthlyProfitTable
+        monthlyProfits={monthlyProfits}
+        accounts={accounts}
+      />
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 

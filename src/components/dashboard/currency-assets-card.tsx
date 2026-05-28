@@ -16,8 +16,23 @@ interface CurrencyAssetsCardProps {
   dateRange?: { startDate?: Date; endDate?: Date }  // 可选：日期筛选
 }
 
-export function CurrencyAssetsCard({ data, accounts, onAccountClick }: CurrencyAssetsCardProps) {
+export function CurrencyAssetsCard({ data, accounts, onAccountClick, dateRange }: CurrencyAssetsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // 格式化日期范围显示
+  const formatRangeLabel = (): string | undefined => {
+    if (!dateRange?.startDate || !dateRange?.endDate) return undefined
+
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      return `${y}-${m}`
+    }
+
+    return `${formatDate(dateRange.startDate)} 至 ${formatDate(dateRange.endDate)}`
+  }
+
+  const rangeLabel = formatRangeLabel()
 
   // 单币种时降级为普通StatsCard样式
   if (!data.hasMultipleCurrencies) {
@@ -76,6 +91,18 @@ export function CurrencyAssetsCard({ data, accounts, onAccountClick }: CurrencyA
       {/* 展开状态：各币种明细 */}
       {isExpanded && (
         <div className="border-t border-white/20 px-6 pb-6 pt-4">
+          {/* 日期范围提示 */}
+          {rangeLabel && (
+            <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/70">筛选范围</span>
+                <span className="text-sm font-semibold text-white">
+                  {rangeLabel}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3">
             {data.currencies.map((currency) => (
               <CurrencyDetailItem

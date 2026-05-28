@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils/cn'
 import { iconClasses } from '@/lib/utils/design-classes'
 import type { MultiCurrencySummary } from '@/types'
 import type { CurrencyProfitStatistics } from '@/lib/utils/currency-profit-helpers'
+import type { DateRange } from '@/components/dashboard/date-filter-bar'
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ interface CurrencyProfitCardProps {
   selectedMonth?: number
   onYearChange?: (year: number | undefined) => void
   onMonthChange?: (month: number | undefined) => void
+  dateRange?: DateRange
 }
 
 export function CurrencyProfitCard({
@@ -33,9 +35,25 @@ export function CurrencyProfitCard({
   selectedYear,
   selectedMonth,
   onYearChange,
-  onMonthChange
+  onMonthChange,
+  dateRange
 }: CurrencyProfitCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // 格式化日期范围显示
+  const formatRangeLabel = (): string | undefined => {
+    if (!dateRange?.startDate || !dateRange?.endDate) return undefined
+
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      return `${y}-${m}`
+    }
+
+    return `${formatDate(dateRange.startDate)} 至 ${formatDate(dateRange.endDate)}`
+  }
+
+  const rangeLabel = formatRangeLabel()
 
   // 格式化月份显示
   const formatMonth = (monthKey: string): string => {
@@ -130,6 +148,47 @@ export function CurrencyProfitCard({
       {/* 展开状态：各货币明细 */}
       {isExpanded && (
         <div className="border-t border-white/20 px-6 pb-6 pt-4">
+          {/* 日期范围提示 */}
+          {rangeLabel && (
+            <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/70">筛选范围</span>
+                <span className="text-sm font-semibold text-white">
+                  {rangeLabel}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 月份选择器 - 只在无日期范围时显示 */}
+          {!dateRange && (
+            <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/70">按月筛选</span>
+                <Select
+                  value={currentMonthKey || ''}
+                  onValueChange={handleMonthChange}
+                >
+                  <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder="选择月份" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-app-yellow border-white/20">
+                    {availableMonths.map((month) => (
+                      <SelectItem
+                        key={month}
+                        value={month}
+                        className="text-white focus:bg-white/20"
+                      >
+                        {formatMonth(month)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* 各货币明细列表 */}
           <div className="space-y-3">
             {currenciesWithProfit
               .sort((a, b) => Math.abs(b.totalProfit) - Math.abs(a.totalProfit))

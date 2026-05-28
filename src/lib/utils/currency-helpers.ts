@@ -1,5 +1,6 @@
 import { Account, Transaction, CurrencyStatistics, MultiCurrencySummary } from '@/types'
 import { TransactionType } from '@/types'
+import { getAccountBalanceAtDate } from './snapshot-balance-helpers'
 
 // 货币配置（从 account-form.tsx 提取）
 const CURRENCY_CONFIG = {
@@ -14,10 +15,14 @@ const CURRENCY_CONFIG = {
  * 按货币分组账户和交易数据，计算各货币的统计信息
  * 收入包含 INCOME, DEPOSIT 类型
  * 支出包含 CONSUMPTION, LOAN 类型
+ * @param accounts - 所有账户
+ * @param transactions - 所有交易
+ * @param endDate - 可选的结束日期(用于历史余额查询)
  */
 export function groupByCurrency(
   accounts: Account[],
-  transactions: Transaction[]
+  transactions: Transaction[],
+  endDate?: Date
 ): MultiCurrencySummary {
   // 1. 按货币分组账户
   const accountsByCurrency = accounts.reduce((acc, account) => {
@@ -74,7 +79,9 @@ export function groupByCurrency(
     return {
       currency: currencyCode,
       symbol: config.symbol,
-      totalAssets: currencyAccounts.reduce((sum, acc) => sum + acc.balance, 0),
+      totalAssets: currencyAccounts.reduce((sum, acc) =>
+        sum + getAccountBalanceAtDate(transactions, acc, endDate), 0
+      ),
       totalIncome: data.income,                    // INCOME + DEPOSIT
       totalExpense: data.expense,                  // CONSUMPTION + LOAN
       accountCount: currencyAccounts.length,

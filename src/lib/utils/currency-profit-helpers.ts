@@ -1,4 +1,5 @@
 import { Account, MonthlyProfit } from '@/types'
+import type { DateRange } from '@/components/dashboard/date-filter-bar'
 
 // 货币配置（从 account-form.tsx 提取）
 const CURRENCY_CONFIG = {
@@ -32,17 +33,33 @@ export interface CurrencyProfitStatistics {
  * @param accounts - 账户列表
  * @param selectedYear - 选中的年份（可选）
  * @param selectedMonth - 选中的月份（可选）
+ * @param dateRange - 日期范围（可选，优先级高于年月选择）
  */
 export function calculateProfitsByCurrency(
   monthlyProfits: MonthlyProfit[],
   accounts: Account[],
   selectedYear?: number,
-  selectedMonth?: number
+  selectedMonth?: number,
+  dateRange?: DateRange
 ): Record<string, CurrencyProfitStatistics> {
   // 筛选指定月份的收益数据
-  const filteredProfits = selectedYear && selectedMonth
-    ? monthlyProfits.filter(p => p.year === selectedYear && p.month === selectedMonth)
-    : monthlyProfits
+  const filteredProfits = (() => {
+    // 1. 优先：如果有日期范围，按日期范围筛选
+    if (dateRange?.startDate && dateRange?.endDate) {
+      return monthlyProfits.filter(p => {
+        // 创建月份第一天和最后一天
+        const monthFirstDay = new Date(p.year, p.month - 1, 1)
+        const monthLastDay = new Date(p.year, p.month, 0)
+        // 判断月份区间是否与日期范围有交集
+        return monthFirstDay <= dateRange.endDate! && monthLastDay >= dateRange.startDate!
+      })
+    }
+
+    // 2. 其次：按年月筛选（或返回全部）
+    return selectedYear && selectedMonth
+      ? monthlyProfits.filter(p => p.year === selectedYear && p.month === selectedMonth)
+      : monthlyProfits
+  })()
 
   // 创建账户ID到货币的映射
   const accountCurrencyMap = new Map(accounts.map(a => [a.id, a.currency]))
