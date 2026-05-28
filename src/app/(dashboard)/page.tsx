@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { useAccountStats } from '@/hooks/use-account-stats'
 import { Divider } from 'animal-island-ui'
@@ -25,6 +25,10 @@ export default function DashboardPage() {
 
   // 日期范围状态（undefined = 全部数据）
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+
+  // 月份选择状态（用于货币收益筛选）
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(undefined)
 
   // 传递日期范围给 useAccountStats
   const stats = useAccountStats(dateRange)
@@ -103,9 +107,34 @@ export default function DashboardPage() {
     return calculateMonthlyProfits(transactions, accounts)
   }, [transactions, accounts])
 
+  // 计算可用的月份列表（用于筛选器）
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>()
+    monthlyProfits.forEach(p => {
+      monthsSet.add(`${p.year}-${p.month}`)
+    })
+    return Array.from(monthsSet)
+      .sort()
+      .reverse()  // 最新月份在前
+  }, [monthlyProfits])
+
+  // 初始化为最新月份（当数据加载完成且未选择月份时自动设置）
+  useEffect(() => {
+    if (monthlyProfits.length > 0 && !selectedYear && !selectedMonth) {
+      const latest = monthlyProfits[monthlyProfits.length - 1]
+      setSelectedYear(latest.year)
+      setSelectedMonth(latest.month)
+    }
+  }, [monthlyProfits, selectedYear, selectedMonth]) // 监听数据变化和当前选择
+
   const profitsByCurrency = useMemo(() => {
-    return calculateProfitsByCurrency(monthlyProfits, accounts)
-  }, [monthlyProfits, accounts])
+    return calculateProfitsByCurrency(
+      monthlyProfits,
+      accounts,
+      selectedYear,
+      selectedMonth
+    )
+  }, [monthlyProfits, accounts, selectedYear, selectedMonth])
 
   // 计算多币种汇总
   const currencySummary = useMemo(() => {
@@ -155,6 +184,11 @@ export default function DashboardPage() {
         <CurrencyProfitCard
           profitData={profitsByCurrency}
           currencyData={currencySummary}
+          availableMonths={availableMonths}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          onYearChange={setSelectedYear}
+          onMonthChange={setSelectedMonth}
         />
       </div>
 

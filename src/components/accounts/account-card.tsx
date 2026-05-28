@@ -16,6 +16,12 @@ interface AccountCardProps {
 }
 
 export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
+  // 添加渲染日志
+  const formattedInitialBalance = formatCurrency(account.initialBalance)
+  console.log(`[AccountCard] 渲染账户: ${account.name}`)
+  console.log(`[AccountCard] 接收到的数据 - balance: ${account.balance}, initialBalance: ${account.initialBalance}`)
+  console.log(`[AccountCard] 格式化后的initialBalance: ${formattedInitialBalance}`)
+
   const balanceGrowth = account.balance - account.initialBalance
   const isPositiveGrowth = balanceGrowth > 0
 
@@ -127,7 +133,9 @@ export function AccountCard({ account, onDelete, onEdit }: AccountCardProps) {
           {/* Initial balance reference */}
           <div className="flex justify-between text-sm text-muted-foreground pt-2 border-t border-border/50">
             <span>初始余额</span>
-            <span className="font-medium">{formatCurrency(account.initialBalance)}</span>
+            <span className="font-medium" data-account-id={account.id} data-initial-balance={account.initialBalance}>
+              {formatCurrency(account.initialBalance)}
+            </span>
           </div>
 
           {/* Action buttons */}

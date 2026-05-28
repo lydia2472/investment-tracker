@@ -162,7 +162,11 @@ export function TransactionFilters({
             type="date"
             value={filters.dateRange?.from ? formatToDateInput(filters.dateRange.from) : ''}
             onChange={(e) => {
-              const from = e.target.value ? new Date(e.target.value) : undefined
+              const from = e.target.value ? (() => {
+                // 使用本地时区的午夜时间，避免UTC时区问题
+                const [year, month, day] = e.target.value.split('-').map(Number)
+                return new Date(year, month - 1, day, 0, 0, 0)
+              })() : undefined
               onFiltersChange({
                 ...filters,
                 dateRange: from
@@ -177,7 +181,11 @@ export function TransactionFilters({
             type="date"
             value={filters.dateRange?.to ? formatToDateInput(filters.dateRange.to) : ''}
             onChange={(e) => {
-              const to = e.target.value ? new Date(e.target.value) : undefined
+              const to = e.target.value ? (() => {
+                // 使用本地时区的午夜时间，避免UTC时区问题
+                const [year, month, day] = e.target.value.split('-').map(Number)
+                return new Date(year, month - 1, day, 0, 0, 0)
+              })() : undefined
               onFiltersChange({
                 ...filters,
                 dateRange: to

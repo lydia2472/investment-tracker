@@ -316,12 +316,12 @@ export function importTransactions(
     updates: [],
   }
 
-  // 创建业务主键映射：accountId + createdAt -> transactionId
+  // 创建业务主键映射：accountId + createdAt + type -> transactionId
   const businessKeyMap = new Map<string, string>()
   existingTransactions.forEach(t => {
     // 将 createdAt 转换为字符串格式，确保时区一致
     const dateKey = formatDateKey(t.createdAt)
-    const key = `${t.accountId}:${dateKey}`
+    const key = `${t.accountId}:${dateKey}:${t.type}`  // 增加type到业务键
     businessKeyMap.set(key, t.id)
   })
 
@@ -356,9 +356,9 @@ export function importTransactions(
       return
     }
 
-    // 检查是否已存在（根据 accountId + createdAt）
+    // 检查是否已存在（根据 accountId + createdAt + type）
     const dateKey = formatDateKey(data.createdAt!)
-    const businessKey = `${data.accountId}:${dateKey}`
+    const businessKey = `${data.accountId}:${dateKey}:${data.type}`  // 增加type到业务键
 
     const existingId = businessKeyMap.get(businessKey)
 

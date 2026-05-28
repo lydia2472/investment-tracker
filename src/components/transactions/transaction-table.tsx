@@ -60,6 +60,16 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
         const endTime = new Date(to)
         endTime.setHours(23, 59, 59, 999)
 
+        // 添加调试日志
+        if (txn.type === TransactionType.SNAPSHOT && (txnDate.getMonth() === 3 && txnDate.getFullYear() === 2026)) {
+          console.log(`[日期筛选] 快照交易: ${txn.description || '无描述'}`)
+          console.log(`  from: ${from.toISOString()} (${from.toLocaleString()})`)
+          console.log(`  to: ${to.toISOString()} (${to.toLocaleString()})`)
+          console.log(`  endTime: ${endTime.toISOString()} (${endTime.toLocaleString()})`)
+          console.log(`  txnDate: ${txnDate.toISOString()} (${txnDate.toLocaleString()})`)
+          console.log(`  结果: ${txnDate >= from && txnDate <= endTime}`)
+        }
+
         if (txnDate < from || txnDate > endTime) {
           return false
         }

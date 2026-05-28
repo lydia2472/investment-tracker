@@ -121,15 +121,21 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const getValue = (key: string): string => {
     const index = headerMap.get(key)
     const value = index !== undefined && index < values.length ? values[index] : ''
-    console.log(`  读取字段 ${key}:`, value, `(索引: ${index})`)
     return value
   }
 
   const id = getValue('id')
   const name = getValue('name')
   const typeStr = getValue('type')
-  const balanceStr = getValue('balance')
-  const initialBalanceStr = getValue('initialBalance')
+
+  // CSV 的"当前余额"列 → 系统的 balance
+  // CSV 的"初始余额"列 → 系统的 initialBalance
+  const csvBalanceStr = getValue('balance')  // CSV的"当前余额"列
+  const csvInitialBalanceStr = getValue('initialBalance')  // CSV的"初始余额"列
+
+  const balance = csvBalanceStr ? parseFloat(csvBalanceStr) : 0
+  const initialBalance = csvInitialBalanceStr ? parseFloat(csvInitialBalanceStr) : 0
+
   const currency = getValue('currency')
   const description = getValue('description')
   const color = getValue('color')
@@ -137,8 +143,6 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const riskLevelStr = getValue('riskLevel')
   const createdAtStr = getValue('createdAt')
   const updatedAtStr = getValue('updatedAt')
-
-  console.log(`解析账户: ${name}, balanceStr: ${balanceStr}, initialBalanceStr: ${initialBalanceStr}`)
 
   // 解析账户类型
   let type: AccountType
@@ -172,13 +176,8 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     }
   }
 
-  // 解析余额
-  const balance = parseFloat(balanceStr) || 0
-  const initialBalance = parseFloat(initialBalanceStr) || 0
+  // 解析余额（已在上面完成）
 
-  console.log(`解析数值: balance = ${balance} (from "${balanceStr}"), initialBalance = ${initialBalance} (from "${initialBalanceStr}")`)
-
-  // 解析日期
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined
     const date = parse(dateStr, 'yyyy-MM-dd HH:mm:ss', new Date())
@@ -200,7 +199,6 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     updatedAt: parseDate(updatedAtStr)
   }
 
-  console.log('最终解析结果:', result)
   return result
 }
 
@@ -335,7 +333,7 @@ export function convertImportedToAccountUpdate(data: AccountImport): Partial<Acc
     name: data.name,
     type: data.type,
     // balance 不更新，保留系统中的当前余额
-    initialBalance: data.balance,  // CSV中的当前余额 → 系统的初始余额
+    initialBalance: data.initialBalance,  // CSV中的初始余额 → 系统的初始余额
     currency: data.currency,
     description: data.description || '',
     color: data.color || '#5ec850',

@@ -28,16 +28,27 @@ export interface CurrencyProfitStatistics {
 /**
  * 按货币分组计算收益
  * 基于 calculateMonthlyProfits 的结果，将收益按货币分组
+ * @param monthlyProfits - 月度收益数据
+ * @param accounts - 账户列表
+ * @param selectedYear - 选中的年份（可选）
+ * @param selectedMonth - 选中的月份（可选）
  */
 export function calculateProfitsByCurrency(
   monthlyProfits: MonthlyProfit[],
-  accounts: Account[]
+  accounts: Account[],
+  selectedYear?: number,
+  selectedMonth?: number
 ): Record<string, CurrencyProfitStatistics> {
+  // 筛选指定月份的收益数据
+  const filteredProfits = selectedYear && selectedMonth
+    ? monthlyProfits.filter(p => p.year === selectedYear && p.month === selectedMonth)
+    : monthlyProfits
+
   // 创建账户ID到货币的映射
   const accountCurrencyMap = new Map(accounts.map(a => [a.id, a.currency]))
 
   // 按货币分组收益数据
-  const profitsByCurrency = monthlyProfits.reduce((acc, profit) => {
+  const profitsByCurrency = filteredProfits.reduce((acc, profit) => {
     const currency = accountCurrencyMap.get(profit.accountId)
     if (!currency) return acc
 
@@ -67,6 +78,18 @@ export function calculateProfitsByCurrency(
     })
     acc[currency].hasData = true
 
+    // 增强的货币收益累加日志
+    console.log(`\n[货币收益累加] ${currency}`)
+    console.log(`  账户: ${profit.accountName} (ID: ${profit.accountId})`)
+    console.log(`  年月: ${profit.year}-${String(profit.month).padStart(2, '0')}`)
+    console.log(`  上月期末快照: ${profit.startBalance.toFixed(2)}`)
+    console.log(`  本月期末快照: ${profit.endBalance.toFixed(2)}`)
+    console.log(`  期间转入: ${(profit.endBalance - profit.startBalance - profit.calculatedProfit).toFixed(2)}`)
+    console.log(`  本月收益: ${profit.calculatedProfit.toFixed(2)}`)
+    console.log(`  收益率: ${profit.profitRate?.toFixed(2) || 'N/A'}%`)
+    console.log(`  ${currency}累计总收益: ${acc[currency].totalProfit.toFixed(2)}`)
+    console.log(`  ----------------------------------------`)
+
     return acc
   }, {} as Record<string, CurrencyProfitStatistics>)
 
@@ -85,6 +108,51 @@ export function calculateProfitsByCurrency(
         }, 0)
       : 0
   })
+
+  // 显示最终汇总
+  console.log(`\n========== 收益汇总 ==========`)
+  Object.keys(profitsByCurrency).forEach(currency => {
+    const stats = profitsByCurrency[currency]
+    console.log(`${currency}: ${stats.symbol} ${stats.totalProfit.toFixed(2)}`)
+    console.log(`  加权收益率: ${stats.profitRate.toFixed(2)}%`)
+    console.log(`  账户数量: ${stats.accountProfits.length}`)
+  })
+  console.log(`================================\n`)
+
+  // 显示计算公式说明
+  console.log(`========== 各货币收益计算公式 ==========`)
+  console.log(`单月收益 = 本月期末快照 - 上月期末快照 - 本月转入`)
+  console.log(`总收益 = Σ(该货币所有账户的月度收益)`)
+  console.log(`加权收益率 = Σ(单个账户收益率 × 该账户上月期末快照权重)`)
+  console.log(`==========================================\n`)
+
+  // 显示最新月份的货币收益汇总
+  if (monthlyProfits.length > 0) {
+    const latestProfit = monthlyProfits[monthlyProfits.length - 1]
+    const latestYear = latestProfit.year
+    const latestMonth = latestProfit.month
+
+    console.log(`========== ${latestYear}年${latestMonth}月 各货币收益 ==========`)
+    Object.keys(profitsByCurrency).forEach(currency => {
+      const stats = profitsByCurrency[currency]
+      // 筛选该货币在最新月份的账户收益
+      const latestMonthCurrencyProfits = stats.accountProfits.filter((ap) => {
+        const profit = monthlyProfits.find(p =>
+          p.accountId === ap.accountId &&
+          p.year === latestYear &&
+          p.month === latestMonth
+        )
+        return !!profit
+      })
+
+      if (latestMonthCurrencyProfits.length > 0) {
+        const currencyMonthProfit = latestMonthCurrencyProfits.reduce((sum, ap) => sum + ap.profit, 0)
+        console.log(`${currency}: ${stats.symbol} ${currencyMonthProfit.toFixed(2)}`)
+        console.log(`  账户数: ${latestMonthCurrencyProfits.length}`)
+      }
+    })
+    console.log(`========================================================\n`)
+  }
 
   return profitsByCurrency
 }

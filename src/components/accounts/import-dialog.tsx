@@ -39,7 +39,6 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
   }, [])
 
   const handleImport = useCallback(async () => {
-    console.log('=== 开始导入 ===')
     if (!selectedFile) {
       toast.error('请选择要导入的文件')
       return
@@ -49,7 +48,6 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     try {
       // 读取文件内容
       const content = await selectedFile.text()
-      console.log('文件内容长度:', content.length)
 
       // 根据文件扩展名选择解析器
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase()
@@ -62,21 +60,29 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       } else {
         throw new Error('不支持的文件格式，请使用 JSON 或 CSV 文件')
       }
-      console.log('解析到的数据:', importedData)
+
+      // 检查是否需要清理旧数据（version < 1 说明是旧格式）
+      const currentStore = useAccountStore.getState()
+      console.log('[导入] 当前store version:', currentStore.version)
+
+      if (currentStore.version === 0) {
+        console.log('[导入] 检测到旧版本数据，清理localStorage')
+        localStorage.removeItem('account-storage')
+        toast.info('已清理旧数据缓存')
+        // 等待清理完成
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
 
       // 使用 get() 获取最新的 accounts
       const currentAccounts = useAccountStore.getState().accounts
-      console.log('当前系统中的账户:', currentAccounts)
 
       // 验证并导入
       const result = importAccounts(currentAccounts, importedData)
-      console.log('导入验证结果:', result)
 
       setImportResult(result)
 
       // 如果有成功的数据，执行导入
       if (result.success > 0 || result.updated > 0) {
-        console.log('开始执行导入操作...')
         let addedCount = 0
         let updatedCount = 0
 
@@ -85,40 +91,63 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         currentAccounts.forEach(acc => {
           existingAccountsByName.set(acc.name.toLowerCase(), acc)
         })
-        console.log('账户名称映射:', Array.from(existingAccountsByName.keys()))
 
         importedData.forEach((data, index) => {
           const hasError = result.errors.some(e => e.index === index)
-          console.log(`处理第 ${index} 条数据:`, data, '是否有错误:', hasError)
 
           if (!hasError) {
             const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
-            console.log('查找结果:', existingAccount ? `找到现有账户: ${existingAccount.name}` : '未找到现有账户')
 
             if (existingAccount) {
               // 更新现有账户
-              const update = convertImportedToAccountUpdate(data)
-              console.log('更新账户:', existingAccount.name, 'ID:', existingAccount.id, '更新数据:', update)
-              console.log('更新前余额:', existingAccount.initialBalance)
-              updateAccount(existingAccount.id, update)
-              updatedCount++
+              console.log(`[导入] 更新账户: ${data.name}`)
+              console.log(`[导入] CSV中的initialBalance: ${data.initialBalance}`)
+              console.log(`[导入] 现有账户的initialBalance: ${existingAccount.initialBalance}`)
 
-              // 验证更新是否生效
+              const update = convertImportedToAccountUpdate(data)
+              console.log(`[导入] 更新对象:`, update)
+
+              updateAccount(existingAccount.id, update)
+
+              // 等待store更新完成，然后检查并刷新页面
               setTimeout(() => {
-                const updated = useAccountStore.getState().accounts.find(a => a.id === existingAccount.id)
-                console.log('更新后余额:', updated?.initialBalance)
-              }, 100)
+                const store = useAccountStore.getState()
+                const updatedAccount = store.accounts.find(a => a.id === existingAccount.id)
+                console.log(`[导入] ✅ 更新后store中的值:`, updatedAccount ? {
+                  name: updatedAccount.name,
+                  balance: updatedAccount.balance,
+                  initialBalance: updatedAccount.initialBalance,
+                  version: store.version
+                } : '未找到账户')
+
+                // 检查localStorage的值
+                const localStorageData = localStorage.getItem('account-storage')
+                if (localStorageData) {
+                  const parsed = JSON.parse(localStorageData)
+                  const storedAccount = parsed.state.accounts.find((a: any) => a.id === existingAccount.id)
+                  console.log(`[导入] 📦 localStorage中的值:`, storedAccount ? {
+                    name: storedAccount.name,
+                    balance: storedAccount.balance,
+                    initialBalance: storedAccount.initialBalance
+                  } : '未找到账户')
+                }
+
+                // 强制刷新页面以确保显示最新数据
+                console.log(`[导入] ✅ 准备刷新页面...`)
+                setTimeout(() => {
+                  window.location.reload()
+                }, 500)
+              }, 50)
+
+              updatedCount++
             } else {
               // 添加新账户
               const account = convertImportedToAccount(data)
-              console.log('添加新账户:', account.name)
               addAccount(account)
               addedCount++
             }
           }
         })
-
-        console.log('导入完成: 新增', addedCount, '个, 更新', updatedCount, '个')
 
         // 更新成功提示，显示新增和更新的数量
         const messages = []

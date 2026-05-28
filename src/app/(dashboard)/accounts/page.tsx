@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccountStore } from '@/lib/stores'
 import { Divider } from 'animal-island-ui'
 import { AccountGrid } from '@/components/accounts/account-grid'
@@ -12,9 +12,74 @@ import { useAccountActions } from '@/hooks/use-account-actions'
 import type { Account } from '@/types'
 import { Button } from 'animal-island-ui'
 import { PlusIcon } from '@/lib/components/icon-adapter'
+import { toast } from 'sonner'
 
 export default function AccountsPage() {
   const accounts = useAccountStore((state) => state.accounts)
+  const version = useAccountStore((state) => state.version)
+  const deleteAccount = useAccountStore((state) => state.deleteAccount)
+
+  // 自动清理重复账户
+  useEffect(() => {
+    const accountNames = accounts.map(a => a.name)
+    const duplicates = accountNames.filter((name, index) => accountNames.indexOf(name) !== index)
+    const uniqueDuplicates = [...new Set(duplicates)]
+
+    if (uniqueDuplicates.length > 0) {
+      console.log(`[AccountsPage] 发现重复账户，开始清理...`)
+
+      uniqueDuplicates.forEach(name => {
+        const duplicateAccounts = accounts.filter(a => a.name === name)
+        if (duplicateAccounts.length > 1) {
+          // 保留最新的（updatedAt最新的），删除其他的
+          const sorted = [...duplicateAccounts].sort((a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )
+
+          const toKeep = sorted[0]
+          const toDelete = sorted.slice(1)
+
+          console.log(`[账户清理] "${name}": 保留 ${toKeep.id} (initialBalance: ${toKeep.initialBalance})`)
+
+          toDelete.forEach(acc => {
+            console.log(`[账户清理] 删除重复账户 ${acc.id} (initialBalance: ${acc.initialBalance})`)
+            deleteAccount(acc.id)
+          })
+        }
+      })
+
+      toast.success(`已清理 ${uniqueDuplicates.length} 个重复账户`)
+    }
+  }, [accounts, deleteAccount])
+
+  // 添加渲染日志和重复账户检测
+  console.log(`[AccountsPage] 渲染页面, version: ${version}, accounts数量: ${accounts.length}`)
+
+  // 检测重复账户（仅用于日志）
+  const accountNames = accounts.map(a => a.name)
+  const duplicates = accountNames.filter((name, index) => accountNames.indexOf(name) !== index)
+  const uniqueDuplicates = [...new Set(duplicates)]
+
+  if (uniqueDuplicates.length > 0) {
+    console.warn(`[AccountsPage] ⚠️ 发现重复账户:`, uniqueDuplicates)
+    uniqueDuplicates.forEach(name => {
+      const duplicateAccounts = accounts.filter(a => a.name === name)
+      console.warn(`[AccountsPage] 账户 "${name}" 有 ${duplicateAccounts.length} 个:`, duplicateAccounts.map(a => ({
+        id: a.id,
+        balance: a.balance,
+        initialBalance: a.initialBalance
+      })))
+    })
+  }
+
+  if (accounts.length > 0) {
+    console.log(`[AccountsPage] 第一个账户:`, {
+      name: accounts[0].name,
+      balance: accounts[0].balance,
+      initialBalance: accounts[0].initialBalance
+    })
+  }
+
   const { handleDelete } = useAccountActions()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
 
@@ -47,6 +112,7 @@ export default function AccountsPage() {
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <AccountGrid
+        key={version}
         accounts={accounts}
         onDelete={handleDelete}
         onEdit={handleEditAccount}

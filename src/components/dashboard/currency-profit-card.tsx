@@ -8,14 +8,51 @@ import { cn } from '@/lib/utils/cn'
 import { iconClasses } from '@/lib/utils/design-classes'
 import type { MultiCurrencySummary } from '@/types'
 import type { CurrencyProfitStatistics } from '@/lib/utils/currency-profit-helpers'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface CurrencyProfitCardProps {
   profitData: Record<string, CurrencyProfitStatistics>
   currencyData: MultiCurrencySummary
+  availableMonths: string[]
+  selectedYear?: number
+  selectedMonth?: number
+  onYearChange?: (year: number | undefined) => void
+  onMonthChange?: (month: number | undefined) => void
 }
 
-export function CurrencyProfitCard({ profitData, currencyData }: CurrencyProfitCardProps) {
+export function CurrencyProfitCard({
+  profitData,
+  currencyData,
+  availableMonths,
+  selectedYear,
+  selectedMonth,
+  onYearChange,
+  onMonthChange
+}: CurrencyProfitCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // 格式化月份显示
+  const formatMonth = (monthKey: string): string => {
+    const [year, month] = monthKey.split('-')
+    return `${year}年${month}月`
+  }
+
+  // 处理月份选择
+  const handleMonthChange = (value: string) => {
+    const [year, month] = value.split('-').map(Number)
+    onYearChange?.(year)
+    onMonthChange?.(month)
+  }
+
+  const currentMonthKey = selectedYear && selectedMonth
+    ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+    : undefined
 
   // 过滤出有收益数据的货币
   const currenciesWithProfit = Object.values(profitData).filter(p => p.hasData)
