@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface AccountState {
   accounts: Account[];
   version: number;
-  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => Account;
   updateAccount: (id: string, updates: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
   getAccount: (id: string) => Account | undefined;
@@ -30,6 +30,7 @@ export const useAccountStore = create<AccountState>()(
           updatedAt: new Date(),
         };
         set((state) => ({ accounts: [...state.accounts, newAccount] }));
+        return newAccount;
       },
 
       updateAccount: (id, updates) => {
@@ -68,7 +69,7 @@ export const useAccountStore = create<AccountState>()(
     }),
     {
       name: 'account-storage',
-      version: 1,
+      version: 2,
       // 添加版本迁移函数
       migrate: (persistedState: any, version: number) => {
         const oldState = persistedState as AccountState
@@ -79,6 +80,23 @@ export const useAccountStore = create<AccountState>()(
           return {
             ...oldState,
             version: 1,
+          }
+        }
+
+        // 从版本1迁移到版本2：添加定期存款支持
+        if (version === 1) {
+          console.log('[AccountStore] 迁移到版本2：添加定期存款支持')
+
+          // 为所有账户添加空配置（向后兼容）
+          const migratedAccounts = oldState.accounts.map(acc => ({
+            ...acc,
+            fixedDepositConfig: undefined  // 新字段，默认为 undefined
+          }))
+
+          return {
+            ...oldState,
+            accounts: migratedAccounts,
+            version: 2
           }
         }
 

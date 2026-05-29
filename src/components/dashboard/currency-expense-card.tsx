@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
 import { ChevronDownIcon, ChevronUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
 import { formatCurrencyCompact } from '@/lib/utils/formatters'
@@ -15,7 +15,7 @@ interface CurrencyExpenseCardProps {
   dateRange?: DateRange
 }
 
-export function CurrencyExpenseCard({ data, dateRange }: CurrencyExpenseCardProps) {
+export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dateRange }: CurrencyExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -130,10 +130,10 @@ export function CurrencyExpenseCard({ data, dateRange }: CurrencyExpenseCardProp
       )}
     </Card>
   )
-}
+})
 
 // 单币种视图（降级显示）
-function SingleExpenseView({ currency }: { currency: CurrencyStatistics }) {
+const SingleExpenseView = memo(function SingleExpenseView({ currency }: { currency: CurrencyStatistics }) {
   return (
     <Card color="app-red" className="group">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
@@ -162,10 +162,10 @@ function SingleExpenseView({ currency }: { currency: CurrencyStatistics }) {
       </div>
     </Card>
   )
-}
+})
 
 // 单个货币支出明细项
-function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
+const ExpenseDetailItem = memo(function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-3">
       {/* 主要支出 */}
@@ -209,4 +209,4 @@ function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
       </div>
     </div>
   )
-}
+})

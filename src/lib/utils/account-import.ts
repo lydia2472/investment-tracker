@@ -316,7 +316,7 @@ export function convertImportedToAccount(data: AccountImport): Account {
     initialBalance: data.initialBalance,
     currency: data.currency,
     description: data.description || '',
-    color: data.color || '#5ec850',
+    color: data.color || '#F5F0E6',
     icon: data.icon,
     riskLevel: data.riskLevel,
     createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt ? new Date(data.createdAt) : now),
@@ -336,7 +336,7 @@ export function convertImportedToAccountUpdate(data: AccountImport): Partial<Acc
     initialBalance: data.initialBalance,  // CSV中的初始余额 → 系统的初始余额
     currency: data.currency,
     description: data.description || '',
-    color: data.color || '#5ec850',
+    color: data.color || '#F5F0E6',
     icon: data.icon,
     riskLevel: data.riskLevel,
   }

@@ -35,6 +35,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
         icon: data.icon,
         riskLevel: data.riskLevel,
         description: data.description,
+        fixedDepositConfig: data.fixedDepositConfig,
       })
 
       toast.success('账户更新成功')
@@ -53,7 +54,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
     onOpenChange(false)
   }
 
-  // 默认值转换
+  // 默认值转换（添加日期字段处理）
   const defaultValues: Partial<AccountFormData> = {
     name: account.name,
     type: account.type,
@@ -62,6 +63,12 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
     riskLevel: account.riskLevel,
     icon: account.icon,
     description: account.description,
+    fixedDepositConfig: account.fixedDepositConfig ? {
+      ...account.fixedDepositConfig,
+      // 确保日期字段是 Date 对象（处理 localStorage 序列化）
+      startDate: new Date(account.fixedDepositConfig.startDate),
+      maturityDate: new Date(account.fixedDepositConfig.maturityDate),
+    } : undefined,
   }
 
   return (

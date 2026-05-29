@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
 import { ChevronDownIcon, ChevronUpIcon, TrendingUpIcon } from '@/lib/components/icon-adapter'
 import { formatCurrencyCompact } from '@/lib/utils/formatters'
@@ -15,7 +15,7 @@ interface CurrencyIncomeCardProps {
   dateRange?: DateRange
 }
 
-export function CurrencyIncomeCard({ data, dateRange }: CurrencyIncomeCardProps) {
+export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateRange }: CurrencyIncomeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -130,10 +130,10 @@ export function CurrencyIncomeCard({ data, dateRange }: CurrencyIncomeCardProps)
       )}
     </Card>
   )
-}
+})
 
 // 单币种视图（降级显示）
-function SingleIncomeView({ currency }: {
+const SingleIncomeView = memo(function SingleIncomeView({ currency }: {
   currency: CurrencyStatistics
 }) {
   return (
@@ -157,10 +157,10 @@ function SingleIncomeView({ currency }: {
       </div>
     </Card>
   )
-}
+})
 
 // 单个货币收入明细项
-function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
+const IncomeDetailItem = memo(function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-3">
       {/* 主要收入：工资 */}
@@ -198,4 +198,4 @@ function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
       </div>
     </div>
   )
-}
+})

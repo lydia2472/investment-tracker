@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAccountStore } from '@/lib/stores'
+import { useTransactionStore } from '@/lib/stores'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,8 @@ import {
 import { AccountForm } from './account-form'
 import type { AccountFormData } from './account-form'
 import { toast } from 'sonner'
+import { AccountType } from '@/types'
+import { FixedDepositService } from '@/lib/services/fixed-deposit-service'
 
 interface AddAccountDialogProps {
   trigger?: React.ReactNode
@@ -22,21 +25,50 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const addAccount = useAccountStore((state) => state.addAccount)
+  const addTransaction = useTransactionStore((state) => state.addTransaction)
+  const getAccount = useAccountStore((state) => state.getAccount)
 
   const handleSubmit = async (data: AccountFormData) => {
     setIsSubmitting(true)
     try {
-      addAccount({
+      // 1. 创建账户（余额 = 本金）
+      const principal = data.fixedDepositConfig?.principal || data.initialBalance
+      const newAccount = addAccount({
         name: data.name,
         type: data.type,
-        balance: data.initialBalance,
-        initialBalance: data.initialBalance,
+        balance: principal,
+        initialBalance: principal,
         currency: data.currency || 'CNY',
         color: '#f0e8d8',
         icon: data.icon,
         riskLevel: data.riskLevel,
         description: data.description,
+        fixedDepositConfig: data.fixedDepositConfig,
       })
+
+      // 2. 如果是定期存款，立即生成月度利息
+      if (data.type === AccountType.FIXED_DEPOSIT && data.fixedDepositConfig) {
+        // 获取刚创建的账户（包含 ID）
+        const accountWithId = getAccount(newAccount.id)
+        if (accountWithId) {
+          // 生成从起息日到今天的所有月度利息
+          const monthlyPayments = FixedDepositService.generateMonthlyInterestPayments(
+            accountWithId,
+            new Date(),
+            []  // 新建账户，没有已存在的交易
+          )
+
+          // 批量添加月度利息
+          monthlyPayments.forEach(payment => {
+            addTransaction(payment)
+            console.log(`[AddAccount] 生成月度利息 ${payment.amount}元 (${payment.description})`)
+          })
+
+          if (monthlyPayments.length > 0) {
+            console.log(`[AddAccount] 共生成 ${monthlyPayments.length} 笔月度利息`)
+          }
+        }
+      }
 
       toast.success('账户创建成功')
 

@@ -22,6 +22,10 @@ export enum AccountType {
   SECURITIES = 'securities',
   BANK = 'bank',
   CASH = 'cash',
+  FIXED_DEPOSIT = 'fixed_deposit',  // 定期存款
+  FUND = 'fund',                    // 基金账户
+  STOCK = 'stock',                  // 股票账户
+  GOLD = 'gold',                    // 黄金账户
   OTHER = 'other'
 }
 
@@ -30,6 +34,32 @@ export enum RiskLevel {
   HIGH = 'high',      // 高风险
   MEDIUM = 'medium',  // 中风险
   LOW = 'low'        // 低风险
+}
+
+// 付息频率枚举
+export enum InterestPaymentFrequency {
+  MONTHLY = 'monthly',           // 按月付息
+  QUARTERLY = 'quarterly',       // 按季度付息
+  ANNUALLY = 'annually',         // 按年付息
+  MATURITY = 'maturity'          // 到期一次还本付息
+}
+
+// 提前支取规则枚举
+export enum EarlyWithdrawalRule {
+  FORBIDDEN = 'forbidden',       // 禁止提前支取
+  WITH_PENALTY = 'with_penalty', // 支付罚息
+  ALLOWED = 'allowed'            // 允许无罚息
+}
+
+// 定期存款配置接口
+export interface FixedDepositConfig {
+  interestRate: number          // 年利率 (%)
+  startDate: Date               // 起息日
+  maturityDate: Date            // 到期日
+  interestPaymentFrequency: InterestPaymentFrequency  // 付息频率
+  principal: number             // 本金金额
+  autoRollOver: boolean         // 是否自动滚存
+  earlyWithdrawalRule?: EarlyWithdrawalRule  // 提前支取规则（可选）
 }
 
 // 账户接口
@@ -44,6 +74,7 @@ export interface Account {
   color: string;
   icon?: string;
   riskLevel?: RiskLevel;
+  fixedDepositConfig?: FixedDepositConfig;  // 定期存款专用字段（可选）
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +92,13 @@ export interface Transaction {
   description?: string;
   note?: string;
   tags?: string[];
+  // 利息追踪字段
+  isInterestPayment?: boolean;        // 标记为利息支付
+  relatedFixedDepositId?: string;     // 关联的定期账户ID
+  interestPeriod?: {                  // 利息计算期间
+    startDate: Date;
+    endDate: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }

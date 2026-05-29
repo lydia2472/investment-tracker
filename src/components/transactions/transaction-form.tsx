@@ -28,6 +28,7 @@ import { useAccountStore } from '@/lib/stores'
 import { format, isValid } from 'date-fns'
 import { cn } from '@/lib/utils/cn'
 import { TagInput } from '@/components/tags'
+import { SearchableAccountSelect } from '@/components/ui/searchable-account-select'
 
 // 基础 schema - 所有字段都标记为可选
 const baseTransactionSchema = z.object({
@@ -161,20 +162,12 @@ export function TransactionForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>转出账户</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择转出账户" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableAccountSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    accounts={accounts}
+                    placeholder="选择转出账户"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -187,20 +180,12 @@ export function TransactionForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>转入账户</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择转入账户" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableAccountSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    accounts={accounts}
+                    placeholder="选择转入账户"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -213,20 +198,12 @@ export function TransactionForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>账户</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择账户" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableAccountSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  accounts={accounts}
+                  placeholder="选择账户"
+                />
                 <FormMessage />
               </FormItem>
             )}

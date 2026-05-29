@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
 import { ChevronDownIcon, ChevronUpIcon, WalletIcon } from '@/lib/components/icon-adapter'
 import { formatCurrencyCompact } from '@/lib/utils/formatters'
@@ -16,7 +16,7 @@ interface CurrencyAssetsCardProps {
   dateRange?: { startDate?: Date; endDate?: Date }  // 可选：日期筛选
 }
 
-export function CurrencyAssetsCard({ data, accounts, onAccountClick, dateRange }: CurrencyAssetsCardProps) {
+export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accounts, onAccountClick, dateRange }: CurrencyAssetsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -117,10 +117,10 @@ export function CurrencyAssetsCard({ data, accounts, onAccountClick, dateRange }
       )}
     </Card>
   )
-}
+})
 
 // 单币种视图（降级显示）
-function SingleCurrencyView({ currency }: {
+const SingleCurrencyView = memo(function SingleCurrencyView({ currency }: {
   currency: CurrencyStatistics
 }) {
   return (
@@ -143,10 +143,10 @@ function SingleCurrencyView({ currency }: {
       </div>
     </Card>
   )
-}
+})
 
 // 单个货币明细项
-function CurrencyDetailItem({
+const CurrencyDetailItem = memo(function CurrencyDetailItem({
   currency,
   accounts,
   onAccountClick
@@ -230,4 +230,4 @@ function CurrencyDetailItem({
       </div>
     </div>
   )
-}
+})

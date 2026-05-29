@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { SearchableAccountSelect } from '@/components/ui/searchable-account-select'
 import { TransactionType } from '@/types'
 import { useAccountStore } from '@/lib/stores'
 import { useAvailableTags } from '@/hooks/use-tag-assets'
@@ -61,27 +62,20 @@ export function TransactionFilters({
       <div className="flex flex-wrap gap-2">
         {/* 账户过滤 */}
         <div className="flex items-center gap-1">
-          <Select
-            value={filters.accountId || 'all'}
-            onValueChange={(value) => {
+          <SearchableAccountSelect
+            value={filters.accountId}
+            onChange={(value) => {
               onFiltersChange({
                 ...filters,
-                accountId: value === 'all' ? undefined : value,
+                accountId: value || undefined,
               })
             }}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="所有账户" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有账户</SelectItem>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            accounts={accounts}
+            placeholder="所有账户"
+            showAllOption={true}
+            allOptionLabel="所有账户"
+            className="w-[140px]"
+          />
           {filters.accountId && (
             <Button
               type="default"

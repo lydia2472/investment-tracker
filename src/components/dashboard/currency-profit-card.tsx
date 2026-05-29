@@ -312,7 +312,7 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
   // 无收益数据
   if (currenciesWithProfit.length === 0) {
     return (
-      <Card color="app-yellow" className="group">
+      <Card color="app-yellow" className="group w-full">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">
             各货币收益
@@ -343,7 +343,7 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
 
   // 多币种时显示可折叠卡片
   return (
-    <Card color="app-yellow" className="group">
+    <Card color="app-yellow" className="group w-full">
       {/* 折叠状态：汇总信息 */}
       <div
         className="cursor-pointer"
@@ -435,7 +435,7 @@ const SingleProfitView = memo(function SingleProfitView({
   const isProfit = profit.totalProfit >= 0
 
   return (
-    <Card color="app-yellow" className="group">
+    <Card color="app-yellow" className="group w-full">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
         <h3 className="text-sm font-semibold text-white">
           期间收益
@@ -499,10 +499,10 @@ const ProfitDetailItem = memo(function ProfitDetailItem({
   return (
     <Collapsible open={isExpanded} onOpenChange={toggle}>
       <CollapsibleTrigger className="w-full">
-        <div className="bg-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer overflow-hidden">
-          <div className="px-6 py-6">
+        <div className="bg-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer overflow-hidden w-full">
+          <div className="py-6">
             {/* 货币标题 */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-6">
               <div className="flex items-center gap-2">
                 {/* 展开/折叠指示器 */}
                 {isExpanded ? (
@@ -539,8 +539,8 @@ const ProfitDetailItem = memo(function ProfitDetailItem({
 
           {/* 收益率 */}
           {profit.profitRate !== 0 && (
-            <div className="px-6 pb-2">
-              <div className="pt-2 border-t border-white/10">
+            <div className="pb-2">
+              <div className="px-6 pt-2 border-t border-white/10">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-white/70">加权收益率</span>
                   <span className={cn(
@@ -557,8 +557,9 @@ const ProfitDetailItem = memo(function ProfitDetailItem({
 
           {/* 最佳账户 */}
           {topAccount && (
-            <div className="px-6 pb-6">
-              <div className="bg-white/5 rounded-lg p-2">
+            <div className="pb-6">
+              <div className="px-6">
+                <div className="bg-white/5 rounded-lg p-2">
                 <div className="text-xs text-white/70 mb-1">收益最高账户</div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-white">
@@ -572,6 +573,7 @@ const ProfitDetailItem = memo(function ProfitDetailItem({
                     {symbol} {formatCurrencyCompact(Math.abs(topAccount.profit))}
                   </span>
                 </div>
+              </div>
               </div>
             </div>
           )}

@@ -22,7 +22,7 @@ import { Input } from 'animal-island-ui'
 import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
 import { IconPicker } from '@/components/ui/icon-picker'
-import { AccountType, RiskLevel } from '@/types'
+import { AccountType, RiskLevel, FixedDepositConfig, InterestPaymentFrequency, EarlyWithdrawalRule } from '@/types'
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,25 @@ const accountFormSchema = z.object({
   riskLevel: z.nativeEnum(RiskLevel),
   icon: z.string().optional(),
   description: z.string().optional(),
+  // 定期存款配置（可选，当 type 为 FIXED_DEPOSIT 时使用）
+  fixedDepositConfig: z.object({
+    interestRate: z.number().min(0).max(100, '年利率必须在0-100之间'),
+    startDate: z.date(),
+    maturityDate: z.date(),
+    interestPaymentFrequency: z.nativeEnum(InterestPaymentFrequency),
+    principal: z.number().min(0, '本金不能为负'),
+    autoRollOver: z.boolean(),
+    earlyWithdrawalRule: z.nativeEnum(EarlyWithdrawalRule).optional(),
+  }).optional(),
+}).refine((data) => {
+  // 当账户类型为定期存款时，必须填写配置
+  if (data.type === AccountType.FIXED_DEPOSIT && !data.fixedDepositConfig) {
+    return false
+  }
+  return true
+}, {
+  message: '定期存款账户必须填写配置信息',
+  path: ['fixedDepositConfig']
 })
 
 export type AccountFormData = z.infer<typeof accountFormSchema>
@@ -44,6 +63,10 @@ const accountTypeOptions = [
   { value: AccountType.SECURITIES, label: '证券账户' },
   { value: AccountType.BANK, label: '银行账户' },
   { value: AccountType.CASH, label: '现金账户' },
+  { value: AccountType.FIXED_DEPOSIT, label: '定期存款' },
+  { value: AccountType.FUND, label: '基金账户' },
+  { value: AccountType.STOCK, label: '股票账户' },
+  { value: AccountType.GOLD, label: '黄金账户' },
   { value: AccountType.OTHER, label: '其他账户' },
 ]
 
@@ -92,6 +115,7 @@ export function AccountForm({
   })
 
   const selectedCurrency = form.watch('currency')
+  const selectedAccountType = form.watch('type')
 
   return (
     <Form {...form}>
@@ -229,6 +253,166 @@ export function AccountForm({
             </FormItem>
           )}
         />
+
+        {/* 定期存款配置 - 仅在账户类型为定期存款时显示 */}
+        {selectedAccountType === AccountType.FIXED_DEPOSIT && (
+          <div className="space-y-4 p-4 border-2 border-dashed border-muted rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 bg-yellow-500 rounded-full" />
+              <h3 className="text-sm font-semibold text-foreground">定期存款配置</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.principal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>本金金额</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="10000"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.interestRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>年利率 (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="3.5"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>起息日</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.maturityDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>到期日</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="fixedDepositConfig.interestPaymentFrequency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>付息方式</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择付息方式" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={InterestPaymentFrequency.MONTHLY}>按月付息</SelectItem>
+                      <SelectItem value={InterestPaymentFrequency.QUARTERLY}>按季度付息</SelectItem>
+                      <SelectItem value={InterestPaymentFrequency.ANNUALLY}>按年付息</SelectItem>
+                      <SelectItem value={InterestPaymentFrequency.MATURITY}>到期一次还本付息</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.earlyWithdrawalRule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>提前支取规则（可选）</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择提前支取规则" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={EarlyWithdrawalRule.FORBIDDEN}>禁止提前支取</SelectItem>
+                        <SelectItem value={EarlyWithdrawalRule.WITH_PENALTY}>支付罚息</SelectItem>
+                        <SelectItem value={EarlyWithdrawalRule.ALLOWED}>允许无罚息</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="fixedDepositConfig.autoRollOver"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>自动滚存</FormLabel>
+                      <p className="text-xs text-muted-foreground">到期后自动续存</p>
+                    </div>
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value || false}
+                        onChange={field.onChange}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        )}
 
         <FormField
           control={form.control}

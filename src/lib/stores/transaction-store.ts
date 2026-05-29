@@ -433,6 +433,30 @@ export const useTransactionStore = create<TransactionState>()(
     }),
     {
       name: 'transaction-storage',
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        const oldState = persistedState as TransactionState
+
+        // 从版本1迁移到版本2：添加利息追踪字段
+        if (version === 1) {
+          console.log('[TransactionStore] 迁移到版本2：添加利息追踪')
+
+          const migratedTransactions = oldState.transactions.map(txn => ({
+            ...txn,
+            isInterestPayment: false,
+            relatedFixedDepositId: undefined,
+            interestPeriod: undefined
+          }))
+
+          return {
+            ...oldState,
+            transactions: migratedTransactions,
+          }
+        }
+
+        // 版本0或无版本：返回旧状态
+        return oldState
+      }
     }
   )
 );
