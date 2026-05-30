@@ -83,10 +83,30 @@ export function getPeriodTransactions(
   // 期间交易诊断日志
   const dayAfterStart = new Date(start)
   dayAfterStart.setDate(dayAfterStart.getDate() + 1)
+  dayAfterStart.setHours(0, 0, 0, 0)
 
-  result.forEach(txn => {
-    const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-  })
+  const endOfDay = new Date(end)
+  endOfDay.setHours(23, 59, 59, 999)
+
+  // 检查是否包含利息交易
+  const interestTxns = result.filter(txn => txn.tags?.includes('利息'))
+
+  console.log(`\n[期间交易] 账户 ${accountId}`)
+  console.log(`  期间范围: ${dayAfterStart.toLocaleDateString('zh-CN')} ${dayAfterStart.toLocaleTimeString('zh-CN')} - ${endOfDay.toLocaleDateString('zh-CN')} ${endOfDay.toLocaleTimeString('zh-CN')}`)
+  console.log(`  期间交易总数: ${result.length}`)
+  console.log(`  利息交易数量: ${interestTxns.length}`)
+
+  if (interestTxns.length > 0) {
+    console.log(`  包含 ${interestTxns.length} 笔利息交易:`)
+    interestTxns.forEach(txn => {
+      const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+      console.log(`    - ${txn.description}: ${(txn.amount || 0).toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')} ${txnDate.toLocaleTimeString('zh-CN')})`)
+    })
+  } else {
+    console.log(`  ⚠️ 未找到利息交易，可能原因：`)
+    console.log(`     1. 利息交易未生成`)
+    console.log(`     2. 利息交易日期不在期间范围内`)
+  }
 
   return result
 }
@@ -99,7 +119,8 @@ export function calculateProfitForPeriod(
   endSnapshot: Transaction,
   periodTransactions: Transaction[],
   accountName: string,
-  accountType: AccountType
+  accountType: AccountType,
+  account?: Account  // 新增：账户对象，用于检查定期存款到期状态
 ): MonthlyProfit {
   const startDate = startSnapshot.createdAt instanceof Date
     ? startSnapshot.createdAt
@@ -116,13 +137,70 @@ export function calculateProfitForPeriod(
     .filter((txn) => txn.type === TransactionType.TRANSFER_IN)
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
-  // 计算收益（期末 - 期初 - 转入）
-  const calculatedProfit = endBalance - startBalance - periodTransferIn
+  // 计算期间利息收入（带有"利息"标签的交易）
+  // 对于定期存款利息，检查计息期间的结束日期是否在计算的月份内
+  const periodInterestIncome = periodTransactions
+    .filter((txn) => txn.tags?.includes('利息'))
+    .filter((txn) => {
+      // 如果利息有计息期间，检查计息期间的结束月份
+      if (txn.interestPeriod?.endDate) {
+        const periodEnd = txn.interestPeriod.endDate instanceof Date
+          ? txn.interestPeriod.endDate
+          : new Date(txn.interestPeriod.endDate)
+
+        // 检查计息期间的结束日期是否与月末快照日期（endDate）在同一月份
+        // 例如：1月30日到2月28日的利息，periodEnd=2月28日，endDate=2月28日 → 同月，计入
+        // 例如：12月1日到12月30日的利息，periodEnd=12月30日，endDate=12月31日 → 同月，计入
+        // 例如：1月1日到1月31日的利息，periodEnd=1月31日，endDate=2月28日 → 不同月，不计入
+        return periodEnd.getFullYear() === endDate.getFullYear() &&
+               periodEnd.getMonth() === endDate.getMonth()
+      }
+      // 非定期存款利息或没有计息期间的利息，默认计入
+      return true
+    })
+    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+  // 检查是否为定期存款
+  let calculatedProfit: number
+  if (accountType === AccountType.FIXED_DEPOSIT && account?.fixedDepositConfig) {
+    // 定期存款：收益 = 期末余额 - 期初余额
+    // 直接使用快照余额计算，不依赖 amount 字段
+    calculatedProfit = endBalance - startBalance
+
+    console.log(`\n[收益计算] ${accountName} - 定期存款`)
+    console.log(`  收益计算方式: 按余额增量计算`)
+    console.log(`  期初快照余额: ${startBalance.toFixed(2)}`)
+    console.log(`  期末快照余额: ${endBalance.toFixed(2)}`)
+    console.log(`  收益: ${calculatedProfit.toFixed(2)}`)
+  } else {
+    // 非定期存款：使用标准公式
+    calculatedProfit = endBalance - startBalance - periodTransferIn + periodInterestIncome
+  }
 
   // 计算收益率（处理除零情况，分母仍使用期初余额）
   const profitRate = startBalance > 0
     ? (calculatedProfit / startBalance) * 100
     : 0
+
+  // 诊断日志：显示收益计算详情
+  if (accountType === AccountType.FIXED_DEPOSIT && account?.fixedDepositConfig) {
+    // 定期存款的简化日志
+    console.log(`  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  收益率: ${profitRate.toFixed(2)}%`)
+    console.log(`  ----------------------------------------`)
+  } else {
+    // 非定期存款的完整日志
+    console.log(`\n[收益计算] ${accountName} (${accountType})`)
+    console.log(`  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  月初快照余额: ${startBalance.toFixed(2)}`)
+    console.log(`  月末快照余额: ${endBalance.toFixed(2)}`)
+    console.log(`  期间转入: ${periodTransferIn.toFixed(2)}`)
+    console.log(`  期间利息收入: ${periodInterestIncome.toFixed(2)} ${periodInterestIncome > 0 ? '✓' : ''}`)
+    console.log(`  基础收益(不含利息): ${(endBalance - startBalance - periodTransferIn).toFixed(2)}`)
+    console.log(`  最终收益(含利息): ${calculatedProfit.toFixed(2)} ${periodInterestIncome > 0 ? '(已加上利息)' : ''}`)
+    console.log(`  收益率: ${profitRate.toFixed(2)}%`)
+    console.log(`  ----------------------------------------`)
+  }
 
   // 增强诊断日志
 
@@ -278,7 +356,8 @@ export function calculateAccountMonthlyProfits(
       currentSnapshot,
       periodTransactions,
       account.name,
-      account.type
+      account.type,
+      account  // 传递完整账户对象，用于检查定期存款到期状态
     )
 
     profits.push(profit)

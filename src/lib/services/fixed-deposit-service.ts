@@ -106,7 +106,7 @@ export class FixedDepositService {
         startDate: lastPaymentDate,
         endDate: asOfDate
       },
-      tags: ['interest', 'fixed-deposit', 'auto-generated'],
+      tags: ['定期存款', '利息'],
       note: `年利率: ${config.interestRate}%, 计息期间: ${lastPaymentDate.toLocaleDateString('zh-CN')} - ${asOfDate.toLocaleDateString('zh-CN')}`
     }
   }
@@ -191,7 +191,7 @@ export class FixedDepositService {
         startDate: startDate,
         endDate: today
       },
-      tags: ['interest', 'fixed-deposit', 'initial', 'auto-generated'],
+      tags: ['定期存款', '利息'],
       note: `年利率: ${config.interestRate}%, 计息期间: ${startDate.toLocaleDateString('zh-CN')} - ${today.toLocaleDateString('zh-CN')}`
     }
   }
@@ -213,9 +213,16 @@ export class FixedDepositService {
     const config = account.fixedDepositConfig
     const startDate = new Date(config.startDate)
     const endDate = asOfDate
+    const maturityDate = new Date(config.maturityDate)
+
+    console.log(`[FixedDepositService] ${account.name} - 生成月度利息:`)
+    console.log(`  起息日: ${startDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  截止日: ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  比较结果: ${startDate.toLocaleDateString('zh-CN')} ${startDate >= endDate ? '>=' : '<'} ${endDate.toLocaleDateString('zh-CN')}`)
 
     // 如果起息日在未来或起息日>=截止日期，不生成利息
     if (startDate >= endDate) {
+      console.log(`  ✗ 起息日 >= 截止日，不生成利息`)
       return []
     }
 
@@ -226,6 +233,8 @@ export class FixedDepositService {
       .filter(t => t.isInterestPayment && t.relatedFixedDepositId === account.id)
       .map(t => t.interestPeriod)
       .filter(period => period !== undefined)
+
+    console.log(`  已存在利息期间数: ${existingPeriods.length}`)
 
     // 从起息日开始，按月生成利息
     let currentDate = startDate
@@ -238,8 +247,15 @@ export class FixedDepositService {
       // 付息日就是下个月的同一天
       const paymentDate = nextMonth
 
-      // 如果付息日在未来（超过今天），停止生成利息
+      // 如果付息日在未来（超过截止日期），停止生成利息
       if (paymentDate > endDate) {
+        console.log(`  ✓ 付息日 ${paymentDate.toLocaleDateString('zh-CN')} 超过截止日期 ${endDate.toLocaleDateString('zh-CN')}，停止生成利息`)
+        break
+      }
+
+      // 检查付息日是否超过账户到期日
+      if (paymentDate > maturityDate) {
+        console.log(`  ✓ 付息日 ${paymentDate.toLocaleDateString('zh-CN')} 超过到期日 ${maturityDate.toLocaleDateString('zh-CN')}，停止生成利息`)
         break
       }
 
@@ -251,29 +267,36 @@ export class FixedDepositService {
                periodStart.getMonth() === currentDate.getMonth()
       })
 
-      // 如果不存在，生成这笔月度利息（只在付息日已过或就是今天时）
+      // 如果不存在，生成这笔月度快照（只在付息日已过或就是今天时）
       if (!alreadyExists) {
-        const interestAmount = this.calculateInterest(account, currentDate, paymentDate)
+        // 计算从起息日到付息日的累积利息
+        const totalInterest = this.calculateInterest(account, startDate, paymentDate)
+        const totalBalance = config.principal + totalInterest
 
-        if (interestAmount > 0) {
-          payments.push({
-            accountId: account.id,
-            type: TransactionType.INCOME,
-            amount: interestAmount,
-            description: `定期存款利息 (${config.interestRate}%) - ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`,
-            isInterestPayment: true,
-            relatedFixedDepositId: account.id,
-            interestPeriod: {
-              startDate: currentDate,
-              endDate: paymentDate
-            },
-            tags: ['定期存款'],
-            note: `年利率: ${config.interestRate}%, 计息期间: ${currentDate.toLocaleDateString('zh-CN')} - ${paymentDate.toLocaleDateString('zh-CN')}`,
-            // 设置交易日期为付息日期
-            createdAt: paymentDate,
-            updatedAt: paymentDate
-          })
-        }
+        // 添加诊断日志
+        const monthsPassed = differenceInMonths(paymentDate, startDate)
+        console.log(`    [生成快照] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月:`)
+        console.log(`      计息期间: ${startDate.toLocaleDateString('zh-CN')} → ${paymentDate.toLocaleDateString('zh-CN')} (${monthsPassed}个月)`)
+        console.log(`      累积利息: ${totalInterest.toFixed(2)}元`)
+        console.log(`      本金: ${config.principal}元`)
+        console.log(`      总余额: ${totalBalance.toFixed(2)}元`)
+
+        payments.push({
+          accountId: account.id,
+          type: TransactionType.SNAPSHOT,
+          balance: totalBalance,
+          description: `定期存款月度快照 (${config.interestRate}%) - ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`,
+          isInterestPayment: true,
+          relatedFixedDepositId: account.id,
+          interestPeriod: {
+            startDate: currentDate,
+            endDate: paymentDate
+          },
+          tags: ['month-end', '定期存款'],
+          note: `本金: ${config.principal}, 累积利息: ${totalInterest.toFixed(2)}, 总余额: ${totalBalance.toFixed(2)}, 年利率: ${config.interestRate}%, 计息期间: ${startDate.toLocaleDateString('zh-CN')} - ${paymentDate.toLocaleDateString('zh-CN')}`,
+          // 设置交易日期为付息日期（会被 addTransaction 使用）
+          createdAt: paymentDate
+        })
       }
 
       // 移动到下个月

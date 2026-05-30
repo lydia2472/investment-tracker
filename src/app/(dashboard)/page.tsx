@@ -145,25 +145,12 @@ export default function DashboardPage() {
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* 资产卡片 - 单独一行 */}
+      <div className="grid gap-4 md:grid-cols-1">
         <CurrencyAssetsCard
           data={currencySummary}
           accounts={accounts}
           onAccountClick={setSelectedAccount}
-          dateRange={dateRange}
-        />
-        <CurrencyIncomeCard
-          data={currencySummary}
-          dateRange={dateRange}
-        />
-      </div>
-
-      <Divider type="line-yellow" style={{ margin: '24px 0' }} />
-
-      {/* 支出卡片 - 单独一行 */}
-      <div className="grid gap-4 md:grid-cols-1">
-        <CurrencyExpenseCard
-          data={currencySummary}
           dateRange={dateRange}
         />
       </div>
@@ -178,6 +165,20 @@ export default function DashboardPage() {
           dateRange={dateRange}
           monthlyProfits={monthlyProfits}
           accounts={accounts}
+        />
+      </div>
+
+      <Divider type="line-yellow" style={{ margin: '24px 0' }} />
+
+      {/* 收入和支出卡片 - 同一行 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <CurrencyIncomeCard
+          data={currencySummary}
+          dateRange={dateRange}
+        />
+        <CurrencyExpenseCard
+          data={currencySummary}
+          dateRange={dateRange}
         />
       </div>
 

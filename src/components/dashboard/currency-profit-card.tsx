@@ -560,20 +560,20 @@ const ProfitDetailItem = memo(function ProfitDetailItem({
             <div className="pb-6">
               <div className="px-6">
                 <div className="bg-white/5 rounded-lg p-2">
-                <div className="text-xs text-white/70 mb-1">收益最高账户</div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-white">
-                    {topAccount.accountName}
-                  </span>
-                  <span className={cn(
-                    "text-xs font-bold",
-                    topAccount.profit >= 0 ? "text-green-700" : "text-red-700"
-                  )}>
-                    {topAccount.profit >= 0 ? '+' : '-'}
-                    {symbol} {formatCurrencyCompact(Math.abs(topAccount.profit))}
-                  </span>
+                  <div className="text-xs text-white/70 mb-1">收益最高账户</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-white">
+                      {topAccount.accountName}
+                    </span>
+                    <span className={cn(
+                      "text-xs font-bold",
+                      topAccount.profit >= 0 ? "text-green-700" : "text-red-700"
+                    )}>
+                      {topAccount.profit >= 0 ? '+' : '-'}
+                      {symbol} {formatCurrencyCompact(Math.abs(topAccount.profit))}
+                    </span>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           )}
