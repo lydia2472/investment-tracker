@@ -24,6 +24,8 @@ import { useTransactionStore } from '@/lib/stores'
 import { useAccountStore } from '@/lib/stores'
 import { toast } from 'sonner'
 import { ArrowRightLeftIcon } from '@/lib/components/icon-adapter'
+import { RenewalDialog } from './renewal-dialog'
+import { FixedDepositRenewalService } from '@/lib/services/fixed-deposit-renewal-service'
 
 interface TransferDialogProps {
   trigger?: React.ReactNode
@@ -37,6 +39,14 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
   const [toAccount, setToAccount] = useState('')
   const [amount, setAmount] = useState<number>(0)
   const [description, setDescription] = useState('')
+
+  // 续存对话框状态
+  const [showRenewalDialog, setShowRenewalDialog] = useState(false)
+  const [renewalData, setRenewalData] = useState<{
+    fromAccountId: string
+    toAccountId: string
+    amount: number
+  } | null>(null)
 
   const transfer = useTransactionStore((state) => state.transfer)
   const accounts = useAccountStore((state) => state.accounts)
@@ -57,6 +67,14 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
 
     if (!amount || amount <= 0) {
       toast.error('请输入有效的转账金额')
+      return
+    }
+
+    // 检测续存场景
+    if (FixedDepositRenewalService.isRenewalTransfer(toAccount, amount)) {
+      console.log('[转账对话框] 检测到续存场景，打开续存配置对话框')
+      setRenewalData({ fromAccountId: fromAccount, toAccountId: toAccount, amount })
+      setShowRenewalDialog(true)
       return
     }
 
@@ -91,6 +109,16 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // 续存成功后的回调
+  const handleRenewalSuccess = () => {
+    // 重置表单
+    setFromAccount(fromAccountId || '')
+    setToAccount('')
+    setAmount(0)
+    setDescription('')
+    setOpen(false)
   }
 
   // 过滤可用账户（排除已选的转出账户）
@@ -209,6 +237,18 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* 续存配置对话框 */}
+      {renewalData && (
+        <RenewalDialog
+          open={showRenewalDialog}
+          onOpenChange={setShowRenewalDialog}
+          fromAccountId={renewalData.fromAccountId}
+          toAccountId={renewalData.toAccountId}
+          amount={renewalData.amount}
+          onSuccess={handleRenewalSuccess}
+        />
+      )}
     </Dialog>
   )
 }

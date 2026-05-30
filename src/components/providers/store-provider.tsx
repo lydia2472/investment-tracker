@@ -33,6 +33,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 同步所有定期存款账户的利息
       InterestSyncService.syncAllInterest()
 
+      // 重新从所有交易（包括新生成的转账）更新账户余额
+      const updatedTransactionStore = useTransactionStore.getState()
+      const updatedAccountStore = useAccountStore.getState()
+
+      console.log(`[StoreProvider] 重新计算余额...`)
+      console.log(`[StoreProvider] 当前交易数: ${updatedTransactionStore.transactions.length}`)
+
+      const balanceUpdates = updateAllAccountsFromSnapshots(
+        updatedTransactionStore.transactions,
+        updatedAccountStore.accounts
+      )
+
+      balanceUpdates.forEach((newBalance, accountId) => {
+        console.log(`[StoreProvider] 更新账户 ${accountId} 余额: ${updatedAccountStore.getAccount(accountId)?.name} → ${newBalance}`)
+        updatedAccountStore.updateBalance(accountId, newBalance)
+      })
+
       console.log(`%c[StoreProvider] ========== 客户端初始化完成 ==========`, 'color: #ff0000; font-size: 16px; font-weight: bold;')
     }
   }, [])

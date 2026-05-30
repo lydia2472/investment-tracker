@@ -141,10 +141,27 @@ export class InterestSyncService {
       const maturityDate = new Date(account.fixedDepositConfig.maturityDate)
       const today = new Date()
 
+      // 诊断日志
+      console.log(`[到期检测] 账户: ${account.name}`)
+      console.log(`  原始 maturityDate:`, account.fixedDepositConfig.maturityDate)
+      console.log(`  解析后 maturityDate:`, maturityDate, `toString: ${maturityDate.toString()}`)
+      console.log(`  today:`, today, `toString: ${today.toString()}`)
+      console.log(`  today < maturityDate: ${today < maturityDate}`)
+      console.log(`  today >= maturityDate (是否已到期): ${today >= maturityDate}`)
+
+      // 检查日期有效性
+      if (isNaN(maturityDate.getTime())) {
+        console.error(`[到期检测] 无效的到期日: ${account.fixedDepositConfig.maturityDate}`)
+        return false
+      }
+
       // 检查是否已到期（包括到期当天）
       if (today < maturityDate) {
+        console.log(`  → 未到期，跳过`)
         return false  // 未到期，不处理
       }
+
+      console.log(`  → 已到期，将处理`)
 
       // 移除了"已处理过"的检查
       // 现在每次都会删除旧的转账交易并重新生成包含利息的完整转账
