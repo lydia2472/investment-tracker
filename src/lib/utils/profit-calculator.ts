@@ -663,6 +663,18 @@ export function updateAccountBalanceFromSnapshot(
   currentBalance: number,
   account?: Account
 ): number {
+  // 检查是否有到期转出交易（针对定期存款）
+  const hasMaturityTransferOut = transactions.some(txn =>
+    txn.accountId === accountId &&
+    txn.tags?.includes('到期转出')
+  )
+
+  // 如果有到期转出交易，直接返回0（定期存款已全部转出）
+  if (hasMaturityTransferOut) {
+    console.log(`[余额更新] ${account?.name || accountId} - 检测到到期转出交易，余额设为0`)
+    return 0
+  }
+
   const latestSnapshot = findLatestMonthEndSnapshot(transactions, accountId)
 
   if (latestSnapshot && latestSnapshot.balance !== undefined) {

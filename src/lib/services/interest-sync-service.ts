@@ -141,18 +141,14 @@ export class InterestSyncService {
       const maturityDate = new Date(account.fixedDepositConfig.maturityDate)
       const today = new Date()
 
-      // 检查是否已到期
-      if (today <= maturityDate) {
-        return false
+      // 检查是否已到期（包括到期当天）
+      if (today < maturityDate) {
+        return false  // 未到期，不处理
       }
 
-      // 检查是否已处理过（查找是否已有本金转出交易）
-      const hasPrincipalTransfer = transactions.some(txn =>
-        txn.accountId === account.id &&
-        txn.tags?.includes('到期转出')
-      )
-
-      return !hasPrincipalTransfer
+      // 移除了"已处理过"的检查
+      // 现在每次都会删除旧的转账交易并重新生成包含利息的完整转账
+      return true
     })
 
     console.log(`[InterestSync] 发现 ${maturedDeposits.length} 个已到期定期存款`)
@@ -164,7 +160,7 @@ export class InterestSyncService {
   }
 
   /**
-   * 将定期存款本金转出到现金账户
+   * 将定期存款本金和利息转出到现金账户
    * @param account - 定期存款账户
    * @param addTransaction - 添加交易方法
    */
@@ -175,6 +171,37 @@ export class InterestSyncService {
     const config = account.fixedDepositConfig
     const principal = config.principal
     const currency = account.currency
+    const { transactions, deleteTransaction } = useTransactionStore.getState()
+
+    // 删除旧的到期转出交易（如果存在），确保重新生成包含利息的完整转账
+    const oldTransferOutTxns = transactions.filter(txn =>
+      txn.accountId === account.id &&
+      txn.tags?.includes('到期转出')
+    )
+
+    // 同时删除对应的到期转入交易
+    const oldTransferInTxns = transactions.filter(txn =>
+      txn.tags?.includes('到期转入') &&
+      txn.transferFromAccountId === account.id
+    )
+
+    if (oldTransferOutTxns.length > 0 || oldTransferInTxns.length > 0) {
+      console.log(`  [清理] 删除 ${oldTransferOutTxns.length} 笔旧转出交易和 ${oldTransferInTxns.length} 笔旧转入交易`)
+      ;[...oldTransferOutTxns, ...oldTransferInTxns].forEach(txn => {
+        deleteTransaction(txn.id)
+      })
+    }
+
+    // 计算从起息日到到期日的累积利息
+    const startDate = new Date(config.startDate)
+    const maturityDate = new Date(config.maturityDate)
+    const totalInterest = FixedDepositService.calculateInterest(account, startDate, maturityDate)
+    const totalAmount = principal + totalInterest
+
+    console.log(`[InterestSync] ${account.name} 到期转账计算:`)
+    console.log(`  本金: ${principal}元`)
+    console.log(`  累积利息: ${totalInterest.toFixed(2)}元`)
+    console.log(`  转出总额: ${totalAmount.toFixed(2)}元`)
 
     // 查找同货币的现金账户
     const cashAccounts = useAccountStore.getState().accounts.filter(
@@ -194,34 +221,34 @@ export class InterestSyncService {
     // 生成转账交易对
     const transferId = uuidv4()
 
-    // 定期存款账户：本金转出
+    // 定期存款账户：本金+利息转出
     addTransaction({
       accountId: account.id,
       type: TransactionType.TRANSFER_OUT,
-      amount: principal,
+      amount: totalAmount,
       transferToAccountId: targetAccount.id,
       transferPairId: transferId,
-      description: `定期存款到期本金转出 (${targetAccount.name})`,
+      description: `定期存款到期转出 (${targetAccount.name})`,
       tags: ['定期存款', '到期转出'],
-      note: `本金: ${principal}元，到期日: ${transferDate.toLocaleDateString('zh-CN')}`,
+      note: `本金: ${principal}元，利息: ${totalInterest.toFixed(2)}元，总额: ${totalAmount.toFixed(2)}元，到期日: ${transferDate.toLocaleDateString('zh-CN')}`,
       createdAt: transferDate,
       updatedAt: transferDate
     })
 
-    // 现金账户：本金转入
+    // 现金账户：本金+利息转入
     addTransaction({
       accountId: targetAccount.id,
       type: TransactionType.TRANSFER_IN,
-      amount: principal,
+      amount: totalAmount,
       transferFromAccountId: account.id,
       transferPairId: transferId,
-      description: `定期存款到期本金转入 (${account.name})`,
+      description: `定期存款到期转入 (${account.name})`,
       tags: ['定期存款', '到期转入'],
-      note: `本金: ${principal}元，到期日: ${transferDate.toLocaleDateString('zh-CN')}`,
+      note: `本金: ${principal}元，利息: ${totalInterest.toFixed(2)}元，总额: ${totalAmount.toFixed(2)}元，到期日: ${transferDate.toLocaleDateString('zh-CN')}`,
       createdAt: transferDate,
       updatedAt: transferDate
     })
 
-    console.log(`[InterestSync] ${account.name} 本金 ${principal}元 已转出到 ${targetAccount.name}`)
+    console.log(`[InterestSync] ${account.name} 总额 ${totalAmount.toFixed(2)}元 已转出到 ${targetAccount.name}`)
   }
 }
