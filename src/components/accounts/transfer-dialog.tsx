@@ -54,8 +54,14 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    console.log(`\n[转账对话框] ========== 表单提交 ==========`)
+    console.log(`  转出账户: ${fromAccount}`)
+    console.log(`  转入账户: ${toAccount}`)
+    console.log(`  金额: ${amount}`)
+
     // Validation
     if (!fromAccount || !toAccount) {
+      console.log(`  → 验证失败：未选择账户`)
       toast.error('请选择转出和转入账户')
       return
     }
@@ -71,7 +77,14 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
     }
 
     // 检测续存场景
-    if (FixedDepositRenewalService.isRenewalTransfer(toAccount, amount)) {
+    console.log(`\n[转账对话框] 检测续存场景:`)
+    console.log(`  转入账户ID: ${toAccount}`)
+    console.log(`  转账金额: ${amount}`)
+
+    const isRenewal = FixedDepositRenewalService.isRenewalTransfer(toAccount, amount)
+    console.log(`  检测结果: ${isRenewal ? '是续存场景' : '不是续存场景'}`)
+
+    if (isRenewal) {
       console.log('[转账对话框] 检测到续存场景，打开续存配置对话框')
       setRenewalData({ fromAccountId: fromAccount, toAccountId: toAccount, amount })
       setShowRenewalDialog(true)

@@ -83,6 +83,17 @@ export function RenewalDialog({
 
   const handleSubmit = async (data: RenewalFormData) => {
     setIsSubmitting(true)
+
+    // 诊断日志：输出表单提交的数据
+    console.log(`\n[续存对话框] 提交续存配置:`)
+    console.log(`  fromAccountId: ${fromAccountId}`)
+    console.log(`  toAccountId: ${toAccountId}`)
+    console.log(`  amount: ${amount}`)
+    console.log(`  startDate:`, data.startDate instanceof Date ? data.startDate.toLocaleDateString('zh-CN') : data.startDate)
+    console.log(`  maturityDate:`, data.maturityDate instanceof Date ? data.maturityDate.toLocaleDateString('zh-CN') : data.maturityDate)
+    console.log(`  interestRate: ${data.interestRate}`)
+    console.log(`  interestPaymentFrequency: ${data.interestPaymentFrequency}`)
+
     try {
       // 调用续存服务
       FixedDepositRenewalService.renewFixedDeposit({

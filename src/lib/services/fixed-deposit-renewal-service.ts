@@ -1,6 +1,7 @@
 import { useAccountStore } from '@/lib/stores/account-store'
 import { useTransactionStore } from '@/lib/stores/transaction-store'
 import { FixedDepositService } from './fixed-deposit-service'
+import { InterestSyncService } from './interest-sync-service'
 import { AccountType, TransactionType } from '@/types'
 import type { FixedDepositConfig, Account } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
@@ -51,6 +52,9 @@ export class FixedDepositRenewalService {
     // 步骤4: 重新生成月度快照
     this.regenerateMonthlySnapshots(toAccountId)
     console.log(`[续存服务] ✓ 新月度快照生成完成`)
+
+    // 步骤5: 检查新到期日是否已过期，如果是则立即触发到期转账
+    this.checkAndHandleImmediateMaturity(toAccountId)
 
     console.log(`%c[续存服务] ========== 续存完成 ==========`, 'color: #00ffff; font-size: 14px; font-weight: bold;')
   }
@@ -108,6 +112,8 @@ export class FixedDepositRenewalService {
       return
     }
 
+    console.log(`\n[续存配置] 接收到的新配置:`, newConfig)
+
     // 合并配置
     const updatedConfig: FixedDepositConfig = {
       ...account.fixedDepositConfig,
@@ -115,11 +121,12 @@ export class FixedDepositRenewalService {
       principal: newPrincipal  // 使用转账金额作为新本金
     }
 
-    console.log(`[续存配置] 更新配置:`)
-    console.log(`  新起息日: ${new Date(updatedConfig.startDate).toLocaleDateString('zh-CN')}`)
-    console.log(`  新到期日: ${new Date(updatedConfig.maturityDate).toLocaleDateString('zh-CN')}`)
-    console.log(`  新本金: ${updatedConfig.principal}元`)
-    console.log(`  新利率: ${updatedConfig.interestRate}%`)
+    console.log(`[续存配置] 旧配置起息日: ${new Date(account.fixedDepositConfig.startDate).toLocaleDateString('zh-CN')}`)
+    console.log(`[续存配置] 新配置起息日: ${newConfig.startDate instanceof Date ? newConfig.startDate.toLocaleDateString('zh-CN') : newConfig.startDate}`)
+    console.log(`[续存配置] 合并后起息日: ${new Date(updatedConfig.startDate).toLocaleDateString('zh-CN')}`)
+    console.log(`[续存配置] 合并后到期日: ${new Date(updatedConfig.maturityDate).toLocaleDateString('zh-CN')}`)
+    console.log(`[续存配置] 合并后本金: ${updatedConfig.principal}元`)
+    console.log(`[续存配置] 合并后利率: ${updatedConfig.interestRate}%`)
 
     // 更新账户
     updateAccount(accountId, {
@@ -127,6 +134,10 @@ export class FixedDepositRenewalService {
       balance: newPrincipal,  // 更新账户余额为新本金
       initialBalance: newPrincipal  // 更新初始余额
     })
+
+    // 验证更新是否成功
+    const updatedAccount = getAccount(accountId)
+    console.log(`[续存配置] 验证更新后的起息日: ${updatedAccount?.fixedDepositConfig ? new Date(updatedAccount.fixedDepositConfig.startDate).toLocaleDateString('zh-CN') : 'N/A'}`)
   }
 
   /**
@@ -160,6 +171,36 @@ export class FixedDepositRenewalService {
   }
 
   /**
+   * 检查续存后的账户是否立即到期，如果是则触发到期转账
+   */
+  private static checkAndHandleImmediateMaturity(accountId: string): void {
+    const { getAccount } = useAccountStore.getState()
+    const account = getAccount(accountId)
+
+    if (!account || !account.fixedDepositConfig) {
+      return
+    }
+
+    const maturityDate = new Date(account.fixedDepositConfig.maturityDate)
+    const today = new Date()
+
+    console.log(`\n[续存到期检查] 账户: ${account.name}`)
+    console.log(`  新起息日: ${new Date(account.fixedDepositConfig.startDate).toLocaleDateString('zh-CN')}`)
+    console.log(`  新到期日: ${maturityDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  今天: ${today.toLocaleDateString('zh-CN')}`)
+
+    // 检查是否已到期
+    if (today >= maturityDate) {
+      console.log(`  ⚠️ 新到期日已过期，立即触发到期转账`)
+
+      // 触发到期处理
+      InterestSyncService.syncAllInterest()
+    } else {
+      console.log(`  ✓ 新到期日未过期，无需立即处理`)
+    }
+  }
+
+  /**
    * 检测是否为续存转账
    * 转账到已到期的定期存款账户
    */
@@ -167,14 +208,39 @@ export class FixedDepositRenewalService {
     const { getAccount } = useAccountStore.getState()
     const toAccount = getAccount(toAccountId)
 
-    if (!toAccount) return false
-    if (toAccount.type !== AccountType.FIXED_DEPOSIT) return false
-    if (!toAccount.fixedDepositConfig) return false
+    console.log(`\n[续存检测] isRenewalTransfer:`)
+    console.log(`  toAccountId: ${toAccountId}`)
+
+    if (!toAccount) {
+      console.log(`  → 账户不存在，返回 false`)
+      return false
+    }
+    console.log(`  账户名称: ${toAccount.name}`)
+    console.log(`  账户类型: ${toAccount.type}`)
+
+    if (toAccount.type !== AccountType.FIXED_DEPOSIT) {
+      console.log(`  → 不是定期存款账户，返回 false`)
+      return false
+    }
+
+    if (!toAccount.fixedDepositConfig) {
+      console.log(`  → 没有定期存款配置，返回 false`)
+      return false
+    }
 
     const maturityDate = new Date(toAccount.fixedDepositConfig.maturityDate)
     const today = new Date()
 
+    console.log(`  到期日: ${maturityDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  今天: ${today.toLocaleDateString('zh-CN')}`)
+    console.log(`  转账金额: ${amount}`)
+    console.log(`  今天 >= 到期日: ${today >= maturityDate}`)
+    console.log(`  金额 > 0: ${amount > 0}`)
+
     // 已到期且转入金额大于0
-    return today >= maturityDate && amount > 0
+    const result = today >= maturityDate && amount > 0
+    console.log(`  → 检测结果: ${result ? '是续存场景' : '不是续存场景'}`)
+
+    return result
   }
 }

@@ -679,15 +679,48 @@ export function updateAccountBalanceFromSnapshot(
 
   if (latestSnapshot && latestSnapshot.balance !== undefined) {
     // 有月末快照：使用快照余额
+    const snapshotDate = latestSnapshot.createdAt instanceof Date
+      ? latestSnapshot.createdAt
+      : new Date(latestSnapshot.createdAt)
+
+    console.log(`[余额更新] ${account?.name || accountId} - 使用月末快照余额`)
+    console.log(`  快照日期: ${snapshotDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  快照余额: ${latestSnapshot.balance.toFixed(2)}元`)
+
+    // 检查快照之后是否有TRANSFER_IN交易（到期转入）
+    const transfersAfterSnapshot = transactions.filter(txn =>
+      txn.accountId === accountId &&
+      txn.type === TransactionType.TRANSFER_IN &&
+      txn.tags?.includes('到期转入') &&
+      new Date(txn.createdAt) > snapshotDate
+    )
+
+    if (transfersAfterSnapshot.length > 0) {
+      const transferTotal = transfersAfterSnapshot.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+      console.log(`  ⚠️ 快照后有 ${transfersAfterSnapshot.length} 笔到期转入，总额: ${transferTotal.toFixed(2)}元`)
+      console.log(`  快照余额可能不包含这些转入，需要从交易历史重新计算`)
+
+      // 重新计算余额
+      if (account) {
+        const recalculatedBalance = calculateBalanceFromHistory(account, transactions)
+        console.log(`  重新计算余额: ${recalculatedBalance.toFixed(2)}元`)
+        return recalculatedBalance
+      }
+    }
+
     return latestSnapshot.balance
   }
 
   // 无月末快照：基于交易历史重新计算
+  console.log(`[余额更新] ${account?.name || accountId} - 无月末快照，从交易历史计算`)
   if (account) {
-    return calculateBalanceFromHistory(account, transactions)
+    const calculatedBalance = calculateBalanceFromHistory(account, transactions)
+    console.log(`  计算结果: ${calculatedBalance.toFixed(2)}元`)
+    return calculatedBalance
   }
 
   // 回退：返回当前余额（如果 account 未提供）
+  console.log(`[余额更新] ${account?.name || accountId} - 无账户对象，使用当前余额: ${currentBalance.toFixed(2)}元`)
   return currentBalance
 }
 
@@ -739,28 +772,46 @@ export function calculateBalanceFromHistory(
     (txn) => txn.accountId === account.id
   )
 
+  console.log(`\n[余额重算] ${account.name}`)
+  console.log(`  初始余额: ${calculatedBalance.toFixed(2)}元`)
+  console.log(`  交易总数: ${accountTransactions.length}`)
+
+  // 按类型分类交易
+  const incomeTxns = accountTransactions.filter(txn =>
+    txn.type === TransactionType.INCOME ||
+    txn.type === TransactionType.DEPOSIT ||
+    txn.type === TransactionType.TRANSFER_IN
+  )
+
+  const expenseTxns = accountTransactions.filter(txn =>
+    txn.type === TransactionType.CONSUMPTION ||
+    txn.type === TransactionType.TRANSFER_OUT ||
+    txn.type === TransactionType.LOAN
+  )
+
   // 计算总收入
-  const totalIncome = accountTransactions
-    .filter(
-      (txn) =>
-        txn.type === TransactionType.INCOME ||
-        txn.type === TransactionType.DEPOSIT ||
-        txn.type === TransactionType.TRANSFER_IN
-    )
-    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+  const totalIncome = incomeTxns.reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
   // 计算总支出
-  const totalExpense = accountTransactions
-    .filter(
-      (txn) =>
-        txn.type === TransactionType.CONSUMPTION ||
-        txn.type === TransactionType.TRANSFER_OUT ||
-        txn.type === TransactionType.LOAN
-    )
-    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+  const totalExpense = expenseTxns.reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+  console.log(`  收入类交易: ${incomeTxns.length}笔，总额: ${totalIncome.toFixed(2)}元`)
+  incomeTxns.forEach(txn => {
+    const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+    console.log(`    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`)
+  })
+
+  console.log(`  支出类交易: ${expenseTxns.length}笔，总额: ${totalExpense.toFixed(2)}元`)
+  expenseTxns.forEach(txn => {
+    const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+    console.log(`    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`)
+  })
 
   // 最终余额 = 初始余额 + 收入 - 支出
   calculatedBalance = calculatedBalance + totalIncome - totalExpense
+
+  console.log(`  最终余额: ${calculatedBalance.toFixed(2)}元`)
+  console.log(`  ----------------------------------------`)
 
   return calculatedBalance
 }

@@ -129,8 +129,17 @@ export class InterestSyncService {
    * 自动将本金转出到现金账户
    */
   private static handleMaturedDeposits(): void {
+    console.log(`\n[到期处理] ========== 开始处理已到期定期存款 ==========`)
+
     const accounts = useAccountStore.getState().accounts
     const { transactions, addTransaction } = useTransactionStore.getState()
+
+    // 列出所有定期存款账户
+    console.log(`[到期处理] 所有账户列表:`)
+    accounts.filter(acc => acc.type === AccountType.FIXED_DEPOSIT).forEach(acc => {
+      const maturityDate = acc.fixedDepositConfig ? new Date(acc.fixedDepositConfig.maturityDate).toLocaleDateString('zh-CN') : 'N/A'
+      console.log(`  - ${acc.name}: 到期日 ${maturityDate}`)
+    })
 
     // 查找已到期但未处理的定期存款账户
     const maturedDeposits = accounts.filter(account => {
