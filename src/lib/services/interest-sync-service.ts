@@ -199,23 +199,39 @@ export class InterestSyncService {
     const currency = account.currency
     const { transactions, deleteTransaction } = useTransactionStore.getState()
 
-    // 删除旧的到期转出交易（如果存在），确保重新生成包含利息的完整转账
+    // ============================================================
+    // 幂等性检查：如果转账已存在，跳过重新生成
+    // 保护现金账户的历史交易不被删除
+    // ============================================================
+    const existingTransferOut = transactions.find(txn =>
+      txn.accountId === account.id &&
+      txn.tags?.includes('到期转出')
+    )
+
+    if (existingTransferOut) {
+      console.log(`[InterestSync] ${account.name} 已存在到期转出交易，跳过生成`)
+      console.log(`  - 现有交易ID: ${existingTransferOut.id}`)
+      console.log(`  - 转出金额: ${existingTransferOut.amount}元`)
+      console.log(`  - 转出日期: ${new Date(existingTransferOut.createdAt).toLocaleDateString('zh-CN')}`)
+      return
+    }
+
+    // ============================================================
+    // 仅删除定期存款账户的旧转出交易
+    // 永远不删除现金账户的转入交易（它们是历史记录）
+    // ============================================================
     const oldTransferOutTxns = transactions.filter(txn =>
       txn.accountId === account.id &&
       txn.tags?.includes('到期转出')
     )
 
-    // 同时删除对应的到期转入交易
-    const oldTransferInTxns = transactions.filter(txn =>
-      txn.tags?.includes('到期转入') &&
-      txn.transferFromAccountId === account.id
-    )
-
-    if (oldTransferOutTxns.length > 0 || oldTransferInTxns.length > 0) {
-      console.log(`  [清理] 删除 ${oldTransferOutTxns.length} 笔旧转出交易和 ${oldTransferInTxns.length} 笔旧转入交易`)
-      ;[...oldTransferOutTxns, ...oldTransferInTxns].forEach(txn => {
+    if (oldTransferOutTxns.length > 0) {
+      console.log(`  [清理] 删除 ${oldTransferOutTxns.length} 笔旧转出交易（定期存款账户）`)
+      oldTransferOutTxns.forEach(txn => {
+        console.log(`    - 删除: ${txn.description} (${txn.amount}元)`)
         deleteTransaction(txn.id)
       })
+      console.log(`  [清理] 已删除定期存款账户的旧转出交易`)
     }
 
     // 计算从起息日到到期日的累积利息
