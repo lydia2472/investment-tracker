@@ -200,20 +200,34 @@ export class InterestSyncService {
     const { transactions, deleteTransaction } = useTransactionStore.getState()
 
     // ============================================================
-    // 幂等性检查：如果转账已存在，跳过重新生成
-    // 保护现金账户的历史交易不被删除
+    // 幂等性检查：检查是否已存在完整的转账对
+    // 使用 transferPairId 判断是否已处理过此到期事件
     // ============================================================
     const existingTransferOut = transactions.find(txn =>
       txn.accountId === account.id &&
       txn.tags?.includes('到期转出')
     )
 
+    // 如果已存在转出交易，检查对应的转入交易是否也存在
     if (existingTransferOut) {
-      console.log(`[InterestSync] ${account.name} 已存在到期转出交易，跳过生成`)
-      console.log(`  - 现有交易ID: ${existingTransferOut.id}`)
-      console.log(`  - 转出金额: ${existingTransferOut.amount}元`)
-      console.log(`  - 转出日期: ${new Date(existingTransferOut.createdAt).toLocaleDateString('zh-CN')}`)
-      return
+      const correspondingTransferIn = transactions.find(txn =>
+        txn.transferPairId === existingTransferOut.transferPairId &&
+        txn.type === TransactionType.TRANSFER_IN &&
+        txn.tags?.includes('到期转入')
+      )
+
+      // 如果转入交易也存在，说明已经处理过，跳过
+      if (correspondingTransferIn) {
+        console.log(`[InterestSync] ${account.name} 已存在完整的转账对，跳过生成`)
+        console.log(`  - 转账配对ID: ${existingTransferOut.transferPairId}`)
+        console.log(`  - 转出金额: ${existingTransferOut.amount}元`)
+        console.log(`  - 转入金额: ${correspondingTransferIn.amount}元`)
+        return
+      }
+
+      // 如果只有转出交易没有转入交易（异常情况），删除转出交易重新生成
+      console.log(`[InterestSync] ${account.name} 检测到孤立的转出交易，将重新生成`)
+      deleteTransaction(existingTransferOut.id)
     }
 
     // ============================================================
