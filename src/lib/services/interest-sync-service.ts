@@ -16,16 +16,27 @@ export class InterestSyncService {
   static syncAllInterest(): void {
     console.log(`%c[InterestSync] ========== 开始同步利息 ==========`, 'color: #ff00ff; font-size: 14px; font-weight: bold;')
 
-    const accounts = useAccountStore.getState().accounts
+    const accounts = useAccountStore.getState()
+      .accounts
+      .filter(acc => acc.type === AccountType.FIXED_DEPOSIT && acc.fixedDepositConfig)
+
     const { transactions, addTransaction } = useTransactionStore.getState()
 
-    const fixedDepositAccounts = accounts.filter(
-      acc => acc.type === AccountType.FIXED_DEPOSIT && acc.fixedDepositConfig
-    )
+    console.log(`%c[InterestSync] 检查 ${accounts.length} 个定期存款账户`, 'color: #00ff00; font-weight: bold;')
 
-    console.log(`%c[InterestSync] 检查 ${fixedDepositAccounts.length} 个定期存款账户`, 'color: #00ff00; font-weight: bold;')
+    if (accounts.length === 0) {
+      console.warn(`[InterestSync] ⚠️ 没有找到定期存款账户`)
+    }
 
-    fixedDepositAccounts.forEach(account => {
+    // 列出所有定期存款账户及其到期日
+    accounts.forEach(account => {
+      const maturityDate = new Date(account.fixedDepositConfig!.maturityDate)
+      const today = new Date()
+      const isMatured = today >= maturityDate
+      console.log(`  - ${account.name}: 到期日 ${maturityDate.toLocaleDateString('zh-CN')} ${isMatured ? '✅(已到期)' : '(未到期)'}`)
+    })
+
+    accounts.forEach(account => {
       this.syncAccountInterest(account, transactions, addTransaction)
     })
 
@@ -213,7 +224,8 @@ export class InterestSyncService {
       const correspondingTransferIn = transactions.find(txn =>
         txn.transferPairId === existingTransferOut.transferPairId &&
         txn.type === TransactionType.TRANSFER_IN &&
-        txn.tags?.includes('到期转入')
+        txn.tags?.includes('到期转入') &&
+        txn.transferFromAccountId === account.id  // 确保是从当前账户转出的
       )
 
       // 如果转入交易也存在，说明已经处理过，跳过
