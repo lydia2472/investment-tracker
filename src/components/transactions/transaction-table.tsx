@@ -1,16 +1,18 @@
-import { Card } from 'animal-island-ui'
-import { Button } from 'animal-island-ui'
-import { TrashIcon, InfoIcon, EditIcon, XIcon } from '@/lib/components/icon-adapter'
-import { formatDate } from '@/lib/utils/formatters'
-import { cn } from '@/lib/utils/cn'
-import { TransactionTypeBadge } from './transaction-type-badge'
-import { TransactionAmount } from './transaction-amount'
-import type { Transaction, Account } from '@/types'
-import type { TransactionFilters } from './transaction-filters'
-import { TransactionType } from '@/types'
+import { Card , Button } from 'animal-island-ui'
 import { useMemo } from 'react'
+
 import { useTransactionTotals } from '@/hooks/use-transaction-totals'
+import { TrashIcon, InfoIcon, EditIcon, XIcon } from '@/lib/components/icon-adapter'
+import { cn } from '@/lib/utils/cn'
+import { formatDate } from '@/lib/utils/formatters'
+import { TransactionType } from '@/types'
+
+import { TransactionAmount } from './transaction-amount'
 import { TransactionTotalsDisplay } from './transaction-totals'
+import { TransactionTypeBadge } from './transaction-type-badge'
+
+import type { TransactionFilters } from './transaction-filters'
+import type { Transaction, Account } from '@/types'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -22,7 +24,15 @@ interface TransactionTableProps {
   onSelectionChange?: (ids: Set<string>) => void
 }
 
-export function TransactionTable({ transactions, accounts, filters, onDelete, onEdit, selectedIds = new Set(), onSelectionChange }: TransactionTableProps) {
+export function TransactionTable({
+  transactions,
+  accounts,
+  filters,
+  onDelete,
+  onEdit,
+  selectedIds = new Set(),
+  onSelectionChange,
+}: TransactionTableProps) {
   const getAccountName = (accountId: string) => {
     return accounts.find((acc) => acc.id === accountId)?.name || '未知账户'
   }
@@ -34,20 +44,32 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
     }
 
     return transactions.filter((txn) => {
-      // 账户过滤
-      if (filters.accountId && txn.accountId !== filters.accountId) {
-        return false
+      // 账户过滤 - 支持单个或多个账户
+      if (filters.accountId) {
+        const accountIds = Array.isArray(filters.accountId)
+          ? filters.accountId
+          : [filters.accountId]
+
+        if (!accountIds.includes(txn.accountId)) {
+          return false
+        }
       }
 
       // 交易类型过滤
-      if (filters.type) {
-        if (filters.type === TransactionType.TRANSFER) {
+      if (filters.types && filters.types.length > 0) {
+        // 检查是否包含 TRANSFER 类型
+        if (filters.types.includes(TransactionType.TRANSFER)) {
           // 筛选转账时，显示所有转账对（有transferPairId的交易）
-          const isTransfer = !!(txn.transferToAccountId || txn.transferFromAccountId || txn.transferPairId)
-          if (!isTransfer) {
+          const isTransfer = !!(
+            txn.transferToAccountId ||
+            txn.transferFromAccountId ||
+            txn.transferPairId
+          )
+          if (!isTransfer && !filters.types.includes(txn.type)) {
             return false
           }
-        } else if (txn.type !== filters.type) {
+        } else if (!filters.types.includes(txn.type)) {
+          // 不包含在选中的类型中
           return false
         }
       }
@@ -61,7 +83,11 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
         endTime.setHours(23, 59, 59, 999)
 
         // 添加调试日志
-        if (txn.type === TransactionType.SNAPSHOT && (txnDate.getMonth() === 3 && txnDate.getFullYear() === 2026)) {
+        if (
+          txn.type === TransactionType.SNAPSHOT &&
+          txnDate.getMonth() === 3 &&
+          txnDate.getFullYear() === 2026
+        ) {
           console.log(`[日期筛选] 快照交易: ${txn.description || '无描述'}`)
           console.log(`  from: ${from.toISOString()} (${from.toLocaleString()})`)
           console.log(`  to: ${to.toISOString()} (${to.toLocaleString()})`)
@@ -77,8 +103,8 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
       // 标签过滤
       if (filters.tags && filters.tags.length > 0) {
-        const hasBlankTagFilter = filters.tags.includes("__BLANK__")
-        const regularTags = filters.tags.filter(tag => tag !== "__BLANK__")
+        const hasBlankTagFilter = filters.tags.includes('__BLANK__')
+        const regularTags = filters.tags.filter((tag) => tag !== '__BLANK__')
 
         // 如果选择了"无标签"选项
         if (hasBlankTagFilter) {
@@ -99,9 +125,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
           if (!txn.tags || txn.tags.length === 0) {
             return false
           }
-          const hasMatchingTag = filters.tags.some((filterTag) =>
-            txn.tags?.includes(filterTag)
-          )
+          const hasMatchingTag = filters.tags.some((filterTag) => txn.tags?.includes(filterTag))
           if (!hasMatchingTag) {
             return false
           }
@@ -115,13 +139,11 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
   // Calculate totals for filtered transactions
   const totals = useTransactionTotals(filteredTransactions)
 
-  const sortedTransactions = [...filteredTransactions].sort(
-    (a, b) => {
-      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
-      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
-      return dateB.getTime() - dateA.getTime()
-    }
-  )
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+    return dateB.getTime() - dateA.getTime()
+  })
 
   // 检查是否有过滤条件
   const hasFilters = filters && Object.keys(filters).length > 0
@@ -130,7 +152,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   if (showNoTransactions) {
     return (
-      <Card color="app-green">
+      <Card className="bg-background border">
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
@@ -145,7 +167,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
 
   if (showNoResults) {
     return (
-      <Card color="app-green">
+      <Card className="bg-background border">
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
@@ -160,15 +182,13 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
   }
 
   return (
-    <Card color="app-green" className="overflow-hidden" style={{ backgroundColor: '#8ac68a' }}>
+    <Card className="bg-background border overflow-hidden">
       {/* 显示金额统计 - 仅当有筛选结果时显示 */}
-      {filteredTransactions.length > 0 && (
-        <TransactionTotalsDisplay totals={totals} />
-      )}
+      {filteredTransactions.length > 0 && <TransactionTotalsDisplay totals={totals} />}
 
       {/* 显示筛选结果数量 - 仅当有筛选条件时显示 */}
       {hasFilters && (
-        <div className="px-6 py-3 border-b" style={{ backgroundColor: '#8ac68a' }}>
+        <div className="px-6 py-3 border-b bg-muted/50">
           <p className="text-sm text-foreground">
             显示 <span className="font-bold">{filteredTransactions.length}</span> 条交易记录
             {filteredTransactions.length !== transactions.length && (
@@ -179,22 +199,26 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
       )}
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="border-b" style={{ backgroundColor: '#8ac68a' }}>
+          <thead className="border-b bg-muted/30">
             <tr>
               {onSelectionChange && (
                 <th className="p-4 font-bold">
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded"
-                    checked={selectedIds.size === sortedTransactions.length && sortedTransactions.length > 0}
+                    checked={
+                      selectedIds.size === sortedTransactions.length &&
+                      sortedTransactions.length > 0
+                    }
                     ref={(input) => {
                       if (input) {
-                        input.indeterminate = selectedIds.size > 0 && selectedIds.size < sortedTransactions.length
+                        input.indeterminate =
+                          selectedIds.size > 0 && selectedIds.size < sortedTransactions.length
                       }
                     }}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        onSelectionChange(new Set(sortedTransactions.map(t => t.id)))
+                        onSelectionChange(new Set(sortedTransactions.map((t) => t.id)))
                       } else {
                         onSelectionChange(new Set())
                       }
@@ -208,18 +232,16 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
               <th className="text-left p-4 font-bold">描述</th>
               <th className="text-left p-4 font-bold">标签</th>
               <th className="text-right p-4 font-bold">金额</th>
-              <th className="text-center p-4 font-bold" colSpan={onEdit ? 2 : 1}>操作</th>
+              <th className="text-center p-4 font-bold" colSpan={onEdit ? 2 : 1}>
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
             {sortedTransactions.map((txn, index) => (
               <tr
                 key={txn.id}
-                className={cn(
-                  "border-b transition-colors",
-                  index % 2 === 0 ? "hover:bg-[#7bc96a]/30" : ""
-                )}
-                style={index % 2 === 0 ? { backgroundColor: 'rgba(138, 198, 138, 0.3)' } : undefined}
+                className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
               >
                 {onSelectionChange && (
                   <td className="p-4">
@@ -239,20 +261,14 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                     />
                   </td>
                 )}
-                <td className="p-4 text-sm font-semibold">
-                  {formatDate(txn.createdAt)}
-                </td>
-                <td className="p-4 text-sm font-semibold">
-                  {getAccountName(txn.accountId)}
-                </td>
+                <td className="p-4 text-sm font-semibold">{formatDate(txn.createdAt)}</td>
+                <td className="p-4 text-sm font-semibold">{getAccountName(txn.accountId)}</td>
                 <td className="p-4">
                   <TransactionTypeBadge type={txn.type} />
                 </td>
                 <td className="p-4 text-sm font-semibold">
                   {txn.description || '-'}
-                  {txn.note && (
-                    <p className="text-xs text-muted-foreground mt-1">{txn.note}</p>
-                  )}
+                  {txn.note && <p className="text-xs text-muted-foreground mt-1">{txn.note}</p>}
                 </td>
                 <td className="p-4">
                   {txn.tags && txn.tags.length > 0 ? (
@@ -260,7 +276,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                       {txn.tags.map((tag, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
                         >
                           {tag}
                         </span>
@@ -271,11 +287,7 @@ export function TransactionTable({ transactions, accounts, filters, onDelete, on
                   )}
                 </td>
                 <td className="p-4 text-sm text-right font-semibold">
-                  <TransactionAmount
-                    amount={txn.amount}
-                    balance={txn.balance}
-                    type={txn.type}
-                  />
+                  <TransactionAmount amount={txn.amount} balance={txn.balance} type={txn.type} />
                 </td>
                 <td className="p-4 text-center">
                   <div className="flex items-center justify-center gap-2">
