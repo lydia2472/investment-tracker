@@ -1,13 +1,22 @@
-import { TransactionType, AccountType } from '@/types'
-import type { Transaction, Account, MonthlyProfit, SnapshotPair, DashboardProfitSummary, DateRangeProfitSummary } from '@/types'
 import {
   endOfMonth,
   startOfMonth,
   isLastDayOfMonth,
   format,
   differenceInMonths,
-  addMonths
+  addMonths,
 } from 'date-fns'
+
+import { TransactionType, AccountType } from '@/types'
+
+import type {
+  Transaction,
+  Account,
+  MonthlyProfit,
+  SnapshotPair,
+  DashboardProfitSummary,
+  DateRangeProfitSummary,
+} from '@/types'
 
 /**
  * 判断交易是否为月末快照
@@ -36,9 +45,8 @@ export function findMonthEndSnapshots(
 
   const map = new Map<string, Transaction>()
   snapshots.forEach((snapshot) => {
-    const date = snapshot.createdAt instanceof Date
-      ? snapshot.createdAt
-      : new Date(snapshot.createdAt)
+    const date =
+      snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt)
     const key = format(date, 'yyyy-MM')
     map.set(key, snapshot)
   })
@@ -61,9 +69,7 @@ export function getPeriodTransactions(
   const result = transactions.filter((txn) => {
     if (txn.accountId !== accountId) return false
 
-    const txnDate = txn.createdAt instanceof Date
-      ? txn.createdAt
-      : new Date(txn.createdAt)
+    const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
 
     // 排除快照交易
     if (txn.type === TransactionType.SNAPSHOT) return false
@@ -89,18 +95,22 @@ export function getPeriodTransactions(
   endOfDay.setHours(23, 59, 59, 999)
 
   // 检查是否包含利息交易
-  const interestTxns = result.filter(txn => txn.tags?.includes('利息'))
+  const interestTxns = result.filter((txn) => txn.tags?.includes('利息'))
 
   console.log(`\n[期间交易] 账户 ${accountId}`)
-  console.log(`  期间范围: ${dayAfterStart.toLocaleDateString('zh-CN')} ${dayAfterStart.toLocaleTimeString('zh-CN')} - ${endOfDay.toLocaleDateString('zh-CN')} ${endOfDay.toLocaleTimeString('zh-CN')}`)
+  console.log(
+    `  期间范围: ${dayAfterStart.toLocaleDateString('zh-CN')} ${dayAfterStart.toLocaleTimeString('zh-CN')} - ${endOfDay.toLocaleDateString('zh-CN')} ${endOfDay.toLocaleTimeString('zh-CN')}`
+  )
   console.log(`  期间交易总数: ${result.length}`)
   console.log(`  利息交易数量: ${interestTxns.length}`)
 
   if (interestTxns.length > 0) {
     console.log(`  包含 ${interestTxns.length} 笔利息交易:`)
-    interestTxns.forEach(txn => {
+    interestTxns.forEach((txn) => {
       const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-      console.log(`    - ${txn.description}: ${(txn.amount || 0).toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')} ${txnDate.toLocaleTimeString('zh-CN')})`)
+      console.log(
+        `    - ${txn.description}: ${(txn.amount || 0).toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')} ${txnDate.toLocaleTimeString('zh-CN')})`
+      )
     })
   } else {
     console.log(`  ⚠️ 未找到利息交易，可能原因：`)
@@ -120,14 +130,14 @@ export function calculateProfitForPeriod(
   periodTransactions: Transaction[],
   accountName: string,
   accountType: AccountType,
-  account?: Account  // 新增：账户对象，用于检查定期存款到期状态
+  account?: Account // 新增：账户对象，用于检查定期存款到期状态
 ): MonthlyProfit {
-  const startDate = startSnapshot.createdAt instanceof Date
-    ? startSnapshot.createdAt
-    : new Date(startSnapshot.createdAt)
-  const endDate = endSnapshot.createdAt instanceof Date
-    ? endSnapshot.createdAt
-    : new Date(endSnapshot.createdAt)
+  const startDate =
+    startSnapshot.createdAt instanceof Date
+      ? startSnapshot.createdAt
+      : new Date(startSnapshot.createdAt)
+  const endDate =
+    endSnapshot.createdAt instanceof Date ? endSnapshot.createdAt : new Date(endSnapshot.createdAt)
 
   const startBalance = startSnapshot.balance || 0
   const endBalance = endSnapshot.balance || 0
@@ -144,16 +154,19 @@ export function calculateProfitForPeriod(
     .filter((txn) => {
       // 如果利息有计息期间，检查计息期间的结束月份
       if (txn.interestPeriod?.endDate) {
-        const periodEnd = txn.interestPeriod.endDate instanceof Date
-          ? txn.interestPeriod.endDate
-          : new Date(txn.interestPeriod.endDate)
+        const periodEnd =
+          txn.interestPeriod.endDate instanceof Date
+            ? txn.interestPeriod.endDate
+            : new Date(txn.interestPeriod.endDate)
 
         // 检查计息期间的结束日期是否与月末快照日期（endDate）在同一月份
         // 例如：1月30日到2月28日的利息，periodEnd=2月28日，endDate=2月28日 → 同月，计入
         // 例如：12月1日到12月30日的利息，periodEnd=12月30日，endDate=12月31日 → 同月，计入
         // 例如：1月1日到1月31日的利息，periodEnd=1月31日，endDate=2月28日 → 不同月，不计入
-        return periodEnd.getFullYear() === endDate.getFullYear() &&
-               periodEnd.getMonth() === endDate.getMonth()
+        return (
+          periodEnd.getFullYear() === endDate.getFullYear() &&
+          periodEnd.getMonth() === endDate.getMonth()
+        )
       }
       // 非定期存款利息或没有计息期间的利息，默认计入
       return true
@@ -173,57 +186,89 @@ export function calculateProfitForPeriod(
     console.log(`  期末快照余额: ${endBalance.toFixed(2)}`)
     console.log(`  收益: ${calculatedProfit.toFixed(2)}`)
   } else {
-    // 非定期存款：使用标准公式
-    calculatedProfit = endBalance - startBalance - periodTransferIn + periodInterestIncome
+    // 非定期存款：改为基于交易类型汇总计算收益
+    // 汇总期间交易的各种类型
+    const investmentProfitTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INVESTMENT_PROFIT)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+    const investmentLossTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INVESTMENT_LOSS)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+    const incomeTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INCOME)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+    // 利息已经在 periodInterestIncome 中计算过了
+
+    // 计算收益：投资收益 + 投资亏损 + 收入 + 利息
+    // 注意：投资亏损金额本身是负数，所以相加即等于减去
+    calculatedProfit = investmentProfitTotal + investmentLossTotal + incomeTotal + periodInterestIncome
   }
 
   // 计算收益率（处理除零情况，分母仍使用期初余额）
-  const profitRate = startBalance > 0
-    ? (calculatedProfit / startBalance) * 100
-    : 0
+  const profitRate = startBalance > 0 ? (calculatedProfit / startBalance) * 100 : 0
 
   // 诊断日志：显示收益计算详情
   if (accountType === AccountType.FIXED_DEPOSIT && account?.fixedDepositConfig) {
     // 定期存款的简化日志
-    console.log(`  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(
+      `  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`
+    )
     console.log(`  收益率: ${profitRate.toFixed(2)}%`)
     console.log(`  ----------------------------------------`)
   } else {
     // 非定期存款的完整日志
     console.log(`\n[收益计算] ${accountName} (${accountType})`)
-    console.log(`  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(
+      `  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`
+    )
     console.log(`  月初快照余额: ${startBalance.toFixed(2)}`)
     console.log(`  月末快照余额: ${endBalance.toFixed(2)}`)
-    console.log(`  期间转入: ${periodTransferIn.toFixed(2)}`)
-    console.log(`  期间利息收入: ${periodInterestIncome.toFixed(2)} ${periodInterestIncome > 0 ? '✓' : ''}`)
-    console.log(`  基础收益(不含利息): ${(endBalance - startBalance - periodTransferIn).toFixed(2)}`)
-    console.log(`  最终收益(含利息): ${calculatedProfit.toFixed(2)} ${periodInterestIncome > 0 ? '(已加上利息)' : ''}`)
+    console.log(`  收益计算方式: 基于交易类型汇总`)
+
+    // 显示各种交易类型的汇总
+    const investmentProfitTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INVESTMENT_PROFIT)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+    const investmentLossTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INVESTMENT_LOSS)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+    const incomeTotal = periodTransactions
+      .filter((txn) => txn.type === TransactionType.INCOME)
+      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+
+    console.log(`  投资收益: ${investmentProfitTotal.toFixed(2)}元`)
+    console.log(`  投资亏损: ${investmentLossTotal.toFixed(2)}元`)
+    console.log(`  收入: ${incomeTotal.toFixed(2)}元`)
+    console.log(
+      `  利息收入: ${periodInterestIncome.toFixed(2)}元 ${periodInterestIncome > 0 ? '✓' : ''}`
+    )
+    console.log(`  最终收益: ${calculatedProfit.toFixed(2)}元`)
     console.log(`  收益率: ${profitRate.toFixed(2)}%`)
     console.log(`  ----------------------------------------`)
   }
 
   // 增强诊断日志
 
-  const transferInTransactions = periodTransactions.filter(txn => txn.type === TransactionType.TRANSFER_IN)
+  const transferInTransactions = periodTransactions.filter(
+    (txn) => txn.type === TransactionType.TRANSFER_IN
+  )
   if (transferInTransactions.length === 0) {
   } else {
-    transferInTransactions.forEach(txn => {
+    transferInTransactions.forEach((txn) => {
       const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
     })
   }
 
-
   const periodIncome = periodTransactions
-    .filter((txn) =>
-      txn.type === TransactionType.INCOME ||
-      txn.type === TransactionType.DEPOSIT
-    )
+    .filter((txn) => txn.type === TransactionType.INCOME || txn.type === TransactionType.DEPOSIT)
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
   const periodExpense = periodTransactions
-    .filter((txn) =>
-      txn.type === TransactionType.CONSUMPTION ||
-      txn.type === TransactionType.TRANSFER_OUT
+    .filter(
+      (txn) => txn.type === TransactionType.CONSUMPTION || txn.type === TransactionType.TRANSFER_OUT
     )
     .reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
@@ -238,7 +283,7 @@ export function calculateProfitForPeriod(
     periodIncome,
     periodExpense,
     netFlow: periodIncome - periodExpense,
-    profitRate,  // 新增：收益率
+    profitRate, // 新增：收益率
     hasCompleteData: true,
     startSnapshotId: startSnapshot.id,
     endSnapshotId: endSnapshot.id,
@@ -256,10 +301,7 @@ export function calculateMonthlyProfits(
 
   // 为每个账户计算月度收益
   accounts.forEach((account) => {
-    const accountProfits = calculateAccountMonthlyProfits(
-      transactions,
-      account
-    )
+    const accountProfits = calculateAccountMonthlyProfits(transactions, account)
     results.push(...accountProfits)
   })
 
@@ -277,9 +319,11 @@ export function calculateMonthlyProfits(
     const latestMonth = latestProfit.month
 
     // 筛选最新月份的所有账户收益
-    const latestMonthProfits = sorted.filter(p => p.year === latestYear && p.month === latestMonth)
+    const latestMonthProfits = sorted.filter(
+      (p) => p.year === latestYear && p.month === latestMonth
+    )
 
-    latestMonthProfits.forEach(profit => {
+    latestMonthProfits.forEach((profit) => {
       const transferIn = profit.endBalance - profit.startBalance - profit.calculatedProfit
     })
 
@@ -290,7 +334,6 @@ export function calculateMonthlyProfits(
       return sum + (p.endBalance - p.startBalance - p.calculatedProfit)
     }, 0)
     const totalProfit = latestMonthProfits.reduce((sum, p) => sum + p.calculatedProfit, 0)
-
   }
 
   return sorted
@@ -298,6 +341,9 @@ export function calculateMonthlyProfits(
 
 /**
  * 计算单个账户的月度收益
+ * 支持两种模式：
+ * 1. 快照模式：使用月末快照计算（原有逻辑）
+ * 2. 交易模式：从交易数据计算月度收益（新增）
  */
 export function calculateAccountMonthlyProfits(
   transactions: Transaction[],
@@ -305,78 +351,291 @@ export function calculateAccountMonthlyProfits(
 ): MonthlyProfit[] {
   const profits: MonthlyProfit[] = []
 
-  // 查找该账户的所有月末快照
+  // 首先尝试查找月末快照（保持向后兼容）
   const snapshotsMap = findMonthEndSnapshots(transactions, account.id)
 
-  if (snapshotsMap.size === 0) {
-    // 没有任何月末快照
-    return profits
-  }
+  if (snapshotsMap.size > 1) {
+    // 有快照，使用快照模式计算
+    const sortedMonths = Array.from(snapshotsMap.keys()).sort()
 
-  // 获取所有已排序的月份
-  const sortedMonths = Array.from(snapshotsMap.keys()).sort()
+    for (let i = 0; i < sortedMonths.length; i++) {
+      const currentMonthKey = sortedMonths[i]
+      const currentSnapshot = snapshotsMap.get(currentMonthKey)
 
-  // 为每个月计算收益
-  for (let i = 0; i < sortedMonths.length; i++) {
-    const currentMonthKey = sortedMonths[i]
-    const currentSnapshot = snapshotsMap.get(currentMonthKey)
+      if (!currentSnapshot) continue
 
-    if (!currentSnapshot) continue
+      // 如果是第一个月，没有月初快照，跳过
+      if (i === 0) {
+        continue
+      }
 
-    // 如果是第一个月，没有月初快照，跳过
-    if (i === 0) {
-      continue
+      const previousMonthKey = sortedMonths[i - 1]
+      const previousSnapshot = snapshotsMap.get(previousMonthKey)
+
+      if (!previousSnapshot) continue
+
+      const startDate =
+        previousSnapshot.createdAt instanceof Date
+          ? previousSnapshot.createdAt
+          : new Date(previousSnapshot.createdAt)
+      const endDate =
+        currentSnapshot.createdAt instanceof Date
+          ? currentSnapshot.createdAt
+          : new Date(currentSnapshot.createdAt)
+
+      const periodTransactions = getPeriodTransactions(transactions, startDate, endDate, account.id)
+
+      const profit = calculateProfitForPeriod(
+        previousSnapshot,
+        currentSnapshot,
+        periodTransactions,
+        account.name,
+        account.type,
+        account
+      )
+
+      profits.push(profit)
     }
-
-    const previousMonthKey = sortedMonths[i - 1]
-    const previousSnapshot = snapshotsMap.get(previousMonthKey)
-
-    if (!previousSnapshot) continue
-
-    // 获取期间交易
-    const startDate = previousSnapshot.createdAt instanceof Date
-      ? previousSnapshot.createdAt
-      : new Date(previousSnapshot.createdAt)
-    const endDate = currentSnapshot.createdAt instanceof Date
-      ? currentSnapshot.createdAt
-      : new Date(currentSnapshot.createdAt)
-
-    const periodTransactions = getPeriodTransactions(
-      transactions,
-      startDate,
-      endDate,
-      account.id
-    )
-
-    // 快照对选择诊断日志
-
-    // 计算收益
-    const profit = calculateProfitForPeriod(
-      previousSnapshot,
-      currentSnapshot,
-      periodTransactions,
-      account.name,
-      account.type,
-      account  // 传递完整账户对象，用于检查定期存款到期状态
-    )
-
-    profits.push(profit)
-  }
-
-  // 2026年4月汇总日志
-  const april2026Profits = profits.filter(p => p.year === 2026 && p.month === 4)
-  if (april2026Profits.length > 0) {
-    const totalStart = april2026Profits.reduce((sum, p) => sum + p.startBalance, 0)
-    const totalEnd = april2026Profits.reduce((sum, p) => sum + p.endBalance, 0)
-    const totalTransferIn = april2026Profits.reduce((sum, p) => {
-      const transferIn = (p.endBalance - p.startBalance - p.calculatedProfit)
-      return sum + transferIn
-    }, 0)
-    const totalProfit = april2026Profits.reduce((sum, p) => sum + p.calculatedProfit, 0)
-
+  } else {
+    // 没有快照，使用交易数据计算月度收益
+    const transactionProfits = calculateMonthlyProfitsFromTransactions(transactions, account)
+    profits.push(...transactionProfits)
   }
 
   return profits
+}
+
+/**
+ * 从交易数据计算月度收益（不依赖快照）
+ */
+function calculateMonthlyProfitsFromTransactions(
+  transactions: Transaction[],
+  account: Account
+): MonthlyProfit[] {
+  const profits: MonthlyProfit[] = []
+
+  // 获取该账户的所有非快照交易，按日期排序
+  const accountTransactions = transactions
+    .filter((txn) => txn.accountId === account.id && txn.type !== TransactionType.SNAPSHOT)
+    .sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+      return dateA.getTime() - dateB.getTime()
+    })
+
+  if (accountTransactions.length === 0) {
+    return profits
+  }
+
+  // 初始余额
+  let currentBalance = account.initialBalance || 0
+
+  // 按月份分组交易
+  const monthlyGroups = new Map<string, Transaction[]>()
+
+  accountTransactions.forEach((txn) => {
+    const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+    const monthKey = format(date, 'yyyy-MM')
+    if (!monthlyGroups.has(monthKey)) {
+      monthlyGroups.set(monthKey, [])
+    }
+    monthlyGroups.get(monthKey)!.push(txn)
+  })
+
+  // 获取所有有交易的月份并排序
+  const sortedMonths = Array.from(monthlyGroups.keys()).sort()
+
+  // 为每个月计算收益
+  sortedMonths.forEach((monthKey) => {
+    const [yearStr, monthStr] = monthKey.split('-')
+    const year = parseInt(yearStr)
+    const month = parseInt(monthStr)
+
+    const monthTransactions = monthlyGroups.get(monthKey)!
+
+    // 月初余额
+    const startBalance = currentBalance
+
+    // 计算当月的收益、转入/转出、收入和支出
+    let calculatedProfit = 0
+    let periodIncome = 0
+    let periodExpense = 0
+    let periodTransferIn = 0
+    let periodTransferOut = 0
+
+    // 新的收益计算：基于交易类型汇总
+    let investmentProfitTotal = 0 // 投资收益之和
+    let investmentLossTotal = 0 // 投资亏损之和
+    let incomeTotal = 0 // 收入（INCOME/DEPOSIT）之和
+    let interestTotal = 0 // 利息之和
+
+    monthTransactions.forEach((txn) => {
+      const amount = txn.amount || 0
+
+      switch (txn.type) {
+        case TransactionType.INCOME:
+          // 增加余额，计为收入
+          currentBalance += amount
+          periodIncome += amount
+          incomeTotal += amount // 计入收益
+          break
+
+        case TransactionType.DEPOSIT:
+          // 存款，增加余额但不计入收益
+          currentBalance += amount
+          periodIncome += amount
+          break
+
+        case TransactionType.INVESTMENT_PROFIT:
+          // 投资收益，增加余额
+          currentBalance += amount
+          periodIncome += amount
+          investmentProfitTotal += amount // 计入收益
+          break
+
+        case TransactionType.TRANSFER_IN:
+          // 转入，增加余额但不计为收益
+          currentBalance += amount
+          periodTransferIn += amount
+          break
+
+        case TransactionType.CONSUMPTION:
+        case TransactionType.LOAN:
+          // 减少余额，计为支出
+          currentBalance -= amount
+          periodExpense += amount
+          break
+
+        case TransactionType.INVESTMENT_LOSS:
+          // 投资亏损，减少余额
+          currentBalance -= amount
+          periodExpense += amount
+          investmentLossTotal += amount // 从收益中减去
+          break
+
+        case TransactionType.TRANSFER_OUT:
+          // 转出，减少余额
+          currentBalance -= amount
+          periodTransferOut += amount
+          break
+
+        case TransactionType.TRANSFER:
+          // 转账
+          if (txn.transferFromAccountId === account.id) {
+            // 从此账户转出
+            currentBalance -= amount
+            periodTransferOut += amount
+          } else if (txn.transferToAccountId === account.id) {
+            // 转入此账户
+            currentBalance += amount
+            periodTransferIn += amount
+          }
+          break
+      }
+
+      // 检查是否有"利息"标签
+      if (txn.tags?.includes('利息')) {
+        interestTotal += amount // 利息计入收益
+      }
+    })
+
+    // 月末余额
+    const endBalance = currentBalance
+
+    // 计算收益：投资收益 + 投资亏损 + 收入 + 利息
+    // 注意：投资亏损金额本身是负数，所以相加即等于减去
+    calculatedProfit = investmentProfitTotal + investmentLossTotal + incomeTotal + interestTotal
+
+    // 计算收益率
+    const profitRate = startBalance > 0 ? (calculatedProfit / startBalance) * 100 : 0
+
+    // 净流入
+    const netFlow = periodIncome - periodExpense
+
+    // 创建月度收益记录
+    profits.push({
+      accountId: account.id,
+      accountName: account.name,
+      year,
+      month,
+      startBalance,
+      endBalance,
+      calculatedProfit,
+      periodIncome,
+      periodExpense,
+      netFlow,
+      profitRate,
+      hasCompleteData: false, // 从交易计算的，没有快照对
+    })
+  })
+
+  return profits
+}
+
+/**
+ * 按月份汇总全部账户的月度收益
+ * @param profits - 所有账户的月度收益数据
+ * @returns 按月份聚合的月度收益数组（每个月一条记录）
+ */
+export function aggregateMonthlyProfitsByMonth(profits: MonthlyProfit[]): MonthlyProfit[] {
+  // 按月份分组
+  const monthlyGroups = new Map<string, MonthlyProfit[]>()
+
+  profits.forEach((profit) => {
+    const monthKey = `${profit.year}-${String(profit.month).padStart(2, '0')}`
+    if (!monthlyGroups.has(monthKey)) {
+      monthlyGroups.set(monthKey, [])
+    }
+    monthlyGroups.get(monthKey)!.push(profit)
+  })
+
+  // 对每个月进行汇总
+  const aggregatedProfits: MonthlyProfit[] = []
+
+  Array.from(monthlyGroups.entries())
+    .sort((a, b) => a[0].localeCompare(b[0])) // 按月份排序
+    .forEach(([monthKey, monthProfits]) => {
+      const [yearStr, monthStr] = monthKey.split('-')
+      const year = parseInt(yearStr)
+      const month = parseInt(monthStr)
+
+      // 汇总所有账户的数据
+      const startBalance = monthProfits.reduce((sum, p) => sum + p.startBalance, 0)
+      const endBalance = monthProfits.reduce((sum, p) => sum + p.endBalance, 0)
+      const calculatedProfit = monthProfits.reduce((sum, p) => sum + p.calculatedProfit, 0)
+      const periodIncome = monthProfits.reduce((sum, p) => sum + p.periodIncome, 0)
+      const periodExpense = monthProfits.reduce((sum, p) => sum + p.periodExpense, 0)
+      const netFlow = periodIncome - periodExpense
+
+      // 计算加权平均收益率
+      const weightedProfitRate =
+        startBalance > 0
+          ? monthProfits.reduce((sum, p) => {
+              const weight = p.startBalance / startBalance
+              return sum + (p.profitRate || 0) * weight
+            }, 0)
+          : 0
+
+      // 检查是否所有账户都有完整数据
+      const hasCompleteData = monthProfits.every((p) => p.hasCompleteData)
+
+      aggregatedProfits.push({
+        accountId: 'all',
+        accountName: '全部账户',
+        year,
+        month,
+        startBalance,
+        endBalance,
+        calculatedProfit,
+        periodIncome,
+        periodExpense,
+        netFlow,
+        profitRate: weightedProfitRate,
+        hasCompleteData,
+      })
+    })
+
+  return aggregatedProfits
 }
 
 /**
@@ -402,10 +661,7 @@ export function getRecentMonthlyProfits(
 /**
  * 计算总收益（用于仪表板统计）
  */
-export function calculateTotalProfit(
-  transactions: Transaction[],
-  accounts: Account
-): number {
+export function calculateTotalProfit(transactions: Transaction[], accounts: Account): number {
   const profits = calculateAccountMonthlyProfits(transactions, accounts)
   return profits.reduce((sum, profit) => sum + profit.calculatedProfit, 0)
 }
@@ -413,10 +669,7 @@ export function calculateTotalProfit(
 /**
  * 获取收益最高的月份
  */
-export function getBestMonth(
-  transactions: Transaction[],
-  account: Account
-): MonthlyProfit | null {
+export function getBestMonth(transactions: Transaction[], account: Account): MonthlyProfit | null {
   const profits = calculateAccountMonthlyProfits(transactions, account)
 
   if (profits.length === 0) return null
@@ -429,10 +682,7 @@ export function getBestMonth(
 /**
  * 获取收益最低的月份
  */
-export function getWorstMonth(
-  transactions: Transaction[],
-  account: Account
-): MonthlyProfit | null {
+export function getWorstMonth(transactions: Transaction[], account: Account): MonthlyProfit | null {
   const profits = calculateAccountMonthlyProfits(transactions, account)
 
   if (profits.length === 0) return null
@@ -463,9 +713,7 @@ export function getCurrentMonthProfitSummary(
   const allProfits = calculateMonthlyProfits(transactions, accounts)
 
   // 筛选当月数据
-  const currentMonthProfits = allProfits.filter(
-    p => p.year === year && p.month === month
-  )
+  const currentMonthProfits = allProfits.filter((p) => p.year === year && p.month === month)
 
   if (currentMonthProfits.length === 0) {
     return {
@@ -478,23 +726,18 @@ export function getCurrentMonthProfitSummary(
   }
 
   // 计算总收益
-  const totalProfit = currentMonthProfits.reduce(
-    (sum, p) => sum + p.calculatedProfit,
-    0
-  )
+  const totalProfit = currentMonthProfits.reduce((sum, p) => sum + p.calculatedProfit, 0)
 
   // 计算加权平均收益率（按月初余额加权）
-  const totalStartBalance = currentMonthProfits.reduce(
-    (sum, p) => sum + p.startBalance,
-    0
-  )
+  const totalStartBalance = currentMonthProfits.reduce((sum, p) => sum + p.startBalance, 0)
 
-  const weightedProfitRate = totalStartBalance > 0
-    ? currentMonthProfits.reduce((sum, p) => {
-        const weight = p.startBalance / totalStartBalance
-        return sum + (p.profitRate || 0) * weight
-      }, 0)
-    : 0
+  const weightedProfitRate =
+    totalStartBalance > 0
+      ? currentMonthProfits.reduce((sum, p) => {
+          const weight = p.startBalance / totalStartBalance
+          return sum + (p.profitRate || 0) * weight
+        }, 0)
+      : 0
 
   return {
     totalProfit,
@@ -583,12 +826,13 @@ export function getDateRangeProfitSummary(
 
   // 计算加权平均收益率
   const totalStartBalance = monthlyData.reduce((sum, m) => sum + m.startBalance, 0)
-  const averageProfitRate = totalStartBalance > 0
-    ? monthlyData.reduce((sum, m) => {
-        const weight = m.startBalance / totalStartBalance
-        return sum + (m.profitRate || 0) * weight
-      }, 0)
-    : 0
+  const averageProfitRate =
+    totalStartBalance > 0
+      ? monthlyData.reduce((sum, m) => {
+          const weight = m.startBalance / totalStartBalance
+          return sum + (m.profitRate || 0) * weight
+        }, 0)
+      : 0
 
   // 找出最佳和最差月份
   const sortedByProfit = [...monthlyData].sort((a, b) => b.calculatedProfit - a.calculatedProfit)
@@ -664,9 +908,8 @@ export function updateAccountBalanceFromSnapshot(
   account?: Account
 ): number {
   // 检查是否有到期转出交易（针对定期存款）
-  const hasMaturityTransferOut = transactions.some(txn =>
-    txn.accountId === accountId &&
-    txn.tags?.includes('到期转出')
+  const hasMaturityTransferOut = transactions.some(
+    (txn) => txn.accountId === accountId && txn.tags?.includes('到期转出')
   )
 
   // 如果有到期转出交易，直接返回0（定期存款已全部转出）
@@ -679,25 +922,29 @@ export function updateAccountBalanceFromSnapshot(
 
   if (latestSnapshot && latestSnapshot.balance !== undefined) {
     // 有月末快照：使用快照余额
-    const snapshotDate = latestSnapshot.createdAt instanceof Date
-      ? latestSnapshot.createdAt
-      : new Date(latestSnapshot.createdAt)
+    const snapshotDate =
+      latestSnapshot.createdAt instanceof Date
+        ? latestSnapshot.createdAt
+        : new Date(latestSnapshot.createdAt)
 
     console.log(`[余额更新] ${account?.name || accountId} - 使用月末快照余额`)
     console.log(`  快照日期: ${snapshotDate.toLocaleDateString('zh-CN')}`)
     console.log(`  快照余额: ${latestSnapshot.balance.toFixed(2)}元`)
 
     // 检查快照之后是否有TRANSFER_IN交易（到期转入）
-    const transfersAfterSnapshot = transactions.filter(txn =>
-      txn.accountId === accountId &&
-      txn.type === TransactionType.TRANSFER_IN &&
-      txn.tags?.includes('到期转入') &&
-      new Date(txn.createdAt) > snapshotDate
+    const transfersAfterSnapshot = transactions.filter(
+      (txn) =>
+        txn.accountId === accountId &&
+        txn.type === TransactionType.TRANSFER_IN &&
+        txn.tags?.includes('到期转入') &&
+        new Date(txn.createdAt) > snapshotDate
     )
 
     if (transfersAfterSnapshot.length > 0) {
       const transferTotal = transfersAfterSnapshot.reduce((sum, txn) => sum + (txn.amount || 0), 0)
-      console.log(`  ⚠️ 快照后有 ${transfersAfterSnapshot.length} 笔到期转入，总额: ${transferTotal.toFixed(2)}元`)
+      console.log(
+        `  ⚠️ 快照后有 ${transfersAfterSnapshot.length} 笔到期转入，总额: ${transferTotal.toFixed(2)}元`
+      )
       console.log(`  快照余额可能不包含这些转入，需要从交易历史重新计算`)
 
       // 重新计算余额
@@ -712,7 +959,8 @@ export function updateAccountBalanceFromSnapshot(
   }
 
   // 无月末快照：基于交易历史重新计算
-  console.log(`[余额更新] ${account?.name || accountId} - 无月末快照，从交易历史计算`)
+  const accountName = account?.name || accountId
+  console.log(`[余额更新] ${accountName} - 无月末快照，从交易历史计算`)
   if (account) {
     const calculatedBalance = calculateBalanceFromHistory(account, transactions)
     console.log(`  计算结果: ${calculatedBalance.toFixed(2)}元`)
@@ -720,7 +968,9 @@ export function updateAccountBalanceFromSnapshot(
   }
 
   // 回退：返回当前余额（如果 account 未提供）
-  console.log(`[余额更新] ${account?.name || accountId} - 无账户对象，使用当前余额: ${currentBalance.toFixed(2)}元`)
+  console.log(
+    `[余额更新] ${accountName} - 无账户对象，使用当前余额: ${currentBalance.toFixed(2)}元`
+  )
   return currentBalance
 }
 
@@ -742,7 +992,7 @@ export function updateAllAccountsFromSnapshots(
       transactions,
       account.id,
       account.balance,
-      account  // 传递整个账户对象
+      account // 传递整个账户对象
     )
 
     // 只记录需要更新的账户
@@ -760,33 +1010,30 @@ export function updateAllAccountsFromSnapshots(
  * @param transactions - 所有交易
  * @returns 计算出的余额
  */
-export function calculateBalanceFromHistory(
-  account: Account,
-  transactions: Transaction[]
-): number {
+export function calculateBalanceFromHistory(account: Account, transactions: Transaction[]): number {
   // 从初始余额开始
   let calculatedBalance = account.initialBalance
 
   // 筛选该账户的所有交易
-  const accountTransactions = transactions.filter(
-    (txn) => txn.accountId === account.id
-  )
+  const accountTransactions = transactions.filter((txn) => txn.accountId === account.id)
 
   console.log(`\n[余额重算] ${account.name}`)
   console.log(`  初始余额: ${calculatedBalance.toFixed(2)}元`)
   console.log(`  交易总数: ${accountTransactions.length}`)
 
   // 按类型分类交易
-  const incomeTxns = accountTransactions.filter(txn =>
-    txn.type === TransactionType.INCOME ||
-    txn.type === TransactionType.DEPOSIT ||
-    txn.type === TransactionType.TRANSFER_IN
+  const incomeTxns = accountTransactions.filter(
+    (txn) =>
+      txn.type === TransactionType.INCOME ||
+      txn.type === TransactionType.DEPOSIT ||
+      txn.type === TransactionType.TRANSFER_IN
   )
 
-  const expenseTxns = accountTransactions.filter(txn =>
-    txn.type === TransactionType.CONSUMPTION ||
-    txn.type === TransactionType.TRANSFER_OUT ||
-    txn.type === TransactionType.LOAN
+  const expenseTxns = accountTransactions.filter(
+    (txn) =>
+      txn.type === TransactionType.CONSUMPTION ||
+      txn.type === TransactionType.TRANSFER_OUT ||
+      txn.type === TransactionType.LOAN
   )
 
   // 计算总收入
@@ -796,15 +1043,19 @@ export function calculateBalanceFromHistory(
   const totalExpense = expenseTxns.reduce((sum, txn) => sum + (txn.amount || 0), 0)
 
   console.log(`  收入类交易: ${incomeTxns.length}笔，总额: ${totalIncome.toFixed(2)}元`)
-  incomeTxns.forEach(txn => {
+  incomeTxns.forEach((txn) => {
     const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-    console.log(`    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`)
+    console.log(
+      `    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`
+    )
   })
 
   console.log(`  支出类交易: ${expenseTxns.length}笔，总额: ${totalExpense.toFixed(2)}元`)
-  expenseTxns.forEach(txn => {
+  expenseTxns.forEach((txn) => {
     const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-    console.log(`    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`)
+    console.log(
+      `    - ${txn.description}: ${txn.amount?.toFixed(2)}元 (${txnDate.toLocaleDateString('zh-CN')}) [${txn.type}]`
+    )
   })
 
   // 最终余额 = 初始余额 + 收入 - 支出
