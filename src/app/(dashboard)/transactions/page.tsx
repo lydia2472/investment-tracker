@@ -17,7 +17,9 @@ import { PlusIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
 
 export default function TransactionsPage() {
-  const transactions = useTransactionStore((state) => state.transactions)
+  const allTransactions = useTransactionStore((state) => state.transactions)
+  // 过滤掉 SNAPSHOT 类型的交易，但保留 TRANSFER_IN 类型
+  const transactions = allTransactions.filter((t) => t.type !== TransactionType.SNAPSHOT)
   const accounts = useAccountStore((state) => state.accounts)
   const { handleDelete } = useTransactionActions()
   const { deleteMultiple } = useTransactionStore((state) => state)
