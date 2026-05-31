@@ -15,6 +15,7 @@ import { TransactionTable } from '@/components/transactions/transaction-table'
 import { useTransactionActions } from '@/hooks/use-transaction-actions'
 import { PlusIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { TransactionType } from '@/types'
 
 export default function TransactionsPage() {
   const allTransactions = useTransactionStore((state) => state.transactions)
