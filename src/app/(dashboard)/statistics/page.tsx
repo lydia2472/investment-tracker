@@ -21,7 +21,7 @@ import { ExchangeRateStatus } from '@/components/exchange-rate/exchange-rate-sta
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
 import { MonthlyIncomeExpenseTable } from '@/components/statistics/monthly-income-expense-table'
-import { useAccountStore, useTransactionStore , useExchangeRateStore } from '@/lib/stores'
+import { useAccountStore, useTransactionStore, useExchangeRateStore, useSnapshotStore } from '@/lib/stores'
 import { getAccountTypeLabel } from '@/lib/utils/account-helpers'
 import {
   groupAccountsByTypeInCNY,
@@ -44,6 +44,7 @@ export default function StatisticsPage() {
   const transactions = useTransactionStore((state) => state.transactions)
   const { rates } = useExchangeRateStore()
   const addTransaction = useTransactionStore((state) => state.addTransaction)
+  const snapshots = useSnapshotStore((state) => state.snapshots)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
   const [autoCreateProfitTxns, setAutoCreateProfitTxns] = useState(true)
 
@@ -147,19 +148,24 @@ export default function StatisticsPage() {
 
     // For each profit, check if a corresponding investment profit transaction exists
     allProfits.forEach((profit) => {
-      // Skip if profit is zero or negative
-      if (profit.calculatedProfit <= 0) return
+      // Skip if profit is zero
+      if (profit.calculatedProfit === 0) return
 
-      // Skip if it's from incomplete data
+      // Skip if it's from incomplete data (no snapshot pair)
       if (!profit.hasCompleteData) return
 
-      // Check if a profit transaction already exists for this month/account
+      // Determine transaction type based on profit sign
+      const txnType = profit.calculatedProfit > 0
+        ? TransactionType.INVESTMENT_PROFIT
+        : TransactionType.INVESTMENT_LOSS
+
+      // Check if a profit/loss transaction already exists for this month/account
       const monthStart = new Date(profit.year, profit.month - 1, 1)
       const monthEnd = endOfMonth(monthStart)
 
       const existingTxn = transactions.find((t) => {
         if (t.accountId !== profit.accountId) return false
-        if (t.type !== TransactionType.INVESTMENT_PROFIT) return false
+        if (t.type !== txnType) return false
         if (!t.createdAt) return false
 
         const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
@@ -167,24 +173,103 @@ export default function StatisticsPage() {
       })
 
       // If no existing transaction, create one
-      if (!existingTxn && profit.calculatedProfit > 0) {
+      if (!existingTxn) {
         const txnDate = monthEnd
         txnDate.setHours(23, 59, 59, 999)
 
+        const absProfit = Math.abs(profit.calculatedProfit)
+        const profitType = profit.calculatedProfit > 0 ? '收益' : '亏损'
+
         addTransaction({
           accountId: profit.accountId,
-          type: TransactionType.INVESTMENT_PROFIT,
-          amount: profit.calculatedProfit,
+          type: txnType,
+          amount: absProfit,
           balance: profit.endBalance,
-          description: `${profit.year}年${profit.month}月投资收益（自动生成）`,
+          description: `${profit.year}年${profit.month}月投资${profitType}（自动生成）`,
           tags: ['投资收益', '自动生成'],
           createdAt: txnDate,
         })
 
-        console.log(`[自动创建] 为 ${profit.accountName} 创建 ${profit.year}年${profit.month}月 收益交易: ${profit.calculatedProfit.toFixed(2)}元`)
+        console.log(`[自动创建] 为 ${profit.accountName} 创建 ${profit.year}年${profit.month}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
       }
     })
   }, [transactions, accounts, autoCreateProfitTxns])
+
+  // Auto-create profit transactions from snapshot-store
+  useEffect(() => {
+    if (!autoCreateProfitTxns) return
+    if (snapshots.length === 0) return
+
+    // Group snapshots by account
+    const snapshotsByAccount = new Map<string, typeof snapshots>()
+    snapshots.forEach((snapshot) => {
+      if (!snapshotsByAccount.has(snapshot.accountId)) {
+        snapshotsByAccount.set(snapshot.accountId, [])
+      }
+      snapshotsByAccount.get(snapshot.accountId)!.push(snapshot)
+    })
+
+    // For each account, calculate profits from snapshots
+    snapshotsByAccount.forEach((accountSnapshots, accountId) => {
+      // Sort by date descending
+      const sortedSnapshots = [...accountSnapshots].sort((a, b) =>
+        new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime()
+      )
+
+      // Calculate profit for each pair of consecutive snapshots
+      for (let i = 0; i < sortedSnapshots.length - 1; i++) {
+        const currentSnapshot = sortedSnapshots[i]
+        const previousSnapshot = sortedSnapshots[i + 1]
+
+        // Calculate profit
+        const profit = currentSnapshot.balance - previousSnapshot.balance
+
+        // Skip if profit is zero
+        if (profit === 0) continue
+
+        // Determine month from previous snapshot date
+        const snapshotDate = new Date(previousSnapshot.snapshotDate)
+        const monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 1)
+        const monthEnd = endOfMonth(monthStart)
+
+        // Determine transaction type
+        const txnType = profit > 0
+          ? TransactionType.INVESTMENT_PROFIT
+          : TransactionType.INVESTMENT_LOSS
+
+        // Check if transaction already exists
+        const existingTxn = transactions.find((t) => {
+          if (t.accountId !== accountId) return false
+          if (t.type !== txnType) return false
+          if (!t.createdAt) return false
+
+          const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
+          return txnDate >= monthStart && txnDate <= monthEnd
+        })
+
+        // Create transaction if doesn't exist
+        if (!existingTxn) {
+          const account = accounts.find((a) => a.id === accountId)
+          const accountName = account?.name || accountId
+
+          const absProfit = Math.abs(profit)
+          const profitType = profit > 0 ? '收益' : '亏损'
+
+          addTransaction({
+            accountId,
+            type: txnType,
+            amount: absProfit,
+            balance: currentSnapshot.balance,
+            description: `${snapshotDate.getFullYear()}年${snapshotDate.getMonth() + 1}月投资${profitType}（从快照自动生成）`,
+            tags: ['投资收益', '快照生成'],
+            createdAt: monthEnd,
+          })
+
+          console.log(`[快照生成] 为 ${accountName} 创建 ${snapshotDate.getFullYear()}年${snapshotDate.getMonth() + 1}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
+        }
+      }
+    })
+  }, [snapshots, accounts, transactions, autoCreateProfitTxns])
 
   // Calculate monthly income/expense data
   const monthlyIncomeExpenseData = useMemo(() => {

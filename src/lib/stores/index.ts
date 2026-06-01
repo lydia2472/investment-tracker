@@ -1,5 +1,6 @@
-export { useAccountStore } from './account-store';
-export { useTransactionStore } from './transaction-store';
-export { useTagStore } from './tag-store';
-export { useExchangeRateStore } from './exchange-rate-store';
-export type { SupportedCurrency } from './exchange-rate-store';
+export { useAccountStore } from './account-store'
+export { useTransactionStore, selectDisplayableTransactions, useDisplayableTransactions } from './transaction-store'
+export { useTagStore } from './tag-store'
+export { useExchangeRateStore } from './exchange-rate-store'
+export { useSnapshotStore } from './snapshot-store'
+export type { SupportedCurrency } from './exchange-rate-store'
