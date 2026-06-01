@@ -50,20 +50,6 @@ export default function StatisticsPage() {
     color: account.color,
   }))
 
-  // Income vs Expense data
-  const totalIncome = transactions
-    .filter((t) => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT)
-    .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-  const totalExpense = transactions
-    .filter((t) => t.type === TransactionType.CONSUMPTION)
-    .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-  const incomeExpenseData = [
-    { name: '总收入', 收入: totalIncome, 支出: 0 },
-    { name: '总支出', 收入: 0, 支出: totalExpense },
-  ]
-
   // Risk distribution data
   const riskDistribution = useMemo(() => {
     const distribution = groupAccountsByRiskInCNY(accounts)
@@ -160,6 +146,21 @@ export default function StatisticsPage() {
     return calculateMonthlyIncomeExpense(filteredTransactions)
   }, [transactions, selectedAccounts])
 
+  // Calculate chart data for bar chart (sorted by month ascending)
+  const incomeExpenseChartData = useMemo(() => {
+    // 按月份升序排序（旧→新）
+    const sortedData = [...monthlyIncomeExpenseData].sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year
+      return a.month - b.month
+    })
+
+    return sortedData.map((item) => ({
+      month: item.monthLabel,
+      收入: item.totalIncome,
+      支出: item.totalExpense,
+    }))
+  }, [monthlyIncomeExpenseData])
+
   // Toggle account selection
   const toggleAccount = (accountId: string) => {
     setSelectedAccounts((prev) => {
@@ -245,9 +246,9 @@ export default function StatisticsPage() {
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={incomeExpenseData}>
+                        <BarChart data={incomeExpenseChartData}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
+                          <XAxis dataKey="month" />
                           <YAxis />
                           <Tooltip
                             formatter={(value: any) => `¥${Number(value ?? 0).toFixed(2)}`}
