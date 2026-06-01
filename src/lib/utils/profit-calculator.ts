@@ -29,11 +29,12 @@ export function isMonthEndSnapshot(transaction: Transaction): boolean {
   const monthEndTags = ['month-end', '月末', '月末快照']
   const hasMonthEndTag = transaction.tags?.some(tag => monthEndTags.includes(tag))
 
-  // 或者检查日期是否是该月的最后一天
+  // 检查日期：月末最后一天 或 每月1日（视为上月月末）
   const date = transaction.createdAt instanceof Date ? transaction.createdAt : new Date(transaction.createdAt)
   const isLastDay = isLastDayOfMonth(date)
+  const isFirstDay = date.getDate() === 1
 
-  return hasMonthEndTag || isLastDay
+  return hasMonthEndTag || isLastDay || isFirstDay
 }
 
 /**
@@ -53,19 +54,31 @@ export function findMonthEndSnapshots(
     // 检查是否有月末标签
     const hasMonthEndTag = txn.tags?.some(tag => monthEndTags.includes(tag))
 
-    // 或者检查日期是否是该月的最后一天
+    // 检查日期：月末最后一天 或 每月1日（视为上月月末）
     const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
     const isLastDay = isLastDayOfMonth(date)
+    const isFirstDay = date.getDate() === 1
 
-    return hasMonthEndTag || isLastDay
+    return hasMonthEndTag || isLastDay || isFirstDay
   })
 
   const map = new Map<string, Transaction>()
   snapshots.forEach((snapshot) => {
     const date =
       snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt)
-    const key = format(date, 'yyyy-MM')
-    map.set(key, snapshot)
+
+    // 如果是每月1日，将其视为上月的月末快照
+    let monthKey: string
+    if (date.getDate() === 1) {
+      // 5月1日的快照 -> 4月的月末快照
+      const prevMonth = new Date(date)
+      prevMonth.setDate(0) // 设置为上月最后一天
+      monthKey = format(prevMonth, 'yyyy-MM')
+    } else {
+      monthKey = format(date, 'yyyy-MM')
+    }
+
+    map.set(monthKey, snapshot)
   })
 
   return map
