@@ -130,7 +130,8 @@ function createHeaderMap(headers: string[]): Map<string, number> {
       map.set('type', index)
     if (normalized === '当前余额' || normalized === '余额' || normalized === 'balance')
       map.set('balance', index)
-    if (normalized === '初始余额' || normalized === 'initialbalance')
+    // 自动修正常见的拼写错误
+    if (normalized === '初始余额' || normalized === 'initialbalance' || normalized === 'initialbal' || normalized === 'initialbar')
       map.set('initialBalance', index)
     if (normalized === '货币' || normalized === 'currency') map.set('currency', index)
     if (normalized === '风险等级' || normalized === '风险' || normalized === 'risklevel')
@@ -161,8 +162,13 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
 
   // CSV 的"当前余额"列 → 系统的 balance
   // CSV 的"初始余额"列 → 系统的 initialBalance
-  const csvBalanceStr = getValue('balance') // CSV的"当前余额"列
+  let csvBalanceStr = getValue('balance') // CSV的"当前余额"列
   const csvInitialBalanceStr = getValue('initialBalance') // CSV的"初始余额"列
+
+  // 如果缺少 balance 列，使用 initialBalance 作为 balance 的值
+  if (!csvBalanceStr && csvInitialBalanceStr) {
+    csvBalanceStr = csvInitialBalanceStr
+  }
 
   const balance = csvBalanceStr ? parseFloat(csvBalanceStr) : 0
   const initialBalance = csvInitialBalanceStr ? parseFloat(csvInitialBalanceStr) : 0
@@ -184,6 +190,14 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     type = AccountType.BANK
   } else if (typeLower === 'cash' || typeLower === '现金') {
     type = AccountType.CASH
+  } else if (typeLower === 'fixed_deposit' || typeLower === '定期存款' || typeLower === 'fixeddeposit') {
+    type = AccountType.FIXED_DEPOSIT
+  } else if (typeLower === 'fund' || typeLower === '基金') {
+    type = AccountType.FUND
+  } else if (typeLower === 'stock' || typeLower === '股票') {
+    type = AccountType.STOCK
+  } else if (typeLower === 'gold' || typeLower === '黄金') {
+    type = AccountType.GOLD
   } else if (typeLower === 'other' || typeLower === '其他') {
     type = AccountType.OTHER
   } else {
@@ -211,8 +225,24 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
 
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined
-    const date = parse(dateStr, 'yyyy-MM-dd HH:mm:ss', new Date())
-    return isValid(date) ? date : undefined
+
+    // Try multiple date formats
+    const formats = [
+      'yyyy-MM-dd HH:mm:ss',
+      'yyyy/M/d H:mm',
+      'yyyy/M/d HH:mm',
+      'yyyy-MM-dd',
+      'yyyy/M/d'
+    ]
+
+    for (const format of formats) {
+      const date = parse(dateStr, format, new Date())
+      if (isValid(date)) {
+        return date
+      }
+    }
+
+    return undefined
   }
 
   const result = {
