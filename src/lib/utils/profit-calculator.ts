@@ -1133,7 +1133,7 @@ export function calculateMonthlyIncomeExpense(
       }
     })
 
-    const totalIncome = income + deposit + investmentProfit
+    const totalIncome = income + deposit
     const totalExpense = consumption + loan
     const netFlow = totalIncome - totalExpense
 
