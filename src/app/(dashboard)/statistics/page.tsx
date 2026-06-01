@@ -1,6 +1,8 @@
 'use client'
 import { Card, Divider , Tabs } from 'animal-island-ui'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { v4 as uuidv4 } from 'uuid'
+import { endOfMonth } from 'date-fns'
 import {
   PieChart,
   Pie,
@@ -41,7 +43,9 @@ export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
   const { rates } = useExchangeRateStore()
+  const addTransaction = useTransactionStore((state) => state.addTransaction)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
+  const [autoCreateProfitTxns, setAutoCreateProfitTxns] = useState(true)
 
   // Account distribution data
   const accountData = accounts.map((account) => ({
@@ -133,6 +137,54 @@ export default function StatisticsPage() {
     // 当选择特定账户时，返回原始数据（由组件内部过滤）
     return allProfits
   }, [transactions, accounts, selectedAccounts])
+
+  // Auto-create profit transactions from snapshots
+  useEffect(() => {
+    if (!autoCreateProfitTxns) return
+
+    // Get all account profits
+    const allProfits = calculateMonthlyProfits(transactions, accounts)
+
+    // For each profit, check if a corresponding investment profit transaction exists
+    allProfits.forEach((profit) => {
+      // Skip if profit is zero or negative
+      if (profit.calculatedProfit <= 0) return
+
+      // Skip if it's from incomplete data
+      if (!profit.hasCompleteData) return
+
+      // Check if a profit transaction already exists for this month/account
+      const monthStart = new Date(profit.year, profit.month - 1, 1)
+      const monthEnd = endOfMonth(monthStart)
+
+      const existingTxn = transactions.find((t) => {
+        if (t.accountId !== profit.accountId) return false
+        if (t.type !== TransactionType.INVESTMENT_PROFIT) return false
+        if (!t.createdAt) return false
+
+        const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
+        return txnDate >= monthStart && txnDate <= monthEnd
+      })
+
+      // If no existing transaction, create one
+      if (!existingTxn && profit.calculatedProfit > 0) {
+        const txnDate = monthEnd
+        txnDate.setHours(23, 59, 59, 999)
+
+        addTransaction({
+          accountId: profit.accountId,
+          type: TransactionType.INVESTMENT_PROFIT,
+          amount: profit.calculatedProfit,
+          balance: profit.endBalance,
+          description: `${profit.year}年${profit.month}月投资收益（自动生成）`,
+          tags: ['投资收益', '自动生成'],
+          createdAt: txnDate,
+        })
+
+        console.log(`[自动创建] 为 ${profit.accountName} 创建 ${profit.year}年${profit.month}月 收益交易: ${profit.calculatedProfit.toFixed(2)}元`)
+      }
+    })
+  }, [transactions, accounts, autoCreateProfitTxns])
 
   // Calculate monthly income/expense data
   const monthlyIncomeExpenseData = useMemo(() => {
