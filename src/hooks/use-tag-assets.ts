@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useAccountStore, useTransactionStore, useTagStore } from '@/lib/stores'
+
+import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { TransactionType } from '@/types'
 
 export interface TagAsset {
@@ -16,7 +17,7 @@ export interface TagAssetsByCurrency {
 }
 
 export interface UseTagAssetsOptions {
-  tagFilter?: string[]  // 可选的标签筛选
+  tagFilter?: string[] // 可选的标签筛选
 }
 
 // 默认颜色列表
@@ -41,29 +42,24 @@ const DEFAULT_COLORS = [
 export function useTagAssets(options?: UseTagAssetsOptions): TagAssetsByCurrency[] {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
-  const defaultTags = useTagStore((state) => state.availableTags)
 
   return useMemo(() => {
     // 1. 获取所有快照交易（用于资产统计）
-    const snapshots = transactions.filter(t =>
-      t.type === TransactionType.SNAPSHOT &&
-      t.tags &&
-      t.tags.length > 0
+    const snapshots = transactions.filter(
+      (t) => t.type === TransactionType.SNAPSHOT && t.tags && t.tags.length > 0
     )
 
     // 2. 为每个账户找到最新的快照
-    const accountLatestSnapshot = new Map<string, typeof snapshots[0]>()
-    snapshots.forEach(snapshot => {
+    const accountLatestSnapshot = new Map<string, (typeof snapshots)[0]>()
+    snapshots.forEach((snapshot) => {
       const existing = accountLatestSnapshot.get(snapshot.accountId)
       if (!existing) {
         accountLatestSnapshot.set(snapshot.accountId, snapshot)
       } else {
-        const existingDate = existing.createdAt instanceof Date
-          ? existing.createdAt
-          : new Date(existing.createdAt)
-        const snapshotDate = snapshot.createdAt instanceof Date
-          ? snapshot.createdAt
-          : new Date(snapshot.createdAt)
+        const existingDate =
+          existing.createdAt instanceof Date ? existing.createdAt : new Date(existing.createdAt)
+        const snapshotDate =
+          snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt)
         if (snapshotDate > existingDate) {
           accountLatestSnapshot.set(snapshot.accountId, snapshot)
         }
@@ -72,7 +68,7 @@ export function useTagAssets(options?: UseTagAssetsOptions): TagAssetsByCurrency
 
     // 3. 按币种分组账户
     const accountsByCurrency = new Map<string, typeof accounts>()
-    accounts.forEach(account => {
+    accounts.forEach((account) => {
       if (!accountsByCurrency.has(account.currency)) {
         accountsByCurrency.set(account.currency, [])
       }
@@ -87,7 +83,7 @@ export function useTagAssets(options?: UseTagAssetsOptions): TagAssetsByCurrency
       const tagAmountMap = new Map<string, number>()
       let totalAssets = 0
 
-      currencyAccounts.forEach(account => {
+      currencyAccounts.forEach((account) => {
         // 查找该账户的最新快照
         const snapshot = accountLatestSnapshot.get(account.id)
 
@@ -133,27 +129,23 @@ export function useTagAssets(options?: UseTagAssetsOptions): TagAssetsByCurrency
 
     // 按币种名称排序
     return result.sort((a, b) => a.currency.localeCompare(b.currency))
-  }, [accounts, transactions, defaultTags, options?.tagFilter])
+  }, [accounts, transactions, options?.tagFilter])
 }
 
 /**
- * 从交易和标签中获取所有可用的标签列表
+ * 从交易记录中获取所有实际使用的标签列表
  */
 export function useAvailableTags(): string[] {
   const transactions = useTransactionStore((state) => state.transactions)
-  const defaultTags = useTagStore((state) => state.availableTags)
 
   return useMemo(() => {
     const tagSet = new Set<string>()
 
-    // 添加默认标签
-    defaultTags.forEach((tag: string) => tagSet.add(tag))
-
-    // 添加交易中使用的标签
-    transactions.forEach(txn => {
+    // 只添加交易中实际使用的标签
+    transactions.forEach((txn) => {
       txn.tags?.forEach((tag: string) => tagSet.add(tag))
     })
 
     return Array.from(tagSet).sort()
-  }, [transactions, defaultTags])
+  }, [transactions])
 }
