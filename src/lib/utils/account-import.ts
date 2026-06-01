@@ -1,8 +1,8 @@
-import { AccountImport, ValidationResult, AccountImportResult, Account } from '@/types'
-import { AccountType, RiskLevel } from '@/types'
-import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
-import { v4 as uuidv4 } from 'uuid'
 import { isValid, parse } from 'date-fns'
+import { v4 as uuidv4 } from 'uuid'
+
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
+import { AccountImport, ValidationResult, AccountImportResult, Account , AccountType, RiskLevel } from '@/types'
 
 /**
  * 解析导入的 JSON 文件内容
@@ -17,6 +17,26 @@ export function parseImportedAccountJSON(content: string): AccountImport[] {
 }
 
 /**
+ * 检测CSV分隔符
+ * 返回检测到的分隔符：逗号、分号或制表符
+ */
+function detectDelimiter(line: string): string {
+  const delimiters = [';', '\t', ',']
+  let maxCount = 0
+  let detected = ','
+
+  for (const delimiter of delimiters) {
+    const count = (line.match(new RegExp(`\\${delimiter}`, 'g')) || []).length
+    if (count > maxCount) {
+      maxCount = count
+      detected = delimiter
+    }
+  }
+
+  return detected
+}
+
+/**
  * 解析 CSV 字符串为账户导入数据
  */
 export function parseImportedAccountCSV(content: string): AccountImport[] {
@@ -25,15 +45,18 @@ export function parseImportedAccountCSV(content: string): AccountImport[] {
     throw new Error('CSV 文件为空或格式无效')
   }
 
+  // 检测分隔符
+  const delimiter = detectDelimiter(lines[0])
+
   // 解析表头
-  const headers = parseCSVLine(lines[0])
+  const headers = parseCSVLine(lines[0], delimiter)
   const headerMap = createHeaderMap(headers)
 
   // 解析数据行
   const accounts: AccountImport[] = []
   for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i])
-    if (values.length === 0 || values.every(v => !v.trim())) continue // 跳过空行
+    const values = parseCSVLine(lines[i], delimiter)
+    if (values.length === 0 || values.every((v) => !v.trim())) continue // 跳过空行
 
     try {
       const account = mapCSVRowToAccountImport(values, headerMap)
@@ -46,7 +69,7 @@ export function parseImportedAccountCSV(content: string): AccountImport[] {
         balance: 0,
         initialBalance: 0,
         currency: '',
-        _parseError: error instanceof Error ? error.message : '未知解析错误'
+        _parseError: error instanceof Error ? error.message : '未知解析错误',
       } as any)
     }
   }
@@ -56,8 +79,10 @@ export function parseImportedAccountCSV(content: string): AccountImport[] {
 
 /**
  * 解析 CSV 行（处理引号包裹的字段）
+ * @param line - CSV行字符串
+ * @param delimiter - 分隔符（默认逗号）
  */
-function parseCSVLine(line: string): string[] {
+function parseCSVLine(line: string, delimiter: string = ','): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
@@ -75,7 +100,7 @@ function parseCSVLine(line: string): string[] {
         // 切换引号状态
         inQuotes = !inQuotes
       }
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       // 字段分隔符
       result.push(current.trim())
       current = ''
@@ -99,14 +124,20 @@ function createHeaderMap(headers: string[]): Map<string, number> {
 
     // 中文映射
     if (normalized === 'id' || normalized === '账户id' || normalized === 'id') map.set('id', index)
-    if (normalized === '账户名称' || normalized === '名称' || normalized === 'name') map.set('name', index)
-    if (normalized === '账户类型' || normalized === '类型' || normalized === 'type') map.set('type', index)
-    if (normalized === '当前余额' || normalized === '余额' || normalized === 'balance') map.set('balance', index)
-    if (normalized === '初始余额' || normalized === 'initialbalance') map.set('initialBalance', index)
+    if (normalized === '账户名称' || normalized === '名称' || normalized === 'name')
+      map.set('name', index)
+    if (normalized === '账户类型' || normalized === '类型' || normalized === 'type')
+      map.set('type', index)
+    if (normalized === '当前余额' || normalized === '余额' || normalized === 'balance')
+      map.set('balance', index)
+    if (normalized === '初始余额' || normalized === 'initialbalance')
+      map.set('initialBalance', index)
     if (normalized === '货币' || normalized === 'currency') map.set('currency', index)
-    if (normalized === '风险等级' || normalized === '风险' || normalized === 'risklevel') map.set('riskLevel', index)
+    if (normalized === '风险等级' || normalized === '风险' || normalized === 'risklevel')
+      map.set('riskLevel', index)
     if (normalized === '描述' || normalized === 'description') map.set('description', index)
-    if (normalized === '主题色' || normalized === '颜色' || normalized === 'color') map.set('color', index)
+    if (normalized === '主题色' || normalized === '颜色' || normalized === 'color')
+      map.set('color', index)
     if (normalized === '图标' || normalized === 'icon') map.set('icon', index)
     if (normalized === '创建时间' || normalized === 'createdat') map.set('createdAt', index)
     if (normalized === '更新时间' || normalized === 'updatedat') map.set('updatedAt', index)
@@ -130,8 +161,8 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
 
   // CSV 的"当前余额"列 → 系统的 balance
   // CSV 的"初始余额"列 → 系统的 initialBalance
-  const csvBalanceStr = getValue('balance')  // CSV的"当前余额"列
-  const csvInitialBalanceStr = getValue('initialBalance')  // CSV的"初始余额"列
+  const csvBalanceStr = getValue('balance') // CSV的"当前余额"列
+  const csvInitialBalanceStr = getValue('initialBalance') // CSV的"初始余额"列
 
   const balance = csvBalanceStr ? parseFloat(csvBalanceStr) : 0
   const initialBalance = csvInitialBalanceStr ? parseFloat(csvInitialBalanceStr) : 0
@@ -196,7 +227,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     icon: icon || undefined,
     riskLevel: riskLevel || undefined,
     createdAt: parseDate(createdAtStr),
-    updatedAt: parseDate(updatedAtStr)
+    updatedAt: parseDate(updatedAtStr),
   }
 
   return result
@@ -268,7 +299,7 @@ export function importAccounts(
 
   // 创建账户名称到账户的映射（不区分大小写）
   const existingAccountsByName = new Map<string, Account>()
-  existingAccounts.forEach(acc => {
+  existingAccounts.forEach((acc) => {
     existingAccountsByName.set(acc.name.toLowerCase(), acc)
   })
 
@@ -319,8 +350,18 @@ export function convertImportedToAccount(data: AccountImport): Account {
     color: data.color || '#F5F0E6',
     icon: data.icon,
     riskLevel: data.riskLevel,
-    createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt ? new Date(data.createdAt) : now),
-    updatedAt: data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt ? new Date(data.updatedAt) : now),
+    createdAt:
+      data.createdAt instanceof Date
+        ? data.createdAt
+        : data.createdAt
+          ? new Date(data.createdAt)
+          : now,
+    updatedAt:
+      data.updatedAt instanceof Date
+        ? data.updatedAt
+        : data.updatedAt
+          ? new Date(data.updatedAt)
+          : now,
   }
 }
 
@@ -333,7 +374,7 @@ export function convertImportedToAccountUpdate(data: AccountImport): Partial<Acc
     name: data.name,
     type: data.type,
     // balance 不更新，保留系统中的当前余额
-    initialBalance: data.initialBalance,  // CSV中的初始余额 → 系统的初始余额
+    initialBalance: data.initialBalance, // CSV中的初始余额 → 系统的初始余额
     currency: data.currency,
     description: data.description || '',
     color: data.color || '#F5F0E6',
