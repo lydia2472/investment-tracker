@@ -23,10 +23,17 @@ import type {
  * 判断交易是否为月末快照
  */
 export function isMonthEndSnapshot(transaction: Transaction): boolean {
-  return (
-    transaction.type === TransactionType.SNAPSHOT &&
-    (transaction.tags?.includes('month-end') ?? false)
-  )
+  if (transaction.type !== TransactionType.SNAPSHOT) return false
+
+  // 检查是否有月末相关标签
+  const monthEndTags = ['month-end', '月末', '月末快照']
+  const hasMonthEndTag = transaction.tags?.some(tag => monthEndTags.includes(tag))
+
+  // 或者检查日期是否是该月的最后一天
+  const date = transaction.createdAt instanceof Date ? transaction.createdAt : new Date(transaction.createdAt)
+  const isLastDay = isLastDayOfMonth(date)
+
+  return hasMonthEndTag || isLastDay
 }
 
 /**
@@ -37,12 +44,21 @@ export function findMonthEndSnapshots(
   transactions: Transaction[],
   accountId: string
 ): Map<string, Transaction> {
-  const snapshots = transactions.filter(
-    (txn) =>
-      txn.accountId === accountId &&
-      txn.type === TransactionType.SNAPSHOT &&
-      (txn.tags?.includes('month-end') ?? false)
-  )
+  const monthEndTags = ['month-end', '月末', '月末快照']
+
+  const snapshots = transactions.filter((txn) => {
+    if (txn.accountId !== accountId) return false
+    if (txn.type !== TransactionType.SNAPSHOT) return false
+
+    // 检查是否有月末标签
+    const hasMonthEndTag = txn.tags?.some(tag => monthEndTags.includes(tag))
+
+    // 或者检查日期是否是该月的最后一天
+    const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+    const isLastDay = isLastDayOfMonth(date)
+
+    return hasMonthEndTag || isLastDay
+  })
 
   const map = new Map<string, Transaction>()
   snapshots.forEach((snapshot) => {
