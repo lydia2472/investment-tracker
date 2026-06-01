@@ -13,6 +13,7 @@ import type {
   Transaction,
   Account,
   MonthlyProfit,
+  MonthlyIncomeExpense,
   SnapshotPair,
   DashboardProfitSummary,
   DateRangeProfitSummary,
@@ -1065,4 +1066,98 @@ export function calculateBalanceFromHistory(account: Account, transactions: Tran
   console.log(`  ----------------------------------------`)
 
   return calculatedBalance
+}
+
+/**
+ * 计算按月汇总的收支明细
+ * @param transactions - 所有交易
+ * @returns 按月分组的收支明细数据
+ */
+export function calculateMonthlyIncomeExpense(
+  transactions: Transaction[]
+): MonthlyIncomeExpense[] {
+  const results: MonthlyIncomeExpense[] = []
+
+  // 按月份分组交易
+  const monthlyGroups = new Map<string, Transaction[]>()
+
+  transactions.forEach((txn) => {
+    // 跳过快照类型
+    if (txn.type === TransactionType.SNAPSHOT) return
+
+    const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+    const monthKey = format(date, 'yyyy-MM')
+    const [year, month] = monthKey.split('-').map(Number)
+
+    if (!monthlyGroups.has(monthKey)) {
+      monthlyGroups.set(monthKey, [])
+    }
+
+    monthlyGroups.get(monthKey)!.push(txn)
+  })
+
+  // 按交易类型分类汇总
+  monthlyGroups.forEach((txnList, monthKey) => {
+    const [year, month] = monthKey.split('-').map(Number)
+
+    let income = 0 // INCOME
+    let deposit = 0 // DEPOSIT
+    let investmentProfit = 0 // INVESTMENT_PROFIT
+    let consumption = 0 // CONSUMPTION
+    let loan = 0 // LOAN
+    let investmentLoss = 0 // INVESTMENT_LOSS
+
+    txnList.forEach((txn) => {
+      const amount = txn.amount || 0
+
+      switch (txn.type) {
+        case TransactionType.INCOME:
+          income += amount
+          break
+        case TransactionType.DEPOSIT:
+          deposit += amount
+          break
+        case TransactionType.INVESTMENT_PROFIT:
+          investmentProfit += amount
+          break
+        case TransactionType.CONSUMPTION:
+          consumption += amount
+          break
+        case TransactionType.LOAN:
+          loan += amount
+          break
+        case TransactionType.INVESTMENT_LOSS:
+          investmentLoss += amount
+          break
+        // 跳过其他类型（TRANSFER_IN, TRANSFER_OUT, TRANSFER 等）
+      }
+    })
+
+    const totalIncome = income + deposit + investmentProfit
+    const totalExpense = consumption + loan + investmentLoss
+    const netFlow = totalIncome - totalExpense
+
+    results.push({
+      year,
+      month,
+      monthLabel: `${year}年${month}月`,
+      income,
+      deposit,
+      investmentProfit,
+      totalIncome,
+      consumption,
+      loan,
+      investmentLoss,
+      totalExpense,
+      netFlow,
+    })
+  })
+
+  // 按月份降序排序（最新月份在前）
+  results.sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year
+    return b.month - a.month
+  })
+
+  return results
 }

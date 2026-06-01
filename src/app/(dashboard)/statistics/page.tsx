@@ -1,21 +1,41 @@
 'use client'
+import { Card, Divider , Tabs } from 'animal-island-ui'
 import { useState, useMemo } from 'react'
-import { useAccountStore, useTransactionStore } from '@/lib/stores'
-import { Card, Divider } from 'animal-island-ui'
-import { Tabs } from 'animal-island-ui'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
+
+import { ExchangeRateStatus } from '@/components/exchange-rate/exchange-rate-status'
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
-import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
-import { TransactionType, RiskLevel, AccountType } from '@/types'
-import { getRiskLevelLabel, getRiskLevelColor, RISK_LEVEL_CONFIG } from '@/lib/utils/risk-level-helpers'
+import { MonthlyIncomeExpenseTable } from '@/components/statistics/monthly-income-expense-table'
+import { useAccountStore, useTransactionStore , useExchangeRateStore } from '@/lib/stores'
 import { getAccountTypeLabel } from '@/lib/utils/account-helpers'
-import { useExchangeRateStore } from '@/lib/stores'
 import {
   groupAccountsByTypeInCNY,
   groupAccountsByRiskInCNY,
 } from '@/lib/utils/currency-conversion-helpers'
-import { ExchangeRateStatus } from '@/components/exchange-rate/exchange-rate-status'
+import {
+  calculateMonthlyProfits,
+  aggregateMonthlyProfitsByMonth,
+  calculateMonthlyIncomeExpense,
+} from '@/lib/utils/profit-calculator'
+import {
+  getRiskLevelLabel,
+  getRiskLevelColor,
+  RISK_LEVEL_CONFIG,
+} from '@/lib/utils/risk-level-helpers'
+import { TransactionType, RiskLevel, AccountType, MonthlyIncomeExpense } from '@/types'
 
 export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -32,11 +52,11 @@ export default function StatisticsPage() {
 
   // Income vs Expense data
   const totalIncome = transactions
-    .filter(t => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT)
+    .filter((t) => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT)
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   const totalExpense = transactions
-    .filter(t => t.type === TransactionType.CONSUMPTION)
+    .filter((t) => t.type === TransactionType.CONSUMPTION)
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   const incomeExpenseData = [
@@ -117,8 +137,28 @@ export default function StatisticsPage() {
 
   // Calculate monthly profits
   const monthlyProfits = useMemo(() => {
-    return calculateMonthlyProfits(transactions, accounts)
-  }, [transactions, accounts])
+    const allProfits = calculateMonthlyProfits(transactions, accounts)
+
+    // 当选择"全部账户"时，按月份汇总
+    if (selectedAccounts.length === 0) {
+      return aggregateMonthlyProfitsByMonth(allProfits)
+    }
+
+    // 当选择特定账户时，返回原始数据（由组件内部过滤）
+    return allProfits
+  }, [transactions, accounts, selectedAccounts])
+
+  // Calculate monthly income/expense data
+  const monthlyIncomeExpenseData = useMemo(() => {
+    // 根据选中的账户筛选交易
+    let filteredTransactions = transactions
+    if (selectedAccounts.length > 0) {
+      filteredTransactions = transactions.filter((t) =>
+        selectedAccounts.includes(t.accountId)
+      )
+    }
+    return calculateMonthlyIncomeExpense(filteredTransactions)
+  }, [transactions, selectedAccounts])
 
   // Toggle account selection
   const toggleAccount = (accountId: string) => {
@@ -136,9 +176,7 @@ export default function StatisticsPage() {
       <ExchangeRateStatus />
       <div>
         <h2 className="text-3xl font-bold tracking-tight">统计分析</h2>
-        <p className="text-muted-foreground">
-          查看您的财务数据和资产趋势
-        </p>
+        <p className="text-muted-foreground">查看您的财务数据和资产趋势</p>
       </div>
 
       <Tabs
@@ -165,7 +203,9 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            label={({ name, percent }) =>
+                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                            }
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -174,7 +214,12 @@ export default function StatisticsPage() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value: any) => [`¥${Number(value ?? 0).toFixed(2)}`, '余额']} />
+                          <Tooltip
+                            formatter={(value: any) => [
+                              `¥${Number(value ?? 0).toFixed(2)}`,
+                              '余额',
+                            ]}
+                          />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
@@ -204,13 +249,27 @@ export default function StatisticsPage() {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis />
-                          <Tooltip formatter={(value: any) => `¥${Number(value ?? 0).toFixed(2)}`} />
+                          <Tooltip
+                            formatter={(value: any) => `¥${Number(value ?? 0).toFixed(2)}`}
+                          />
                           <Legend />
                           <Bar dataKey="收入" fill="#10b981" />
                           <Bar dataKey="支出" fill="#ef4444" />
                         </BarChart>
                       </ResponsiveContainer>
                     )}
+                  </div>
+                </Card>
+
+                <Card color="app-yellow">
+                  <div className="p-6 pb-3">
+                    <h3 className="font-semibold text-lg">月度收支明细</h3>
+                    <p className="text-sm text-muted-foreground">
+                      按月统计收入和支出分类汇总
+                    </p>
+                  </div>
+                  <div className="p-6 pt-0">
+                    <MonthlyIncomeExpenseTable data={monthlyIncomeExpenseData} />
                   </div>
                 </Card>
               </div>
@@ -263,10 +322,7 @@ export default function StatisticsPage() {
                     <h3 className="font-semibold text-lg">收益趋势图</h3>
                   </div>
                   <div className="p-6 pt-0">
-                    <MonthlyProfitChart
-                      data={monthlyProfits}
-                      selectedAccounts={selectedAccounts}
-                    />
+                    <MonthlyProfitChart data={monthlyProfits} selectedAccounts={selectedAccounts} />
                   </div>
                 </Card>
 
@@ -278,10 +334,7 @@ export default function StatisticsPage() {
                     <h3 className="font-semibold text-lg">月度收益详情</h3>
                   </div>
                   <div className="p-6 pt-0">
-                    <MonthlyProfitTable
-                      data={monthlyProfits}
-                      selectedAccounts={selectedAccounts}
-                    />
+                    <MonthlyProfitTable data={monthlyProfits} selectedAccounts={selectedAccounts} />
                   </div>
                 </Card>
               </div>
@@ -309,7 +362,9 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            label={({ name, percent }) =>
+                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                            }
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -318,7 +373,12 @@ export default function StatisticsPage() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value: any) => [`¥${Number(value ?? 0).toFixed(2)}`, '资产']} />
+                          <Tooltip
+                            formatter={(value: any) => [
+                              `¥${Number(value ?? 0).toFixed(2)}`,
+                              '资产',
+                            ]}
+                          />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
@@ -350,7 +410,9 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                            label={({ name, percent }) =>
+                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                            }
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -359,7 +421,12 @@ export default function StatisticsPage() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value: any) => [`¥${Number(value ?? 0).toFixed(2)}`, '资产']} />
+                          <Tooltip
+                            formatter={(value: any) => [
+                              `¥${Number(value ?? 0).toFixed(2)}`,
+                              '资产',
+                            ]}
+                          />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
