@@ -1,8 +1,9 @@
 'use client'
 
+import { Input , Button } from 'animal-island-ui'
 import { useState } from 'react'
-import { Input } from 'animal-island-ui'
-import { Button } from 'animal-island-ui'
+
+import { MultiSelect } from '@/components/ui/multi-select'
 import {
   Select,
   SelectContent,
@@ -10,17 +11,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { SearchableAccountSelect } from '@/components/ui/searchable-account-select'
-import { TransactionType } from '@/types'
-import { useAccountStore } from '@/lib/stores'
 import { useAvailableTags } from '@/hooks/use-tag-assets'
 import { XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
+import { useAccountStore } from '@/lib/stores'
 import { cn } from '@/lib/utils/cn'
-import { MultiSelect } from '@/components/ui/multi-select'
+import { TransactionType } from '@/types'
+
+// 新增类型：支持单个或多个账户ID
+export type AccountFilter = string | string[]
 
 export interface TransactionFilters {
-  accountId?: string
-  type?: TransactionType
+  accountId?: AccountFilter
+  types?: TransactionType[]
   tags?: string[]
   search?: string
   dateRange?: {
@@ -34,10 +36,7 @@ interface TransactionFiltersProps {
   onFiltersChange: (filters: TransactionFilters) => void
 }
 
-export function TransactionFilters({
-  filters,
-  onFiltersChange,
-}: TransactionFiltersProps) {
+export function TransactionFilters({ filters, onFiltersChange }: TransactionFiltersProps) {
   const accounts = useAccountStore((state) => state.accounts)
   const availableTags = useAvailableTags()
 
@@ -62,18 +61,25 @@ export function TransactionFilters({
       <div className="flex flex-wrap gap-2">
         {/* 账户过滤 */}
         <div className="flex items-center gap-1">
-          <SearchableAccountSelect
-            value={filters.accountId}
-            onChange={(value) => {
+          <MultiSelect
+            options={accounts.map((acc) => ({
+              label: acc.name,
+              value: acc.id,
+            }))}
+            value={
+              Array.isArray(filters.accountId)
+                ? filters.accountId
+                : filters.accountId
+                  ? [filters.accountId]
+                  : []
+            }
+            onChange={(accountIds) => {
               onFiltersChange({
                 ...filters,
-                accountId: value || undefined,
+                accountId: accountIds.length > 0 ? accountIds : undefined,
               })
             }}
-            accounts={accounts}
-            placeholder="所有账户"
-            showAllOption={true}
-            allOptionLabel="所有账户"
+            placeholder="选择账户"
             className="w-[140px]"
           />
           {filters.accountId && (
@@ -90,36 +96,27 @@ export function TransactionFilters({
 
         {/* 交易类型过滤 */}
         <div className="flex items-center gap-1">
-          <Select
-            value={filters.type || 'all'}
-            onValueChange={(value) => {
+          <MultiSelect
+            options={[
+              { label: '收入', value: TransactionType.INCOME },
+              { label: '消费', value: TransactionType.CONSUMPTION },
+              { label: '放贷', value: TransactionType.LOAN },
+            ]}
+            value={filters.types || []}
+            onChange={(types) =>
               onFiltersChange({
                 ...filters,
-                type: value === 'all' ? undefined : (value as TransactionType),
+                types: types.length > 0 ? (types as TransactionType[]) : undefined,
               })
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="所有类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">所有类型</SelectItem>
-              <SelectItem value={TransactionType.INCOME}>收入</SelectItem>
-              <SelectItem value={TransactionType.DEPOSIT}>存款</SelectItem>
-              <SelectItem value={TransactionType.TRANSFER_IN}>转入</SelectItem>
-              <SelectItem value={TransactionType.CONSUMPTION}>消费</SelectItem>
-              <SelectItem value={TransactionType.TRANSFER_OUT}>转出</SelectItem>
-              <SelectItem value={TransactionType.LOAN}>放贷</SelectItem>
-              <SelectItem value={TransactionType.TRANSFER}>转账</SelectItem>
-              <SelectItem value={TransactionType.SNAPSHOT}>快照</SelectItem>
-            </SelectContent>
-          </Select>
-          {filters.type && (
+            }
+            placeholder="选择类型"
+          />
+          {filters.types && filters.types.length > 0 && (
             <Button
               type="default"
               size="small"
               className="h-8 w-8 hover:bg-muted/50"
-              onClick={() => clearFilter('type')}
+              onClick={() => clearFilter('types')}
             >
               <XIcon className="h-3 w-3" />
             </Button>
@@ -131,12 +128,14 @@ export function TransactionFilters({
           <MultiSelect
             options={availableTags}
             value={filters.tags || []}
-            onChange={(tags) => onFiltersChange({
-              ...filters,
-              tags: tags.length > 0 ? tags : undefined
-            })}
+            onChange={(tags) =>
+              onFiltersChange({
+                ...filters,
+                tags: tags.length > 0 ? tags : undefined,
+              })
+            }
             placeholder="选择标签"
-            specialOption={{ value: "__BLANK__", label: "无标签" }}
+            specialOption={{ value: '__BLANK__', label: '无标签' }}
           />
           {filters.tags && filters.tags.length > 0 && (
             <Button
@@ -156,16 +155,16 @@ export function TransactionFilters({
             type="date"
             value={filters.dateRange?.from ? formatToDateInput(filters.dateRange.from) : ''}
             onChange={(e) => {
-              const from = e.target.value ? (() => {
-                // 使用本地时区的午夜时间，避免UTC时区问题
-                const [year, month, day] = e.target.value.split('-').map(Number)
-                return new Date(year, month - 1, day, 0, 0, 0)
-              })() : undefined
+              const from = e.target.value
+                ? (() => {
+                    // 使用本地时区的午夜时间，避免UTC时区问题
+                    const [year, month, day] = e.target.value.split('-').map(Number)
+                    return new Date(year, month - 1, day, 0, 0, 0)
+                  })()
+                : undefined
               onFiltersChange({
                 ...filters,
-                dateRange: from
-                  ? { from, to: filters.dateRange?.to || new Date() }
-                  : undefined,
+                dateRange: from ? { from, to: filters.dateRange?.to || new Date() } : undefined,
               })
             }}
             className="w-[140px]"
@@ -175,16 +174,16 @@ export function TransactionFilters({
             type="date"
             value={filters.dateRange?.to ? formatToDateInput(filters.dateRange.to) : ''}
             onChange={(e) => {
-              const to = e.target.value ? (() => {
-                // 使用本地时区的午夜时间，避免UTC时区问题
-                const [year, month, day] = e.target.value.split('-').map(Number)
-                return new Date(year, month - 1, day, 0, 0, 0)
-              })() : undefined
+              const to = e.target.value
+                ? (() => {
+                    // 使用本地时区的午夜时间，避免UTC时区问题
+                    const [year, month, day] = e.target.value.split('-').map(Number)
+                    return new Date(year, month - 1, day, 0, 0, 0)
+                  })()
+                : undefined
               onFiltersChange({
                 ...filters,
-                dateRange: to
-                  ? { from: filters.dateRange?.from || new Date(), to }
-                  : undefined,
+                dateRange: to ? { from: filters.dateRange?.from || new Date(), to } : undefined,
               })
             }}
             className="w-[140px]"
