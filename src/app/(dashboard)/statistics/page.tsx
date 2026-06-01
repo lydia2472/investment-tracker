@@ -211,7 +211,7 @@ export default function StatisticsPage() {
 
     // For each account, calculate profits from snapshots
     snapshotsByAccount.forEach((accountSnapshots, accountId) => {
-      // Sort by date descending
+      // Sort by date descending (newest first)
       const sortedSnapshots = [...accountSnapshots].sort((a, b) =>
         new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime()
       )
@@ -228,16 +228,34 @@ export default function StatisticsPage() {
         if (profit === 0) continue
 
         // Determine month from previous snapshot date
+        // If snapshot is on 1st day (like May 1st), it represents end of previous month (April)
         const snapshotDate = new Date(previousSnapshot.snapshotDate)
-        const monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 1)
-        const monthEnd = endOfMonth(monthStart)
+        let monthStart: Date
+        let monthEnd: Date
+        let year: number
+        let month: number
+
+        if (snapshotDate.getDate() === 1) {
+          // 5月1日的快照代表4月月末
+          monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth() - 1, 1)
+          monthEnd = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 0) // 上月最后一天
+          monthEnd.setHours(23, 59, 59, 999)
+          year = monthStart.getFullYear()
+          month = monthStart.getMonth() + 1 // 1-based month for display
+        } else {
+          // 其他日期使用正常逻辑
+          monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 1)
+          monthEnd = endOfMonth(monthStart)
+          year = snapshotDate.getFullYear()
+          month = snapshotDate.getMonth() + 1
+        }
 
         // Determine transaction type
         const txnType = profit > 0
           ? TransactionType.INVESTMENT_PROFIT
           : TransactionType.INVESTMENT_LOSS
 
-        // Check if transaction already exists
+        // Check if transaction already exists for this month
         const existingTxn = transactions.find((t) => {
           if (t.accountId !== accountId) return false
           if (t.type !== txnType) return false
@@ -260,12 +278,12 @@ export default function StatisticsPage() {
             type: txnType,
             amount: absProfit,
             balance: currentSnapshot.balance,
-            description: `${snapshotDate.getFullYear()}年${snapshotDate.getMonth() + 1}月投资${profitType}（从快照自动生成）`,
+            description: `${year}年${month}月投资${profitType}（从快照自动生成）`,
             tags: ['投资收益', '快照生成'],
             createdAt: monthEnd,
           })
 
-          console.log(`[快照生成] 为 ${accountName} 创建 ${snapshotDate.getFullYear()}年${snapshotDate.getMonth() + 1}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
+          console.log(`[快照生成] 为 ${accountName} 创建 ${year}年${month}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
         }
       }
     })
