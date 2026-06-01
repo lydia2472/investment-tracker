@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { UploadIcon } from '@/lib/components/icon-adapter'
 import { Button } from 'animal-island-ui'
+import { useState, useCallback } from 'react'
+import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
+import { endOfDay, endOfMonth, parse } from 'date-fns'
+
 import {
   Dialog,
   DialogContent,
@@ -11,10 +14,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { parseImportedAccountJSON, parseImportedAccountCSV, importAccounts, convertImportedToAccount, convertImportedToAccountUpdate } from '@/lib/utils/account-import'
-import { useAccountStore } from '@/lib/stores'
+import { UploadIcon } from '@/lib/components/icon-adapter'
+import { useAccountStore, useTransactionStore } from '@/lib/stores'
+import {
+  parseImportedAccountJSON,
+  parseImportedAccountCSV,
+  importAccounts,
+  convertImportedToAccount,
+  convertImportedToAccountUpdate,
+} from '@/lib/utils/account-import'
+
 import type { Account, AccountImportResult } from '@/types'
-import { toast } from 'sonner'
+import { TransactionType } from '@/types'
 
 interface ImportDialogProps {
   trigger?: React.ReactNode
@@ -29,6 +40,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
   const addAccount = useAccountStore((state) => state.addAccount)
   const updateAccount = useAccountStore((state) => state.updateAccount)
+  const addTransaction = useTransactionStore((state) => state.addTransaction)
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -70,7 +82,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         localStorage.removeItem('account-storage')
         toast.info('已清理旧数据缓存')
         // 等待清理完成
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
 
       // 使用 get() 获取最新的 accounts
@@ -88,12 +100,12 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
         // 使用最新的 currentAccounts 创建映射
         const existingAccountsByName = new Map<string, Account>()
-        currentAccounts.forEach(acc => {
+        currentAccounts.forEach((acc) => {
           existingAccountsByName.set(acc.name.toLowerCase(), acc)
         })
 
         importedData.forEach((data, index) => {
-          const hasError = result.errors.some(e => e.index === index)
+          const hasError = result.errors.some((e) => e.index === index)
 
           if (!hasError) {
             const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
@@ -112,24 +124,36 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
               // 等待store更新完成，然后检查并刷新页面
               setTimeout(() => {
                 const store = useAccountStore.getState()
-                const updatedAccount = store.accounts.find(a => a.id === existingAccount.id)
-                console.log(`[导入] ✅ 更新后store中的值:`, updatedAccount ? {
-                  name: updatedAccount.name,
-                  balance: updatedAccount.balance,
-                  initialBalance: updatedAccount.initialBalance,
-                  version: store.version
-                } : '未找到账户')
+                const updatedAccount = store.accounts.find((a) => a.id === existingAccount.id)
+                console.log(
+                  `[导入] ✅ 更新后store中的值:`,
+                  updatedAccount
+                    ? {
+                        name: updatedAccount.name,
+                        balance: updatedAccount.balance,
+                        initialBalance: updatedAccount.initialBalance,
+                        version: store.version,
+                      }
+                    : '未找到账户'
+                )
 
                 // 检查localStorage的值
                 const localStorageData = localStorage.getItem('account-storage')
                 if (localStorageData) {
                   const parsed = JSON.parse(localStorageData)
-                  const storedAccount = parsed.state.accounts.find((a: any) => a.id === existingAccount.id)
-                  console.log(`[导入] 📦 localStorage中的值:`, storedAccount ? {
-                    name: storedAccount.name,
-                    balance: storedAccount.balance,
-                    initialBalance: storedAccount.initialBalance
-                  } : '未找到账户')
+                  const storedAccount = parsed.state.accounts.find(
+                    (a: any) => a.id === existingAccount.id
+                  )
+                  console.log(
+                    `[导入] 📦 localStorage中的值:`,
+                    storedAccount
+                      ? {
+                          name: storedAccount.name,
+                          balance: storedAccount.balance,
+                          initialBalance: storedAccount.initialBalance,
+                        }
+                      : '未找到账户'
+                  )
                 }
 
                 // 强制刷新页面以确保显示最新数据
@@ -144,6 +168,26 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
               // 添加新账户
               const account = convertImportedToAccount(data)
               addAccount(account)
+
+              // 自动创建初始快照，以便计算收益
+              // 使用账户的 createdAt 日期的月末作为快照日期
+              const accountDate = account.createdAt instanceof Date
+                ? account.createdAt
+                : new Date(account.createdAt)
+
+              const snapshotDate = endOfMonth(accountDate)
+              // 设置为月末的最后时刻
+              snapshotDate.setHours(23, 59, 59, 999)
+
+              addTransaction({
+                accountId: account.id,
+                type: TransactionType.SNAPSHOT,
+                balance: account.balance,
+                description: '初始快照（导入时自动创建）',
+                tags: ['month-end', '月末', '初始'],
+                createdAt: snapshotDate,
+              })
+
               addedCount++
             }
           }
@@ -192,10 +236,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button
-            type="default"
-            icon={<UploadIcon className="h-4 w-4" />}
-          >
+          <Button type="default" icon={<UploadIcon className="h-4 w-4" />}>
             导入
           </Button>
         )}
@@ -203,9 +244,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>导入账户数据</DialogTitle>
-          <DialogDescription>
-            选择 JSON 文件以批量导入账户数据
-          </DialogDescription>
+          <DialogDescription>选择 JSON 文件以批量导入账户数据</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -224,9 +263,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
                 hover:file:bg-primary/80"
             />
             {selectedFile && (
-              <div className="text-sm text-muted-foreground">
-                已选择: {selectedFile.name}
-              </div>
+              <div className="text-sm text-muted-foreground">已选择: {selectedFile.name}</div>
             )}
           </div>
 
@@ -277,12 +314,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
             >
               {isProcessing ? '导入中...' : '开始导入'}
             </Button>
-            <Button
-              onClick={handleReset}
-              type="default"
-              disabled={isProcessing}
-              className="flex-1"
-            >
+            <Button onClick={handleReset} type="default" disabled={isProcessing} className="flex-1">
               重置
             </Button>
           </div>
@@ -290,7 +322,10 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           {/* 提示信息 */}
           <div className="text-xs text-muted-foreground space-y-1">
             <div>• 支持的文件格式: JSON、CSV</div>
-            <div>• 必填字段: name（账户名称）、type（账户类型）、balance（余额）、initialBalance（初始余额）、currency（货币）</div>
+            <div>
+              • 必填字段:
+              name（账户名称）、type（账户类型）、balance（余额）、initialBalance（初始余额）、currency（货币）
+            </div>
             <div>• 同名账户将被更新，其他账户将被新增</div>
           </div>
         </div>
