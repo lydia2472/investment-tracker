@@ -264,10 +264,10 @@ export class FixedDepositService {
       // 付息日就是下个月的同一天
       const paymentDate = nextMonth
 
-      // 检查这个月是否在有效期内（计息起始日 < 截止日期）
-      if (currentDate >= endDate) {
+      // 检查付息日是否超过截止日期
+      if (paymentDate > endDate) {
         console.log(
-          `  ✓ 计息起始日 ${currentDate.toLocaleDateString('zh-CN')} 已达到或超过截止日期 ${endDate.toLocaleDateString('zh-CN')}，停止生成利息`
+          `  ✓ 付息日 ${paymentDate.toLocaleDateString('zh-CN')} 超过截止日期 ${endDate.toLocaleDateString('zh-CN')}，停止生成利息`
         )
         break
       }

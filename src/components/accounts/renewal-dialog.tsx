@@ -1,9 +1,12 @@
 'use client'
 
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Input , Button } from 'animal-island-ui'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import * as z from 'zod'
+
 import {
   Dialog,
   DialogContent,
@@ -27,12 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from 'animal-island-ui'
-import { Button } from 'animal-island-ui'
-import { InterestPaymentFrequency } from '@/types'
 import { FixedDepositRenewalService } from '@/lib/services/fixed-deposit-renewal-service'
 import { useAccountStore } from '@/lib/stores/account-store'
-import { toast } from 'sonner'
+import { InterestPaymentFrequency } from '@/types'
+
 import type { Account, FixedDepositConfig } from '@/types'
 
 // 续存配置 Schema
@@ -71,9 +72,12 @@ export function RenewalDialog({
   const lastConfig = toAccount?.fixedDepositConfig
   const defaultValues: RenewalFormData = {
     startDate: new Date(),
-    maturityDate: lastConfig ? calculateDefaultMaturityDate(lastConfig) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 默认1年后
+    maturityDate: lastConfig
+      ? calculateDefaultMaturityDate(lastConfig)
+      : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 默认1年后
     interestRate: lastConfig?.interestRate || 3.5,
-    interestPaymentFrequency: lastConfig?.interestPaymentFrequency || InterestPaymentFrequency.MATURITY,
+    interestPaymentFrequency:
+      lastConfig?.interestPaymentFrequency || InterestPaymentFrequency.MATURITY,
   }
 
   const form = useForm<RenewalFormData>({
@@ -89,8 +93,16 @@ export function RenewalDialog({
     console.log(`  fromAccountId: ${fromAccountId}`)
     console.log(`  toAccountId: ${toAccountId}`)
     console.log(`  amount: ${amount}`)
-    console.log(`  startDate:`, data.startDate instanceof Date ? data.startDate.toLocaleDateString('zh-CN') : data.startDate)
-    console.log(`  maturityDate:`, data.maturityDate instanceof Date ? data.maturityDate.toLocaleDateString('zh-CN') : data.maturityDate)
+    console.log(
+      `  startDate:`,
+      data.startDate instanceof Date ? data.startDate.toLocaleDateString('zh-CN') : data.startDate
+    )
+    console.log(
+      `  maturityDate:`,
+      data.maturityDate instanceof Date
+        ? data.maturityDate.toLocaleDateString('zh-CN')
+        : data.maturityDate
+    )
     console.log(`  interestRate: ${data.interestRate}`)
     console.log(`  interestPaymentFrequency: ${data.interestPaymentFrequency}`)
 
@@ -197,7 +209,9 @@ export function RenewalDialog({
                       <FormControl>
                         <Input
                           type="date"
-                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                          value={
+                            field.value ? new Date(field.value).toISOString().split('T')[0] : ''
+                          }
                           onChange={(e) => {
                             const newDate = e.target.value ? new Date(e.target.value) : new Date()
                             field.onChange(newDate)
@@ -219,8 +233,12 @@ export function RenewalDialog({
                       <FormControl>
                         <Input
                           type="date"
-                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                          value={
+                            field.value ? new Date(field.value).toISOString().split('T')[0] : ''
+                          }
+                          onChange={(e) =>
+                            field.onChange(e.target.value ? new Date(e.target.value) : undefined)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -263,9 +281,13 @@ export function RenewalDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value={InterestPaymentFrequency.MONTHLY}>按月付息</SelectItem>
-                        <SelectItem value={InterestPaymentFrequency.QUARTERLY}>按季度付息</SelectItem>
+                        <SelectItem value={InterestPaymentFrequency.QUARTERLY}>
+                          按季度付息
+                        </SelectItem>
                         <SelectItem value={InterestPaymentFrequency.ANNUALLY}>按年付息</SelectItem>
-                        <SelectItem value={InterestPaymentFrequency.MATURITY}>到期一次还本付息</SelectItem>
+                        <SelectItem value={InterestPaymentFrequency.MATURITY}>
+                          到期一次还本付息
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -274,11 +296,7 @@ export function RenewalDialog({
               />
 
               <DialogFooter className="gap-2">
-                <Button
-                  type="default"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isSubmitting}
-                >
+                <Button type="default" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                   取消
                 </Button>
                 <Button

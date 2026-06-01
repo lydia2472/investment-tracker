@@ -17,11 +17,7 @@ interface AccountCardGridProps {
 
 export function AccountCardGrid({ accountProfits }: AccountCardGridProps) {
   if (accountProfits.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        暂无账户收益数据
-      </div>
-    )
+    return <div className="text-center py-12 text-muted-foreground">暂无账户收益数据</div>
   }
 
   return (

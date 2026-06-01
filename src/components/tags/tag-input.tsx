@@ -1,10 +1,11 @@
 'use client'
 
 import * as React from 'react'
+
 import { TagBadge } from '@/components/ui/tag-badge'
+import { PlusIcon, TrashIcon } from '@/lib/components/icon-adapter'
 import { useTagStore } from '@/lib/stores'
 import { cn } from '@/lib/utils/cn'
-import { PlusIcon, TrashIcon } from '@/lib/components/icon-adapter'
 
 interface TagInputProps {
   value: string[]
@@ -33,8 +34,9 @@ export function TagInput({
   const suggestions = React.useMemo(() => {
     const query = inputValue.toLowerCase().trim()
     return availableTags.filter(
-      (tag) => !value.includes(tag) &&  // 排除已选标签
-              (query === '' || tag.toLowerCase().includes(query))  // 无输入显示全部，有输入则过滤
+      (tag) =>
+        !value.includes(tag) && // 排除已选标签
+        (query === '' || tag.toLowerCase().includes(query)) // 无输入显示全部，有输入则过滤
     )
   }, [inputValue, availableTags, value])
 
@@ -42,7 +44,7 @@ export function TagInput({
   const showAddNewTagOption = React.useMemo(() => {
     const query = inputValue.toLowerCase().trim()
     const hasInput = query !== ''
-    const hasExactMatch = availableTags.some(tag => tag.toLowerCase() === query)
+    const hasExactMatch = availableTags.some((tag) => tag.toLowerCase() === query)
     return hasInput && !hasExactMatch
   }, [inputValue, availableTags])
 
@@ -62,7 +64,7 @@ export function TagInput({
 
   // Remove tag from global tag store
   const handleRemoveTag = (tag: string, e: React.MouseEvent) => {
-    e.stopPropagation()  // 防止触发添加标签
+    e.stopPropagation() // 防止触发添加标签
     const removeTagFromStore = useTagStore.getState().removeTag
     removeTagFromStore(tag)
     // 如果输入框的值正好是被删除的标签，清空输入框
@@ -133,7 +135,7 @@ export function TagInput({
         onClick={() => {
           if (!disabled) {
             inputRef.current?.focus()
-            setIsOpen(true)  // 点击时展开下拉列表
+            setIsOpen(true) // 点击时展开下拉列表
           }
         }}
       >

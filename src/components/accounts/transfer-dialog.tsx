@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from 'animal-island-ui'
+import { Button , Input } from 'animal-island-ui'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -11,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -18,14 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from 'animal-island-ui'
-import { Label } from '@/components/ui/label'
-import { useTransactionStore } from '@/lib/stores'
-import { useAccountStore } from '@/lib/stores'
-import { toast } from 'sonner'
-import { ArrowRightLeftIcon } from '@/lib/components/icon-adapter'
-import { RenewalDialog } from './renewal-dialog'
+import { ArrowRightLeftIcon, InfoIcon } from '@/lib/components/icon-adapter'
 import { FixedDepositRenewalService } from '@/lib/services/fixed-deposit-renewal-service'
+import { MaturityReminderService } from '@/lib/services/maturity-reminder-service'
+import { useTransactionStore , useAccountStore } from '@/lib/stores'
+import { formatCurrency } from '@/lib/utils/formatters'
+
+import { RenewalDialog } from './renewal-dialog'
 
 interface TransferDialogProps {
   trigger?: React.ReactNode
@@ -48,8 +50,46 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
     amount: number
   } | null>(null)
 
+  // 到期存款转账状态
+  const [isMaturedDeposit, setIsMaturedDeposit] = useState(false)
+  const [maturityDetails, setMaturityDetails] = useState<{
+    principal: number
+    interest: number
+    totalAmount: number
+    maturityDate: Date
+  } | null>(null)
+
   const transfer = useTransactionStore((state) => state.transfer)
   const accounts = useAccountStore((state) => state.accounts)
+
+  // 当转出账户改变时，检查是否是已到期的定期存款
+  useEffect(() => {
+    if (!fromAccount) {
+      setIsMaturedDeposit(false)
+      setMaturityDetails(null)
+      return
+    }
+
+    const account = accounts.find((acc) => acc.id === fromAccount)
+    if (!account) {
+      setIsMaturedDeposit(false)
+      setMaturityDetails(null)
+      return
+    }
+
+    const details = MaturityReminderService.getMaturityDetails(account)
+    if (details && MaturityReminderService.isMatured(account)) {
+      setIsMaturedDeposit(true)
+      setMaturityDetails(details)
+      // 自动填充转账金额
+      setAmount(details.totalAmount)
+      // 自动添加描述
+      setDescription(`定期存款到期转出 (${details.maturityDate.toLocaleDateString('zh-CN')})`)
+    } else {
+      setIsMaturedDeposit(false)
+      setMaturityDetails(null)
+    }
+  }, [fromAccount, accounts])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,13 +133,7 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
 
     setIsSubmitting(true)
     try {
-      transfer(
-        fromAccount,
-        toAccount,
-        amount,
-        description || '转账',
-        new Date()
-      )
+      transfer(fromAccount, toAccount, amount, description || '转账', new Date())
 
       const fromAccountData = accounts.find((acc) => acc.id === fromAccount)
       const toAccountData = accounts.find((acc) => acc.id === toAccount)
@@ -154,9 +188,7 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>账户转账</DialogTitle>
-          <DialogDescription>
-            在两个账户之间转账资金
-          </DialogDescription>
+          <DialogDescription>在两个账户之间转账资金</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -204,9 +236,47 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
             </Select>
           </div>
 
+          {/* 到期明细（仅当转出账户是已到期的定期存款时显示） */}
+          {isMaturedDeposit && maturityDetails && (
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border border-orange-200 dark:border-orange-900 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-orange-900 dark:text-orange-100">
+                <InfoIcon className="h-4 w-4" />
+                <span>定期存款到期明细</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">本金</span>
+                  <span className="font-medium">{formatCurrency(maturityDetails.principal)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">利息</span>
+                  <span className="font-medium text-green-600">
+                    +{formatCurrency(maturityDetails.interest)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-orange-200 dark:border-orange-800">
+                  <span className="font-semibold text-foreground">总计</span>
+                  <span className="font-bold text-lg text-orange-600">
+                    {formatCurrency(maturityDetails.totalAmount)}
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground text-center pt-1">
+                定期存款到期，建议一次性转出全部金额
+              </div>
+            </div>
+          )}
+
           {/* 转账金额 */}
           <div className="space-y-2">
-            <Label htmlFor="amount">转账金额</Label>
+            <Label htmlFor="amount">
+              转账金额
+              {isMaturedDeposit && (
+                <span className="ml-2 text-xs text-orange-600 font-normal">
+                  (已锁定为本金+利息总额)
+                </span>
+              )}
+            </Label>
             <Input
               id="amount"
               type="number"
@@ -216,7 +286,14 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
               value={amount || ''}
               onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
               required
+              readOnly={isMaturedDeposit}
+              className={isMaturedDeposit ? 'bg-muted cursor-not-allowed' : ''}
             />
+            {isMaturedDeposit && (
+              <p className="text-xs text-muted-foreground">
+                定期存款到期，转账金额已自动计算并锁定
+              </p>
+            )}
           </div>
 
           {/* 描述 */}
@@ -232,11 +309,7 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
           </div>
 
           <DialogFooter>
-            <Button
-              type="default"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
+            <Button type="default" onClick={() => setOpen(false)} disabled={isSubmitting}>
               取消
             </Button>
             <Button

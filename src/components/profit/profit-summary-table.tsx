@@ -8,9 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
-import { cn } from '@/lib/utils/cn'
 import { ArrowUpIcon, ArrowDownIcon } from '@/lib/components/icon-adapter'
+import { cn } from '@/lib/utils/cn'
+import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
 
 interface AccountProfit {
   accountId: string
@@ -30,9 +30,7 @@ export function ProfitSummaryTable({ accountProfits }: ProfitSummaryTableProps) 
     return (
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="text-lg font-semibold mb-4">收益汇总表</h3>
-        <div className="text-center py-8 text-muted-foreground">
-          暂无数据
-        </div>
+        <div className="text-center py-8 text-muted-foreground">暂无数据</div>
       </div>
     )
   }
@@ -56,10 +54,12 @@ export function ProfitSummaryTable({ accountProfits }: ProfitSummaryTableProps) 
             return (
               <TableRow key={account.accountId}>
                 <TableCell className="font-medium">{account.accountName}</TableCell>
-                <TableCell className={cn(
-                  "text-right font-bold",
-                  isPositive ? "text-[#5ec850]" : "text-[#ff6464]"
-                )}>
+                <TableCell
+                  className={cn(
+                    'text-right font-bold',
+                    isPositive ? 'text-[#5ec850]' : 'text-[#ff6464]'
+                  )}
+                >
                   <div className="flex items-center justify-end gap-1">
                     {isPositive ? (
                       <ArrowUpIcon className="h-4 w-4" />
@@ -69,11 +69,14 @@ export function ProfitSummaryTable({ accountProfits }: ProfitSummaryTableProps) 
                     {formatCurrencyCompact(account.totalProfit)}
                   </div>
                 </TableCell>
-                <TableCell className={cn(
-                  "text-right font-bold",
-                  isPositive ? "text-[#5ec850]" : "text-[#ff6464]"
-                )}>
-                  {isPositive ? '+' : ''}{formatPercentage(account.profitRate)}
+                <TableCell
+                  className={cn(
+                    'text-right font-bold',
+                    isPositive ? 'text-[#5ec850]' : 'text-[#ff6464]'
+                  )}
+                >
+                  {isPositive ? '+' : ''}
+                  {formatPercentage(account.profitRate)}
                 </TableCell>
               </TableRow>
             )

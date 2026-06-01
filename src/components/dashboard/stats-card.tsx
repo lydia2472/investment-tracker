@@ -1,9 +1,10 @@
 import { Card } from 'animal-island-ui'
 import { TrendingUp, TrendingDown } from 'lucide-react'
-import { formatCurrencyCompact } from '@/lib/utils/formatters'
+
 import { cn } from '@/lib/utils/cn'
 import { acnhColors, variantToColorKey } from '@/lib/utils/color-mapper'
 import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
+import { formatCurrencyCompact } from '@/lib/utils/formatters'
 
 interface StatsCardProps {
   title: string
@@ -35,13 +36,18 @@ interface StatsCardProps {
  * - brown: #9a835a with white text
  * - warm-peach-pink: #e18c6f with white text
  */
-const mapVariantToCardColor = (variant: string): 'app-yellow' | 'app-green' | 'app-blue' | 'app-red' | 'warm-peach-pink' => {
-  const colorMap: Record<string, 'app-yellow' | 'app-green' | 'app-blue' | 'app-red' | 'warm-peach-pink'> = {
-    gold: 'app-yellow',          // 铃钱金 → app-yellow
-    green: 'app-green',          // 萝卜绿 → app-green
-    blue: 'app-blue',            // 天空蓝 → app-blue
-    red: 'app-red',              // 烂萝卜红 → app-red
-    pink: 'warm-peach-pink',     // 温柔粉 → warm-peach-pink
+const mapVariantToCardColor = (
+  variant: string
+): 'app-yellow' | 'app-green' | 'app-blue' | 'app-red' | 'warm-peach-pink' => {
+  const colorMap: Record<
+    string,
+    'app-yellow' | 'app-green' | 'app-blue' | 'app-red' | 'warm-peach-pink'
+  > = {
+    gold: 'app-yellow', // 铃钱金 → app-yellow
+    green: 'app-green', // 萝卜绿 → app-green
+    blue: 'app-blue', // 天空蓝 → app-blue
+    red: 'app-red', // 烂萝卜红 → app-red
+    pink: 'warm-peach-pink', // 温柔粉 → warm-peach-pink
   }
   return colorMap[variant] || 'app-blue'
 }
@@ -70,7 +76,7 @@ export function StatsCard({
   icon: Icon,
   description,
   variant = 'green',
-  trend
+  trend,
 }: StatsCardProps) {
   // 使用官方 NookPhone 颜色映射，移除自定义渐变
   const cardColor = mapVariantToCardColor(variant)
@@ -79,10 +85,7 @@ export function StatsCard({
   const textColor = useDarkText ? '#725d42' : '#fff'
 
   return (
-    <Card
-      color={cardColor}
-      className="group"
-    >
+    <Card color={cardColor} className="group">
       {/* 标题栏 */}
       <div className="flex flex-row items-center justify-between p-6 pb-2">
         <h3 className="text-sm font-semibold" style={{ color: textColor }}>
@@ -102,7 +105,7 @@ export function StatsCard({
           className="text-3xl font-black"
           style={{
             color: textColor,
-            letterSpacing: '0.02em'
+            letterSpacing: '0.02em',
           }}
         >
           💰 {formatCurrencyCompact(value)}
@@ -113,7 +116,7 @@ export function StatsCard({
             className="text-xs mt-2"
             style={{
               color: useDarkText ? '#725d42' : 'rgba(255,255,255,0.8)',
-              fontWeight: 500
+              fontWeight: 500,
             }}
           >
             {description}
@@ -124,15 +127,15 @@ export function StatsCard({
         {trend && (
           <div
             className={cn(
-              "flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-xl w-fit transition-all",
+              'flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-xl w-fit transition-all',
               trend.isPositive
-                ? "bg-[var(--animal-success)] text-white"
-                : "bg-[var(--animal-error)] text-white"
+                ? 'bg-[var(--animal-success)] text-white'
+                : 'bg-[var(--animal-error)] text-white'
             )}
             style={{
               boxShadow: trend.isPositive
                 ? '0 3px 0 0 var(--animal-success-active)'
-                : '0 3px 0 0 var(--animal-error-active)'
+                : '0 3px 0 0 var(--animal-error-active)',
             }}
           >
             {trend.isPositive ? (

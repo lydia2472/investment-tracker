@@ -1,8 +1,10 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Input , Button } from 'animal-island-ui'
+import { useForm } from 'react-hook-form'
 import * as z from 'zod'
+
 import {
   Form,
   FormControl,
@@ -11,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { IconPicker } from '@/components/ui/icon-picker'
 import {
   Select,
   SelectContent,
@@ -18,44 +21,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from 'animal-island-ui'
-import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
-import { IconPicker } from '@/components/ui/icon-picker'
-import { AccountType, RiskLevel, FixedDepositConfig, InterestPaymentFrequency, EarlyWithdrawalRule } from '@/types'
-import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
-import { formatCurrency } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils/formatters'
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
+import {
+  AccountType,
+  RiskLevel,
+  FixedDepositConfig,
+  InterestPaymentFrequency,
+  EarlyWithdrawalRule,
+} from '@/types'
 
 // 本地 schema 定义，避免类型推断问题
-const accountFormSchema = z.object({
-  name: z.string().min(1, '账户名称必填'),
-  type: z.nativeEnum(AccountType),
-  initialBalance: z.number().min(0, '初始余额不能为负'),
-  currency: z.string().min(1, '货币必填'),
-  riskLevel: z.nativeEnum(RiskLevel),
-  icon: z.string().optional(),
-  description: z.string().optional(),
-  // 定期存款配置（可选，当 type 为 FIXED_DEPOSIT 时使用）
-  fixedDepositConfig: z.object({
-    interestRate: z.number().min(0).max(100, '年利率必须在0-100之间'),
-    startDate: z.date(),
-    maturityDate: z.date(),
-    interestPaymentFrequency: z.nativeEnum(InterestPaymentFrequency),
-    principal: z.number().min(0, '本金不能为负'),
-    autoRollOver: z.boolean(),
-    earlyWithdrawalRule: z.nativeEnum(EarlyWithdrawalRule).optional(),
-  }).optional(),
-}).refine((data) => {
-  // 当账户类型为定期存款时，必须填写配置
-  if (data.type === AccountType.FIXED_DEPOSIT && !data.fixedDepositConfig) {
-    return false
-  }
-  return true
-}, {
-  message: '定期存款账户必须填写配置信息',
-  path: ['fixedDepositConfig']
-})
+const accountFormSchema = z
+  .object({
+    name: z.string().min(1, '账户名称必填'),
+    type: z.nativeEnum(AccountType),
+    initialBalance: z.number().min(0, '初始余额不能为负'),
+    currency: z.string().min(1, '货币必填'),
+    riskLevel: z.nativeEnum(RiskLevel),
+    icon: z.string().optional(),
+    description: z.string().optional(),
+    // 定期存款配置（可选，当 type 为 FIXED_DEPOSIT 时使用）
+    fixedDepositConfig: z
+      .object({
+        interestRate: z.number().min(0).max(100, '年利率必须在0-100之间'),
+        startDate: z.date(),
+        maturityDate: z.date(),
+        interestPaymentFrequency: z.nativeEnum(InterestPaymentFrequency),
+        principal: z.number().min(0, '本金不能为负'),
+        autoRollOver: z.boolean(),
+        earlyWithdrawalRule: z.nativeEnum(EarlyWithdrawalRule).optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      // 当账户类型为定期存款时，必须填写配置
+      if (data.type === AccountType.FIXED_DEPOSIT && !data.fixedDepositConfig) {
+        return false
+      }
+      return true
+    },
+    {
+      message: '定期存款账户必须填写配置信息',
+      path: ['fixedDepositConfig'],
+    }
+  )
 
 export type AccountFormData = z.infer<typeof accountFormSchema>
 
@@ -99,7 +112,7 @@ export function AccountForm({
   isSubmitting = false,
   mode = 'create',
   defaultValues,
-  currentBalance
+  currentBalance,
 }: AccountFormProps) {
   const form = useForm<AccountFormData>({
     resolver: zodResolver(accountFormSchema),
@@ -190,14 +203,8 @@ export function AccountForm({
             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               当前余额
             </label>
-            <Input
-              value={formatCurrency(currentBalance)}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              余额通过交易记录自动更新
-            </p>
+            <Input value={formatCurrency(currentBalance)} disabled className="bg-muted" />
+            <p className="text-xs text-muted-foreground">余额通过交易记录自动更新</p>
           </div>
         )}
 
@@ -315,7 +322,9 @@ export function AccountForm({
                       <Input
                         type="date"
                         value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value ? new Date(e.target.value) : undefined)
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -333,7 +342,9 @@ export function AccountForm({
                       <Input
                         type="date"
                         value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value ? new Date(e.target.value) : undefined)
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -358,7 +369,9 @@ export function AccountForm({
                       <SelectItem value={InterestPaymentFrequency.MONTHLY}>按月付息</SelectItem>
                       <SelectItem value={InterestPaymentFrequency.QUARTERLY}>按季度付息</SelectItem>
                       <SelectItem value={InterestPaymentFrequency.ANNUALLY}>按年付息</SelectItem>
-                      <SelectItem value={InterestPaymentFrequency.MATURITY}>到期一次还本付息</SelectItem>
+                      <SelectItem value={InterestPaymentFrequency.MATURITY}>
+                        到期一次还本付息
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -421,10 +434,7 @@ export function AccountForm({
             <FormItem>
               <FormLabel>账户图标（可选）</FormLabel>
               <FormControl>
-                <IconPicker
-                  value={field.value}
-                  onChange={field.onChange}
-                />
+                <IconPicker value={field.value} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -438,11 +448,7 @@ export function AccountForm({
             <FormItem>
               <FormLabel>备注（可选）</FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="添加备注信息..."
-                  className="resize-none"
-                  {...field}
-                />
+                <Textarea placeholder="添加备注信息..." className="resize-none" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

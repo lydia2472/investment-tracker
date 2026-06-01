@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
 import { Button } from 'animal-island-ui'
-import { MonthSelector } from './month-selector'
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { useState, useMemo } from 'react'
+
+import { MonthSelector } from './month-selector'
 
 export interface DateRange {
   startDate?: Date
@@ -33,29 +34,37 @@ export function DateFilterBar({ value, onChange }: DateFilterBarProps) {
     const currentMonthEnd = endOfMonth(now)
 
     // 本月
-    if (value.startDate?.getTime() === currentMonthStart.getTime() &&
-        value.endDate?.getTime() === currentMonthEnd.getTime()) {
+    if (
+      value.startDate?.getTime() === currentMonthStart.getTime() &&
+      value.endDate?.getTime() === currentMonthEnd.getTime()
+    ) {
       return 'current'
     }
 
     // 最近3个月
     const threeMonthsAgo = startOfMonth(subMonths(now, 2))
-    if (value.startDate?.getTime() === threeMonthsAgo.getTime() &&
-        value.endDate?.getTime() === currentMonthEnd.getTime()) {
+    if (
+      value.startDate?.getTime() === threeMonthsAgo.getTime() &&
+      value.endDate?.getTime() === currentMonthEnd.getTime()
+    ) {
       return '3months'
     }
 
     // 最近6个月
     const sixMonthsAgo = startOfMonth(subMonths(now, 5))
-    if (value.startDate?.getTime() === sixMonthsAgo.getTime() &&
-        value.endDate?.getTime() === currentMonthEnd.getTime()) {
+    if (
+      value.startDate?.getTime() === sixMonthsAgo.getTime() &&
+      value.endDate?.getTime() === currentMonthEnd.getTime()
+    ) {
       return '6months'
     }
 
     // 最近1年
     const oneYearAgo = startOfMonth(subMonths(now, 11))
-    if (value.startDate?.getTime() === oneYearAgo.getTime() &&
-        value.endDate?.getTime() === currentMonthEnd.getTime()) {
+    if (
+      value.startDate?.getTime() === oneYearAgo.getTime() &&
+      value.endDate?.getTime() === currentMonthEnd.getTime()
+    ) {
       return '12months'
     }
 
@@ -95,7 +104,9 @@ export function DateFilterBar({ value, onChange }: DateFilterBarProps) {
             key={preset.key}
             type={activePreset === preset.key ? 'primary' : 'default'}
             size="small"
-            className={activePreset === preset.key ? 'bg-[#5ec850]' : 'border-2 border-[#5ec850]/50'}
+            className={
+              activePreset === preset.key ? 'bg-[#5ec850]' : 'border-2 border-[#5ec850]/50'
+            }
             onClick={() => onChange(preset.value)}
           >
             {preset.label}

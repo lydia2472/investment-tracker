@@ -1,9 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
 import { Card } from 'animal-island-ui'
-import { MonthlyProfit } from '@/types'
-import { Account } from '@/types'
+import { useMemo, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -14,12 +12,11 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDownIcon, ChevronRightIcon } from '@/lib/components/icon-adapter'
+import { MonthlyProfit , Account } from '@/types'
+
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
 
 // 数据结构定义
@@ -129,7 +126,9 @@ function transformToMatrix(
     console.log(`  本月月末快照总和: ${data.totalEndBalance.toFixed(2)}`)
     console.log(`  本月转入总和: ${data.totalTransferIn.toFixed(2)}`)
     console.log(`  月度收益: ${data.calculatedProfit.toFixed(2)}`)
-    console.log(`  公式: ${data.totalEndBalance.toFixed(2)} - ${data.totalStartBalance.toFixed(2)} - ${data.totalTransferIn.toFixed(2)}`)
+    console.log(
+      `  公式: ${data.totalEndBalance.toFixed(2)} - ${data.totalStartBalance.toFixed(2)} - ${data.totalTransferIn.toFixed(2)}`
+    )
   })
   console.log(`====================================================\n`)
 
@@ -236,7 +235,9 @@ function CurrencyMonthlyChart({ currency, months, data, symbol }: CurrencyChartP
           </p>
         </div>
         <div className="text-right">
-          <div className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+          <div
+            className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}
+          >
             {formatCurrency(totalProfit, currency)}
           </div>
           <p className="text-xs text-white/70 mt-1">累计收益</p>
@@ -322,7 +323,11 @@ export function CurrencyMonthlyProfitTable({
           const totalProfit = monthlyData.reduce((sum, val) => sum + val, 0)
 
           return (
-            <Collapsible key={currency} open={isExpanded} onOpenChange={() => toggleCurrency(currency)}>
+            <Collapsible
+              key={currency}
+              open={isExpanded}
+              onOpenChange={() => toggleCurrency(currency)}
+            >
               <CollapsibleTrigger className="w-full">
                 {/* 折叠触发器 - 只显示标题和摘要 */}
                 <div className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors cursor-pointer">
@@ -334,13 +339,16 @@ export function CurrencyMonthlyProfitTable({
                         <ChevronRightIcon className="h-5 w-5 text-white/70 transition-transform duration-200" />
                       )}
                       <span className="text-lg font-bold text-white">
-                        {CURRENCY_CONFIG[currency as keyof typeof CURRENCY_CONFIG]?.label || currency}
+                        {CURRENCY_CONFIG[currency as keyof typeof CURRENCY_CONFIG]?.label ||
+                          currency}
                       </span>
                       <span className="text-xs text-white/70">({months.length} 个月数据)</span>
                     </div>
 
                     {/* 累计收益 */}
-                    <span className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    <span
+                      className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}
+                    >
                       {formatCurrency(totalProfit, currency)}
                     </span>
                   </div>
@@ -350,7 +358,12 @@ export function CurrencyMonthlyProfitTable({
               {/* 折叠内容 - 柱状图 */}
               <CollapsibleContent>
                 <div className="mt-2">
-                  <CurrencyMonthlyChart currency={currency} months={months} data={monthlyData} symbol={config?.symbol || currency} />
+                  <CurrencyMonthlyChart
+                    currency={currency}
+                    months={months}
+                    data={monthlyData}
+                    symbol={config?.symbol || currency}
+                  />
                 </div>
               </CollapsibleContent>
             </Collapsible>

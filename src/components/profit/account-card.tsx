@@ -1,10 +1,11 @@
 'use client'
 
 import { Card } from 'animal-island-ui'
+
 import { TrendingUpIcon, TrendingDownIcon, SparklesIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
+import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
 
 interface AccountProfit {
   accountId: string
@@ -26,17 +27,25 @@ export function AccountCard({ data }: AccountCardProps) {
   const iconBgClass = isPositive ? 'bg-[var(--color-profit)]' : 'bg-[var(--color-loss)]'
 
   return (
-    <Card color={cardColor} className={cn("group relative", animationClasses.cardHover, isTopPerformer && "ring-2 ring-[var(--color-bells)]/50")}>
+    <Card
+      color={cardColor}
+      className={cn(
+        'group relative',
+        animationClasses.cardHover,
+        isTopPerformer && 'ring-2 ring-[var(--color-bells)]/50'
+      )}
+    >
       {isTopPerformer && (
-        <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-[var(--color-bells)] flex items-center justify-center shadow-lg" style={{ boxShadow: '0 3px 0 0 var(--color-acorn)' }}>
+        <div
+          className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-[var(--color-bells)] flex items-center justify-center shadow-lg"
+          style={{ boxShadow: '0 3px 0 0 var(--color-acorn)' }}
+        >
           <SparklesIcon className="h-4 w-4 text-white" />
         </div>
       )}
 
       <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <h3 className="text-sm font-semibold text-white">
-          {data.accountName}
-        </h3>
+        <h3 className="text-sm font-semibold text-white">{data.accountName}</h3>
         <div className={cn(iconClasses.container, iconClasses.hover, iconBgClass)}>
           {isPositive ? (
             <TrendingUpIcon className="h-full w-full text-white" />
@@ -57,7 +66,8 @@ export function AccountCard({ data }: AccountCardProps) {
         <div>
           <p className="text-xs opacity-80">收益率</p>
           <div className="text-xl font-bold text-white">
-            {isPositive ? '+' : ''}{formatPercentage(data.profitRate)}
+            {isPositive ? '+' : ''}
+            {formatPercentage(data.profitRate)}
           </div>
         </div>
 

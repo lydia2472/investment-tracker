@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { TransactionForm, TransactionFormData } from './transaction-form'
-import { toast } from 'sonner'
+import { useTransactionStore, useAccountStore } from '@/lib/stores'
 import { TransactionType } from '@/types'
+
+import { MonthlyDataForm } from './monthly-data-form'
+import { TransactionForm, TransactionFormData } from './transaction-form'
 
 interface AddTransactionDialogProps {
   trigger?: React.ReactNode
@@ -21,6 +24,7 @@ interface AddTransactionDialogProps {
 export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mode, setMode] = useState<'transaction' | 'monthly'>('transaction')
   const addTransaction = useTransactionStore((state) => state.addTransaction)
   const transfer = useTransactionStore((state) => state.transfer)
   const accounts = useAccountStore((state) => state.accounts)
@@ -40,13 +44,7 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
           return
         }
 
-        transfer(
-          data.fromAccountId,
-          data.toAccountId,
-          data.amount,
-          data.description,
-          data.date
-        )
+        transfer(data.fromAccountId, data.toAccountId, data.amount, data.description, data.date)
 
         const fromAccount = accounts.find((acc) => acc.id === data.fromAccountId)
         const toAccount = accounts.find((acc) => acc.id === data.toAccountId)
@@ -63,7 +61,7 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
           balance: data.balance,
           description: data.description,
           note: data.note,
-          tags: data.tags,  // 新增：标签字段
+          tags: data.tags, // 新增：标签字段
           createdAt: data.date, // 使用 createdAt 存储用户选择的日期
         })
 
@@ -85,26 +83,86 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
 
   const handleCancel = () => {
     setOpen(false)
+    // 重置模式
+    setMode('transaction')
+  }
+
+  const handleMonthlySubmit = async (result: any) => {
+    setIsSubmitting(true)
+    try {
+      console.log('[AddTransactionDialog] 月末数据处理完成:', result)
+
+      // 关闭对话框
+      setOpen(false)
+
+      // 重置模式
+      setMode('transaction')
+    } catch (error) {
+      console.error('[AddTransactionDialog] 月末数据处理失败:', error)
+      toast.error('操作失败', {
+        description: '请检查输入信息后重试',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>添加交易</DialogTitle>
+          <DialogTitle>{mode === 'transaction' ? '添加交易' : '记录月末数据'}</DialogTitle>
           <DialogDescription>
-            记录一笔新的交易或转账
+            {mode === 'transaction'
+              ? '记录一笔新的交易或转账'
+              : '记录月末快照和投资金额，自动计算收益'}
           </DialogDescription>
         </DialogHeader>
-        <TransactionForm
-          mode="add"
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isSubmitting={isSubmitting}
-        />
+
+        {/* 模式切换器 */}
+        <div className="flex gap-2 pb-4 border-b">
+          <button
+            type="button"
+            onClick={() => setMode('transaction')}
+            className={`
+              flex-1 px-4 py-2 rounded-lg font-medium transition-all
+              ${
+                mode === 'transaction'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }
+            `}
+          >
+            普通交易
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('monthly')}
+            className={`
+              flex-1 px-4 py-2 rounded-lg font-medium transition-all
+              ${
+                mode === 'monthly'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }
+            `}
+          >
+            月末数据
+          </button>
+        </div>
+
+        {/* 根据模式显示不同的表单 */}
+        {mode === 'transaction' ? (
+          <TransactionForm
+            mode="add"
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            isSubmitting={isSubmitting}
+          />
+        ) : (
+          <MonthlyDataForm onSubmit={handleMonthlySubmit} isSubmitting={isSubmitting} />
+        )}
       </DialogContent>
     </Dialog>
   )

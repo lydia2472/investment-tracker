@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+
 import { useTransactionStore } from '@/lib/stores'
-import type { Transaction } from '@/types'
 import { TransactionType } from '@/types'
+
+import type { Transaction } from '@/types'
 
 export interface TransactionStats {
   totalCount: number
@@ -26,33 +28,38 @@ export function useTransactionStats(): TransactionStats {
     const totalCount = transactions.length
 
     // 按类型统计数量
-    const incomeCount = transactions.filter(t =>
-      t.type === TransactionType.INCOME ||
-      t.type === TransactionType.DEPOSIT ||
-      t.type === TransactionType.TRANSFER_IN
+    const incomeCount = transactions.filter(
+      (t) =>
+        t.type === TransactionType.INCOME ||
+        t.type === TransactionType.DEPOSIT ||
+        t.type === TransactionType.TRANSFER_IN
     ).length
-    const expenseCount = transactions.filter(t =>
-      t.type === TransactionType.CONSUMPTION ||
-      t.type === TransactionType.TRANSFER_OUT ||
-      t.type === TransactionType.LOAN
+    const expenseCount = transactions.filter(
+      (t) =>
+        t.type === TransactionType.CONSUMPTION ||
+        t.type === TransactionType.TRANSFER_OUT ||
+        t.type === TransactionType.LOAN
     ).length
-    const transferCount = transactions.filter(t =>
-      t.type === TransactionType.TRANSFER_IN ||
-      t.type === TransactionType.TRANSFER_OUT ||
-      t.type === TransactionType.TRANSFER
+    const transferCount = transactions.filter(
+      (t) =>
+        t.type === TransactionType.TRANSFER_IN ||
+        t.type === TransactionType.TRANSFER_OUT ||
+        t.type === TransactionType.TRANSFER
     ).length
-    const snapshotCount = transactions.filter(t => t.type === TransactionType.SNAPSHOT).length
+    const snapshotCount = transactions.filter((t) => t.type === TransactionType.SNAPSHOT).length
 
     // 总收入和总支出
-    const incomeTransactions = transactions.filter(t =>
-      t.type === TransactionType.INCOME ||
-      t.type === TransactionType.DEPOSIT ||
-      t.type === TransactionType.TRANSFER_IN
+    const incomeTransactions = transactions.filter(
+      (t) =>
+        t.type === TransactionType.INCOME ||
+        t.type === TransactionType.DEPOSIT ||
+        t.type === TransactionType.TRANSFER_IN
     )
-    const expenseTransactions = transactions.filter(t =>
-      t.type === TransactionType.CONSUMPTION ||
-      t.type === TransactionType.TRANSFER_OUT ||
-      t.type === TransactionType.LOAN
+    const expenseTransactions = transactions.filter(
+      (t) =>
+        t.type === TransactionType.CONSUMPTION ||
+        t.type === TransactionType.TRANSFER_OUT ||
+        t.type === TransactionType.LOAN
     )
 
     const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0)

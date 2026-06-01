@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+
 import { XIcon } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils/cn'
 
@@ -11,12 +12,7 @@ interface TagBadgeProps {
   className?: string
 }
 
-export function TagBadge({
-  tag,
-  onRemove,
-  variant = 'default',
-  className,
-}: TagBadgeProps) {
+export function TagBadge({ tag, onRemove, variant = 'default', className }: TagBadgeProps) {
   return (
     <span
       className={cn(
@@ -24,8 +20,7 @@ export function TagBadge({
         'transition-colors duration-200',
         {
           'bg-purple-100 text-purple-800': variant === 'default',
-          'bg-gray-100 text-gray-800 border border-gray-300':
-            variant === 'secondary',
+          'bg-gray-100 text-gray-800 border border-gray-300': variant === 'secondary',
           'border border-foreground/20': variant === 'outline',
         },
         onRemove && 'pr-1',

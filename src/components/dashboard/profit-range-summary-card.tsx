@@ -1,8 +1,15 @@
 'use client'
 
 import { Card } from 'animal-island-ui'
-import { TrendingUpIcon, TrendingDownIcon, CalendarIcon, TrophyIcon } from '@/lib/components/icon-adapter'
+
+import {
+  TrendingUpIcon,
+  TrendingDownIcon,
+  CalendarIcon,
+  TrophyIcon,
+} from '@/lib/components/icon-adapter'
 import { formatCurrency, formatPercentage } from '@/lib/utils/formatters'
+
 import type { DateRangeProfitSummary } from '@/types'
 
 interface ProfitRangeSummaryCardProps {
@@ -42,7 +49,8 @@ export function ProfitRangeSummaryCard({ data }: ProfitRangeSummaryCardProps) {
         <div className="flex items-center justify-between">
           <span className="opacity-80">区间总收益</span>
           <div className="text-2xl font-black text-white" style={{ letterSpacing: '0.02em' }}>
-            {isPositive ? '+' : ''}{formatCurrency(data.totalProfit)}
+            {isPositive ? '+' : ''}
+            {formatCurrency(data.totalProfit)}
           </div>
         </div>
 
@@ -72,8 +80,8 @@ export function ProfitRangeSummaryCard({ data }: ProfitRangeSummaryCardProps) {
                 最佳月份
               </p>
               <p className="text-sm font-semibold text-white">
-                {data.bestMonth.year}年{data.bestMonth.month}月
-                ({formatCurrency(data.bestMonth.profit)})
+                {data.bestMonth.year}年{data.bestMonth.month}月 (
+                {formatCurrency(data.bestMonth.profit)})
               </p>
             </div>
           )}
@@ -81,8 +89,8 @@ export function ProfitRangeSummaryCard({ data }: ProfitRangeSummaryCardProps) {
             <div>
               <p className="text-xs opacity-80">最差月份</p>
               <p className="text-sm font-semibold text-white">
-                {data.worstMonth.year}年{data.worstMonth.month}月
-                ({formatCurrency(data.worstMonth.profit)})
+                {data.worstMonth.year}年{data.worstMonth.month}月 (
+                {formatCurrency(data.worstMonth.profit)})
               </p>
             </div>
           )}

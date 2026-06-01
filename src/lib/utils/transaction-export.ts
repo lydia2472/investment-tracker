@@ -1,17 +1,15 @@
-import { Transaction, Account, TransactionType } from '@/types'
 import { format } from 'date-fns'
+
+import { Transaction, Account, TransactionType } from '@/types'
 
 /**
  * 将交易数据导出为 JSON 格式（包含账户名称）
  */
-export function exportTransactionsToJSON(
-  transactions: Transaction[],
-  accounts: Account[]
-): string {
+export function exportTransactionsToJSON(transactions: Transaction[], accounts: Account[]): string {
   // 创建账户ID到名称的映射
-  const accountMap = new Map(accounts.map(acc => [acc.id, acc.name]))
+  const accountMap = new Map(accounts.map((acc) => [acc.id, acc.name]))
 
-  const data = transactions.map(txn => {
+  const data = transactions.map((txn) => {
     // 解构并排除 balance 字段
     const { balance, ...txnWithoutBalance } = txn
 
@@ -21,18 +19,14 @@ export function exportTransactionsToJSON(
       accountName: accountMap.get(txn.accountId) || '',
       // 添加转账相关账户名称
       transferToAccountName: txn.transferToAccountId
-        ? (accountMap.get(txn.transferToAccountId) || '')
+        ? accountMap.get(txn.transferToAccountId) || ''
         : '',
       transferFromAccountName: txn.transferFromAccountId
-        ? (accountMap.get(txn.transferFromAccountId) || '')
+        ? accountMap.get(txn.transferFromAccountId) || ''
         : '',
       // 日期格式化
-      createdAt: txn.createdAt instanceof Date
-        ? txn.createdAt.toISOString()
-        : txn.createdAt,
-      updatedAt: txn.updatedAt instanceof Date
-        ? txn.updatedAt.toISOString()
-        : txn.updatedAt,
+      createdAt: txn.createdAt instanceof Date ? txn.createdAt.toISOString() : txn.createdAt,
+      updatedAt: txn.updatedAt instanceof Date ? txn.updatedAt.toISOString() : txn.updatedAt,
     }
   })
   return JSON.stringify(data, null, 2)
@@ -41,12 +35,9 @@ export function exportTransactionsToJSON(
 /**
  * 将交易数据导出为 CSV 格式（包含账户名称）
  */
-export function exportTransactionsToCSV(
-  transactions: Transaction[],
-  accounts: Account[]
-): string {
+export function exportTransactionsToCSV(transactions: Transaction[], accounts: Account[]): string {
   // 创建账户ID到名称的映射
-  const accountMap = new Map(accounts.map(acc => [acc.id, acc.name]))
+  const accountMap = new Map(accounts.map((acc) => [acc.id, acc.name]))
 
   // CSV 表头
   const headers = [
@@ -62,11 +53,11 @@ export function exportTransactionsToCSV(
     '备注',
     '标签',
     '创建时间',
-    '更新时间'
+    '更新时间',
   ]
 
   // 将交易数据转换为 CSV 行
-  const rows = transactions.map(txn => {
+  const rows = transactions.map((txn) => {
     const formatDate = (date: Date | string) => {
       const d = date instanceof Date ? date : new Date(date)
       return format(d, 'yyyy-MM-dd HH:mm:ss')
@@ -112,7 +103,7 @@ export function exportTransactionsToCSV(
       escapeCSV(txn.note ?? ''),
       escapeCSV(txn.tags?.join('; ') ?? ''),
       formatDate(txn.createdAt),
-      formatDate(txn.updatedAt)
+      formatDate(txn.updatedAt),
     ].join(',')
   })
 
@@ -131,7 +122,11 @@ export function generateExportFilename(format: 'json' | 'csv' = 'json'): string 
 /**
  * 触发文件下载
  */
-export function downloadFile(content: string, filename: string, mimeType: string = 'application/json'): void {
+export function downloadFile(
+  content: string,
+  filename: string,
+  mimeType: string = 'application/json'
+): void {
   const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

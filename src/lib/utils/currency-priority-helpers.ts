@@ -1,4 +1,5 @@
 import { formatCurrencyCompact } from './formatters'
+
 import type { CurrencyStatistics } from '@/types'
 
 /**
@@ -17,14 +18,14 @@ export function getPriorityCurrency<T extends CurrencyStatistics>(
   }
 
   // 1. 优先查找 CNY（金额必须 > 0）
-  const cnyCurrency = currencies.find(c => c.currency === 'CNY')
+  const cnyCurrency = currencies.find((c) => c.currency === 'CNY')
   if (cnyCurrency && valueExtractor(cnyCurrency) > 0) {
     return cnyCurrency
   }
 
   // 2. CNY 无数据或金额为 0，查找金额最大的货币
   const currencyWithMaxValue = currencies
-    .filter(c => valueExtractor(c) > 0)
+    .filter((c) => valueExtractor(c) > 0)
     .sort((a, b) => valueExtractor(b) - valueExtractor(a))[0]
 
   return currencyWithMaxValue

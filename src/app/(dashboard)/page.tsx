@@ -1,22 +1,24 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useAccountStore, useTransactionStore } from '@/lib/stores'
-import { useAccountStats } from '@/hooks/use-account-stats'
 import { Divider } from 'animal-island-ui'
-import type { DateRange } from '@/components/dashboard/date-filter-bar'
-import { DateFilterBar } from '@/components/dashboard/date-filter-bar'
-import { AccountListPreview } from '@/components/dashboard/account-list-preview'
-import { RecentTransactions } from '@/components/dashboard/recent-transactions'
-import { CurrencyAssetsCard } from '@/components/dashboard/currency-assets-card'
-import { CurrencyIncomeCard } from '@/components/dashboard/currency-income-card'
-import { CurrencyExpenseCard } from '@/components/dashboard/currency-expense-card'
-import { CurrencyProfitCard } from '@/components/dashboard/currency-profit-card'
-import { CurrencyAssetTrendChart } from '@/components/dashboard/currency-asset-trend-chart'
+import { useMemo, useState } from 'react'
+
 import { AccountDetailDialog } from '@/components/dashboard/account-detail-dialog'
-import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
+import { AccountListPreview } from '@/components/dashboard/account-list-preview'
+import { CurrencyAssetTrendChart } from '@/components/dashboard/currency-asset-trend-chart'
+import { CurrencyAssetsCard } from '@/components/dashboard/currency-assets-card'
+import { CurrencyExpenseCard } from '@/components/dashboard/currency-expense-card'
+import { CurrencyIncomeCard } from '@/components/dashboard/currency-income-card'
+import { CurrencyProfitCard } from '@/components/dashboard/currency-profit-card'
+import { DateFilterBar } from '@/components/dashboard/date-filter-bar'
+import { RecentTransactions } from '@/components/dashboard/recent-transactions'
+import { useAccountStats } from '@/hooks/use-account-stats'
+import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { groupByCurrency } from '@/lib/utils/currency-helpers'
 import { calculateProfitsByCurrency } from '@/lib/utils/currency-profit-helpers'
+import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
+
+import type { DateRange } from '@/components/dashboard/date-filter-bar'
 import type { Account } from '@/types'
 
 export default function DashboardPage() {
@@ -51,12 +53,13 @@ export default function DashboardPage() {
 
       const totalProfit = allProfits.reduce((sum, p) => sum + p.calculatedProfit, 0)
       const totalStartBalance = allProfits.reduce((sum, p) => sum + p.startBalance, 0)
-      const weightedProfitRate = totalStartBalance > 0
-        ? allProfits.reduce((sum, p) => {
-            const weight = p.startBalance / totalStartBalance
-            return sum + (p.profitRate || 0) * weight
-          }, 0)
-        : 0
+      const weightedProfitRate =
+        totalStartBalance > 0
+          ? allProfits.reduce((sum, p) => {
+              const weight = p.startBalance / totalStartBalance
+              return sum + (p.profitRate || 0) * weight
+            }, 0)
+          : 0
 
       return {
         totalProfit,
@@ -88,12 +91,13 @@ export default function DashboardPage() {
 
       const totalProfit = filteredProfits.reduce((sum, p) => sum + p.calculatedProfit, 0)
       const totalStartBalance = filteredProfits.reduce((sum, p) => sum + p.startBalance, 0)
-      const weightedProfitRate = totalStartBalance > 0
-        ? filteredProfits.reduce((sum, p) => {
-            const weight = p.startBalance / totalStartBalance
-            return sum + (p.profitRate || 0) * weight
-          }, 0)
-        : 0
+      const weightedProfitRate =
+        totalStartBalance > 0
+          ? filteredProfits.reduce((sum, p) => {
+              const weight = p.startBalance / totalStartBalance
+              return sum + (p.profitRate || 0) * weight
+            }, 0)
+          : 0
 
       return {
         totalProfit,
@@ -109,7 +113,7 @@ export default function DashboardPage() {
       accounts,
       undefined,
       undefined,
-      dateRange                               // 传递日期范围
+      dateRange // 传递日期范围
     )
   }, [monthlyProfits, accounts, dateRange])
 
@@ -120,7 +124,7 @@ export default function DashboardPage() {
       if (!dateRange?.startDate && !dateRange?.endDate) {
         return transactions
       }
-      return transactions.filter(t => {
+      return transactions.filter((t) => {
         const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
         if (dateRange.startDate && txnDate < dateRange.startDate) return false
         if (dateRange.endDate && txnDate > dateRange.endDate) return false
@@ -135,9 +139,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">总览</h2>
-        <p className="text-muted-foreground">
-          查看您的资产概览和最近活动
-        </p>
+        <p className="text-muted-foreground">查看您的资产概览和最近活动</p>
       </div>
 
       {/* 日期筛选栏 */}
@@ -172,14 +174,8 @@ export default function DashboardPage() {
 
       {/* 收入和支出卡片 - 同一行 */}
       <div className="grid gap-4 md:grid-cols-2">
-        <CurrencyIncomeCard
-          data={currencySummary}
-          dateRange={dateRange}
-        />
-        <CurrencyExpenseCard
-          data={currencySummary}
-          dateRange={dateRange}
-        />
+        <CurrencyIncomeCard data={currencySummary} dateRange={dateRange} />
+        <CurrencyExpenseCard data={currencySummary} dateRange={dateRange} />
       </div>
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />

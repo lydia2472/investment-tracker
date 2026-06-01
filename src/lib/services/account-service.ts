@@ -40,19 +40,22 @@ export class AccountService {
     }
 
     const totalAssets = accounts.reduce((sum, acc) => sum + acc.balance, 0)
-    const balances = accounts.map(acc => acc.balance)
+    const balances = accounts.map((acc) => acc.balance)
     const averageBalance = totalAssets / accounts.length
     const maxBalance = Math.max(...balances)
     const minBalance = Math.min(...balances)
 
     // 按类型分组
-    const accountsByType = accounts.reduce((acc, account) => {
-      if (!acc[account.type]) {
-        acc[account.type] = []
-      }
-      acc[account.type].push(account)
-      return acc
-    }, {} as Record<AccountType, Account[]>)
+    const accountsByType = accounts.reduce(
+      (acc, account) => {
+        if (!acc[account.type]) {
+          acc[account.type] = []
+        }
+        acc[account.type].push(account)
+        return acc
+      },
+      {} as Record<AccountType, Account[]>
+    )
 
     return {
       totalAssets,
@@ -68,13 +71,16 @@ export class AccountService {
    * 按类型分组账户
    */
   static groupByType(accounts: Account[]): Record<AccountType, Account[]> {
-    return accounts.reduce((acc, account) => {
-      if (!acc[account.type]) {
-        acc[account.type] = []
-      }
-      acc[account.type].push(account)
-      return acc
-    }, {} as Record<AccountType, Account[]>)
+    return accounts.reduce(
+      (acc, account) => {
+        if (!acc[account.type]) {
+          acc[account.type] = []
+        }
+        acc[account.type].push(account)
+        return acc
+      },
+      {} as Record<AccountType, Account[]>
+    )
   }
 
   /**
@@ -109,7 +115,7 @@ export class AccountService {
    * 根据ID查找账户
    */
   static findById(accounts: Account[], id: string): Account | undefined {
-    return accounts.find(acc => acc.id === id)
+    return accounts.find((acc) => acc.id === id)
   }
 
   /**
@@ -117,9 +123,10 @@ export class AccountService {
    */
   static searchByName(accounts: Account[], query: string): Account[] {
     const lowerQuery = query.toLowerCase()
-    return accounts.filter(acc =>
-      acc.name.toLowerCase().includes(lowerQuery) ||
-      (acc.description && acc.description.toLowerCase().includes(lowerQuery))
+    return accounts.filter(
+      (acc) =>
+        acc.name.toLowerCase().includes(lowerQuery) ||
+        (acc.description && acc.description.toLowerCase().includes(lowerQuery))
     )
   }
 }

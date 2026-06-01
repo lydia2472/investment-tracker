@@ -1,5 +1,6 @@
-import type { Transaction } from '@/types'
 import { TransactionType } from '@/types'
+
+import type { Transaction } from '@/types'
 
 export interface IncomeExpenseResult {
   income: number
@@ -20,17 +21,17 @@ export class TransactionService {
    */
   static calculateIncomeExpense(transactions: Transaction[]): IncomeExpenseResult {
     const income = transactions
-      .filter(t =>
-        t.type === TransactionType.INCOME ||
-        t.type === TransactionType.DEPOSIT ||
-        t.type === TransactionType.TRANSFER_IN
+      .filter(
+        (t) =>
+          t.type === TransactionType.INCOME ||
+          t.type === TransactionType.DEPOSIT ||
+          t.type === TransactionType.TRANSFER_IN
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
     const expense = transactions
-      .filter(t =>
-        t.type === TransactionType.CONSUMPTION ||
-        t.type === TransactionType.TRANSFER_OUT
+      .filter(
+        (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.TRANSFER_OUT
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
@@ -49,7 +50,7 @@ export class TransactionService {
     startDate: Date,
     endDate: Date
   ): Transaction[] {
-    return transactions.filter(txn => {
+    return transactions.filter((txn) => {
       const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
       return txnDate >= startDate && txnDate <= endDate
     })
@@ -59,14 +60,14 @@ export class TransactionService {
    * 按账户过滤交易
    */
   static filterByAccount(transactions: Transaction[], accountId: string): Transaction[] {
-    return transactions.filter(txn => txn.accountId === accountId)
+    return transactions.filter((txn) => txn.accountId === accountId)
   }
 
   /**
    * 按类型过滤交易
    */
   static filterByType(transactions: Transaction[], type: TransactionType): Transaction[] {
-    return transactions.filter(txn => txn.type === type)
+    return transactions.filter((txn) => txn.type === type)
   }
 
   /**
@@ -92,30 +93,36 @@ export class TransactionService {
    * 按日期分组交易（用于图表数据）
    */
   static groupByDate(transactions: Transaction[]): Record<string, Transaction[]> {
-    return transactions.reduce((acc, txn) => {
-      const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-      const dateKey = date.toISOString().split('T')[0]
-      if (!acc[dateKey]) {
-        acc[dateKey] = []
-      }
-      acc[dateKey].push(txn)
-      return acc
-    }, {} as Record<string, Transaction[]>)
+    return transactions.reduce(
+      (acc, txn) => {
+        const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+        const dateKey = date.toISOString().split('T')[0]
+        if (!acc[dateKey]) {
+          acc[dateKey] = []
+        }
+        acc[dateKey].push(txn)
+        return acc
+      },
+      {} as Record<string, Transaction[]>
+    )
   }
 
   /**
    * 按月份分组交易
    */
   static groupByMonth(transactions: Transaction[]): Record<string, Transaction[]> {
-    return transactions.reduce((acc, txn) => {
-      const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      if (!acc[monthKey]) {
-        acc[monthKey] = []
-      }
-      acc[monthKey].push(txn)
-      return acc
-    }, {} as Record<string, Transaction[]>)
+    return transactions.reduce(
+      (acc, txn) => {
+        const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        if (!acc[monthKey]) {
+          acc[monthKey] = []
+        }
+        acc[monthKey].push(txn)
+        return acc
+      },
+      {} as Record<string, Transaction[]>
+    )
   }
 
   /**
@@ -134,18 +141,22 @@ export class TransactionService {
     const dailyBalances: Record<string, number> = {}
     let balance = initialBalance
 
-    sortedTransactions.forEach(txn => {
+    sortedTransactions.forEach((txn) => {
       const date = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
       const dateKey = date.toISOString().split('T')[0]
 
-      if (txn.type === TransactionType.INCOME ||
-          txn.type === TransactionType.DEPOSIT ||
-          txn.type === TransactionType.TRANSFER_IN) {
-        balance += (txn.amount || 0)
-      } else if (txn.type === TransactionType.CONSUMPTION ||
-                 txn.type === TransactionType.TRANSFER_OUT ||
-                 txn.type === TransactionType.LOAN) {
-        balance -= (txn.amount || 0)
+      if (
+        txn.type === TransactionType.INCOME ||
+        txn.type === TransactionType.DEPOSIT ||
+        txn.type === TransactionType.TRANSFER_IN
+      ) {
+        balance += txn.amount || 0
+      } else if (
+        txn.type === TransactionType.CONSUMPTION ||
+        txn.type === TransactionType.TRANSFER_OUT ||
+        txn.type === TransactionType.LOAN
+      ) {
+        balance -= txn.amount || 0
       }
       // 快照不影响总余额
 
@@ -160,9 +171,10 @@ export class TransactionService {
    */
   static search(transactions: Transaction[], query: string): Transaction[] {
     const lowerQuery = query.toLowerCase()
-    return transactions.filter(txn =>
-      txn.description?.toLowerCase().includes(lowerQuery) ||
-      txn.note?.toLowerCase().includes(lowerQuery)
+    return transactions.filter(
+      (txn) =>
+        txn.description?.toLowerCase().includes(lowerQuery) ||
+        txn.note?.toLowerCase().includes(lowerQuery)
     )
   }
 }

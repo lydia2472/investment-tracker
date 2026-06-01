@@ -86,9 +86,7 @@ npm start
     "source.fixAll.eslint": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
-  "tailwindCSS.experimental.classRegex": [
-    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
-  ]
+  "tailwindCSS.experimental.classRegex": [["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]]
 }
 ```
 
@@ -111,6 +109,7 @@ main (主分支)
 **工作流程**:
 
 1. 从 `develop` 创建功能分支
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -118,12 +117,14 @@ main (主分支)
    ```
 
 2. 开发并提交代码
+
    ```bash
    git add .
    git commit -m "feat: 添加数据导出功能"
    ```
 
 3. 推送到远程并创建 Pull Request
+
    ```bash
    git push origin feature/add-export-function
    ```
@@ -141,6 +142,7 @@ main (主分支)
 ```
 
 **类型 (type)**:
+
 - `feat`: 新功能
 - `fix`: Bug 修复
 - `docs`: 文档更新
@@ -655,6 +657,7 @@ Install Command: npm install
 #### 4. 部署
 
 点击 "Deploy" 按钮，Vercel 将自动：
+
 - 安装依赖
 - 运行构建命令
 - 部署到 CDN
@@ -755,7 +758,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -793,11 +796,11 @@ export function exportData() {
   const data = {
     accounts,
     transactions,
-    exportDate: new Date().toISOString()
+    exportDate: new Date().toISOString(),
   }
 
   const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: 'application/json'
+    type: 'application/json',
   })
 
   const url = URL.createObjectURL(blob)
@@ -961,10 +964,10 @@ export const useBudgetStore = create<BudgetState>()(
           id: uuid(),
           createdAt: new Date(),
           updatedAt: new Date(),
-          ...budgetData
+          ...budgetData,
         }
         set((state) => ({
-          budgets: [...state.budgets, budget]
+          budgets: [...state.budgets, budget],
         }))
       },
       // ...
@@ -1169,6 +1172,7 @@ export function SearchInput() {
 **原因**: 浏览器清理缓存或隐身模式
 
 **解决**:
+
 - 提醒用户定期导出备份
 - 实现 IndexedDB 作为辅助存储
 
@@ -1177,6 +1181,7 @@ export function SearchInput() {
 **原因**: 数据为空或组件未正确加载
 
 **解决**:
+
 ```typescript
 if (accounts.length === 0) {
   return <div>暂无数据</div>
@@ -1188,6 +1193,7 @@ if (accounts.length === 0) {
 **原因**: 类型定义不完整或不匹配
 
 **解决**:
+
 ```bash
 # 重新生成类型
 npm run postinstall

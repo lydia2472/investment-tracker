@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   // 静态导出配置（用于 Electron 生产模式）
@@ -14,6 +14,6 @@ const nextConfig: NextConfig = {
 
   // 构建输出目录（Electron 需要）
   distDir: '.next',
-};
+}
 
-export default nextConfig;
+export default nextConfig

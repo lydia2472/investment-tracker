@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
 import { Card } from 'animal-island-ui'
+import { useMemo } from 'react'
 import {
   AreaChart,
   Area,
@@ -12,10 +12,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+
 import { calculateAssetTrend, getCurrencyColor } from '@/lib/utils/asset-trend-helpers'
-import type { MonthlyProfit } from '@/types'
-import type { Account } from '@/types'
+
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
+import type { MonthlyProfit , Account } from '@/types'
 
 // 货币配置
 const CURRENCY_CONFIG = {
@@ -116,7 +117,9 @@ export function CurrencyAssetTrendChart({
                   key={currency}
                   type="monotone"
                   dataKey={currency}
-                  name={CURRENCY_CONFIG[currency as keyof typeof CURRENCY_CONFIG]?.symbol || currency}
+                  name={
+                    CURRENCY_CONFIG[currency as keyof typeof CURRENCY_CONFIG]?.symbol || currency
+                  }
                   stroke={getCurrencyColor(currency)}
                   fill={getCurrencyColor(currency)}
                   fillOpacity={0.3}
@@ -134,7 +137,10 @@ export function CurrencyAssetTrendChart({
             const latestAmount = trendData[trendData.length - 1]?.[currency] || 0
             return (
               <div key={currency} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: getCurrencyColor(currency) }} />
+                <div
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: getCurrencyColor(currency) }}
+                />
                 <span>
                   {config?.label || currency}: {latestAmount.toLocaleString()} {config?.symbol}
                 </span>

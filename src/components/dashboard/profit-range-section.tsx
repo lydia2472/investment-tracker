@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useTransactionStore, useAccountStore } from '@/lib/stores'
-import { getDateRangeProfitSummary } from '@/lib/utils/profit-calculator'
 import { Button } from 'animal-island-ui'
-import { MonthSelector } from './month-selector'
-import { ProfitRangeSummaryCard } from './profit-range-summary-card'
+import { subMonths } from 'date-fns'
+import { useState, useMemo } from 'react'
+
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
-import { subMonths } from 'date-fns'
+import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { getDateRangeProfitSummary } from '@/lib/utils/profit-calculator'
+
+import { MonthSelector } from './month-selector'
+import { ProfitRangeSummaryCard } from './profit-range-summary-card'
 
 export function ProfitRangeSection() {
   const transactions = useTransactionStore((state) => state.transactions)
@@ -55,16 +57,36 @@ export function ProfitRangeSection() {
 
       {/* 预设范围按钮 */}
       <div className="flex flex-wrap gap-2">
-        <Button type="default" size="small" className="border-2 border-[#5ec850]/50" onClick={() => handlePreset(1)}>
+        <Button
+          type="default"
+          size="small"
+          className="border-2 border-[#5ec850]/50"
+          onClick={() => handlePreset(1)}
+        >
           本月
         </Button>
-        <Button type="default" size="small" className="border-2 border-[#5ec850]/50" onClick={() => handlePreset(3)}>
+        <Button
+          type="default"
+          size="small"
+          className="border-2 border-[#5ec850]/50"
+          onClick={() => handlePreset(3)}
+        >
           最近 3 个月
         </Button>
-        <Button type="default" size="small" className="border-2 border-[#5ec850]/50" onClick={() => handlePreset(6)}>
+        <Button
+          type="default"
+          size="small"
+          className="border-2 border-[#5ec850]/50"
+          onClick={() => handlePreset(6)}
+        >
           最近 6 个月
         </Button>
-        <Button type="default" size="small" className="border-2 border-[#5ec850]/50" onClick={() => handlePreset(12)}>
+        <Button
+          type="default"
+          size="small"
+          className="border-2 border-[#5ec850]/50"
+          onClick={() => handlePreset(12)}
+        >
           最近 1 年
         </Button>
       </div>

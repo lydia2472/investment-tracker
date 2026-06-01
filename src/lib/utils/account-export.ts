@@ -1,19 +1,16 @@
-import { Account } from '@/types'
 import { format } from 'date-fns'
+
 import { getRiskLevelLabel } from '@/lib/utils/risk-level-helpers'
+import { Account } from '@/types'
 
 /**
  * 将账户数据导出为 JSON 格式
  */
 export function exportAccountsToJSON(accounts: Account[]): string {
-  const data = accounts.map(acc => ({
+  const data = accounts.map((acc) => ({
     ...acc,
-    createdAt: acc.createdAt instanceof Date
-      ? acc.createdAt.toISOString()
-      : acc.createdAt,
-    updatedAt: acc.updatedAt instanceof Date
-      ? acc.updatedAt.toISOString()
-      : acc.updatedAt,
+    createdAt: acc.createdAt instanceof Date ? acc.createdAt.toISOString() : acc.createdAt,
+    updatedAt: acc.updatedAt instanceof Date ? acc.updatedAt.toISOString() : acc.updatedAt,
   }))
   return JSON.stringify(data, null, 2)
 }
@@ -34,10 +31,10 @@ export function exportAccountsToCSV(accounts: Account[]): string {
     '图标',
     '风险等级',
     '创建时间',
-    '更新时间'
+    '更新时间',
   ]
 
-  const rows = accounts.map(acc => {
+  const rows = accounts.map((acc) => {
     const formatDate = (date: Date | string) => {
       const d = date instanceof Date ? date : new Date(date)
       return format(d, 'yyyy-MM-dd HH:mm:ss')
@@ -63,7 +60,7 @@ export function exportAccountsToCSV(accounts: Account[]): string {
       escapeCSV(acc.icon),
       acc.riskLevel ? getRiskLevelLabel(acc.riskLevel) : '',
       formatDate(acc.createdAt),
-      formatDate(acc.updatedAt)
+      formatDate(acc.updatedAt),
     ].join(',')
   })
 

@@ -11,8 +11,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import type { Account, MonthlyProfit } from '@/types'
+
 import { cn } from '@/lib/utils/cn'
+
+import type { Account, MonthlyProfit } from '@/types'
 
 interface AccountProfitChartProps {
   monthlyProfits: MonthlyProfit[]
@@ -34,7 +36,8 @@ export function AccountProfitChart({ monthlyProfits, accounts }: AccountProfitCh
       }
 
       const entry = monthMap.get(monthKey)!
-      entry[profit.accountName] = ((entry[profit.accountName] as number) || 0) + profit.calculatedProfit
+      entry[profit.accountName] =
+        ((entry[profit.accountName] as number) || 0) + profit.calculatedProfit
     })
 
     return Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month))
@@ -62,11 +65,7 @@ export function AccountProfitChart({ monthlyProfits, accounts }: AccountProfitCh
   }, [accounts])
 
   if (chartData.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        暂无收益趋势数据
-      </div>
-    )
+    return <div className="text-center py-12 text-muted-foreground">暂无收益趋势数据</div>
   }
 
   return (
@@ -76,11 +75,7 @@ export function AccountProfitChart({ monthlyProfits, accounts }: AccountProfitCh
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#37474f" />
-          <XAxis
-            dataKey="month"
-            stroke="#94a3b8"
-            style={{ fontSize: '12px' }}
-          />
+          <XAxis dataKey="month" stroke="#94a3b8" style={{ fontSize: '12px' }} />
           <YAxis
             stroke="#94a3b8"
             style={{ fontSize: '12px' }}

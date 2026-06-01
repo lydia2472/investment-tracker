@@ -1,8 +1,9 @@
 'use client'
 
-import { cn } from '@/lib/utils/cn'
 import { Card } from 'animal-island-ui'
 import { useState } from 'react'
+
+import { cn } from '@/lib/utils/cn'
 
 // Type definitions for adapter components
 export interface BadgeProps {
@@ -57,11 +58,11 @@ export function Badge({ children, className, variant = 'default' }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold",
-        variant === 'profit' && "bg-[#5ec850]/20 text-[#5ec850]",
-        variant === 'loss' && "bg-[#ff6464]/20 text-[#ff6464]",
-        variant === 'bells' && "bg-[#d4b030]/20 text-[#d4b030]",
-        variant === 'default' && "bg-muted text-foreground",
+        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold',
+        variant === 'profit' && 'bg-[#5ec850]/20 text-[#5ec850]',
+        variant === 'loss' && 'bg-[#ff6464]/20 text-[#ff6464]',
+        variant === 'bells' && 'bg-[#d4b030]/20 text-[#d4b030]',
+        variant === 'default' && 'bg-muted text-foreground',
         className
       )}
     >
@@ -75,7 +76,7 @@ export function Avatar({ children, className, fallback }: AvatarProps) {
   return (
     <div
       className={cn(
-        "h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50 font-semibold text-sm",
+        'h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50 font-semibold text-sm',
         className
       )}
     >
@@ -86,11 +87,7 @@ export function Avatar({ children, className, fallback }: AvatarProps) {
 
 // ScrollArea 适配器 - 滚动区域
 export function ScrollArea({ children, className }: ScrollAreaProps) {
-  return (
-    <div className={cn("overflow-auto", className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn('overflow-auto', className)}>{children}</div>
 }
 
 // Textarea 适配器 - 多行文本输入
@@ -98,10 +95,10 @@ export function Textarea({ className, ...props }: TextareaProps) {
   return (
     <textarea
       className={cn(
-        "w-full px-4 py-3 rounded-3xl border-2 border-[#d4c9b4]",
-        "focus:outline-none focus:border-[#ffcc00]",
-        "bg-[#f8f8f0] text-[#794f27]",
-        "resize-none",
+        'w-full px-4 py-3 rounded-3xl border-2 border-[#d4c9b4]',
+        'focus:outline-none focus:border-[#ffcc00]',
+        'bg-[#f8f8f0] text-[#794f27]',
+        'resize-none',
         className
       )}
       {...props}
@@ -114,7 +111,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        "animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%]",
+        'animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%]',
         className
       )}
     />
@@ -135,7 +132,10 @@ export function DropdownMenu({ trigger, items }: DropdownMenuProps) {
           {items.map((item, i) => (
             <button
               key={i}
-              onClick={() => { item.onClick(); setOpen(false) }}
+              onClick={() => {
+                item.onClick()
+                setOpen(false)
+              }}
               className="w-full px-4 py-2 text-left hover:bg-muted/50 transition-colors"
             >
               {item.label}
@@ -148,13 +148,17 @@ export function DropdownMenu({ trigger, items }: DropdownMenuProps) {
 }
 
 // Table 适配器（Card 网格）- 数据表格
-export function DataTable({ data, columns, columnWidths = 'repeat(auto-fit, minmax(200px, 1fr))' }: TableProps) {
+export function DataTable({
+  data,
+  columns,
+  columnWidths = 'repeat(auto-fit, minmax(200px, 1fr))',
+}: TableProps) {
   return (
     <Card>
       {data.map((row, i) => (
         <div key={i} className="p-4 border-b last:border-b-0">
           <div className="grid gap-2" style={{ gridTemplateColumns: columnWidths }}>
-            {columns.map(col => (
+            {columns.map((col) => (
               <div key={col.key}>
                 <span className="text-xs text-muted-foreground">{col.title}</span>
                 <div className="font-medium">{col.render(row[col.key])}</div>

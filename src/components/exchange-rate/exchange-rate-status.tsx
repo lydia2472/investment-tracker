@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useExchangeRateStore } from '@/lib/stores/exchange-rate-store'
 import { Card } from 'animal-island-ui'
 import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react'
+import { useEffect } from 'react'
+
+import { useExchangeRateStore } from '@/lib/stores/exchange-rate-store'
 
 export function ExchangeRateStatus() {
-  const { rates, isLoading, error, isExpired, fetchRates, clearError } =
-    useExchangeRateStore()
+  const { rates, isLoading, error, isExpired, fetchRates, clearError } = useExchangeRateStore()
 
   useEffect(() => {
     // 初始化时获取汇率
@@ -57,13 +57,15 @@ export function ExchangeRateStatus() {
           </button>
         </div>
 
-        {error && (
-          <div className="mt-2 text-xs text-orange-600">{error}</div>
-        )}
+        {error && <div className="mt-2 text-xs text-orange-600">{error}</div>}
 
         {rates && !isLoading && (
           <div className="mt-2 text-xs text-muted-foreground">
-            更新时间: {(typeof rates.lastUpdated === 'string' ? new Date(rates.lastUpdated) : rates.lastUpdated).toLocaleString('zh-CN')}
+            更新时间:{' '}
+            {(typeof rates.lastUpdated === 'string'
+              ? new Date(rates.lastUpdated)
+              : rates.lastUpdated
+            ).toLocaleString('zh-CN')}
           </div>
         )}
 
@@ -71,27 +73,19 @@ export function ExchangeRateStatus() {
           <div className="mt-3 grid grid-cols-5 gap-2 text-xs">
             <div className="text-center">
               <div className="font-medium">USD</div>
-              <div className="text-muted-foreground">
-                {rates.rates.USD.toFixed(4)}
-              </div>
+              <div className="text-muted-foreground">{rates.rates.USD.toFixed(4)}</div>
             </div>
             <div className="text-center">
               <div className="font-medium">EUR</div>
-              <div className="text-muted-foreground">
-                {rates.rates.EUR.toFixed(4)}
-              </div>
+              <div className="text-muted-foreground">{rates.rates.EUR.toFixed(4)}</div>
             </div>
             <div className="text-center">
               <div className="font-medium">HKD</div>
-              <div className="text-muted-foreground">
-                {rates.rates.HKD.toFixed(4)}
-              </div>
+              <div className="text-muted-foreground">{rates.rates.HKD.toFixed(4)}</div>
             </div>
             <div className="text-center">
               <div className="font-medium">JPY</div>
-              <div className="text-muted-foreground">
-                {rates.rates.JPY.toFixed(2)}
-              </div>
+              <div className="text-muted-foreground">{rates.rates.JPY.toFixed(2)}</div>
             </div>
             <div className="text-center">
               <div className="font-medium">CNY</div>

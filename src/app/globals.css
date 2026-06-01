@@ -1,69 +1,70 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ========== animal-island-ui 官方设计令牌 ========== */
 
 :root {
   /* === 字体（通过 Next.js Font Optimization 加载）=== */
-  --animal-font: var(--font-nunito), var(--font-noto-sans-sc), var(--font-zen-maru-gothic),
-    -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  --animal-font:
+    var(--font-nunito), var(--font-noto-sans-sc), var(--font-zen-maru-gothic), -apple-system,
+    'PingFang SC', 'Hiragino Sans GB', sans-serif;
 
   /* === 官方调色板 === */
 
   /* 主色（薄荷青绿） */
-  --animal-primary:        #19c8b9;
-  --animal-primary-hover:  #3dd4c6;
+  --animal-primary: #19c8b9;
+  --animal-primary-hover: #3dd4c6;
   --animal-primary-active: #11a89b;
-  --animal-primary-bg:     #e6f9f6;
+  --animal-primary-bg: #e6f9f6;
 
   /* 文字（温暖棕色系） */
-  --animal-text:           #794f27;    /* 主文字（header/sidebar） */
-  --animal-text-body:      #725d42;    /* 正文（组件内文字） */
-  --animal-text-secondary: #9f927d;    /* 次级文字 */
-  --animal-text-muted:     #8a7b66;    /* 浅棕（modal body） */
-  --animal-text-disabled:  #c4b89e;    /* 禁用 */
+  --animal-text: #794f27; /* 主文字（header/sidebar） */
+  --animal-text-body: #725d42; /* 正文（组件内文字） */
+  --animal-text-secondary: #9f927d; /* 次级文字 */
+  --animal-text-muted: #8a7b66; /* 浅棕（modal body） */
+  --animal-text-disabled: #c4b89e; /* 禁用 */
 
   /* 背景（奶油米白） */
-  --animal-bg:             #f8f8f0;    /* 主背景 */
-  --animal-bg-content:     rgb(247, 243, 223);  /* 内容区（Modal、Card） */
-  --animal-bg-secondary:   #f0e8d8;
-  --animal-bg-disabled:    #f0ece2;
-  --animal-bg-input:       rgb(247, 243, 223);  /* 输入框背景 */
+  --animal-bg: #f8f8f0; /* 主背景 */
+  --animal-bg-content: rgb(247, 243, 223); /* 内容区（Modal、Card） */
+  --animal-bg-secondary: #f0e8d8;
+  --animal-bg-disabled: #f0ece2;
+  --animal-bg-input: rgb(247, 243, 223); /* 输入框背景 */
 
   /* 边框 */
-  --animal-border:         #9f927d;
-  --animal-border-light:   #c4b89e;    /* 输入框边框 */
-  --animal-border-hover:   #a89878;    /* 输入框 hover */
+  --animal-border: #9f927d;
+  --animal-border-light: #c4b89e; /* 输入框边框 */
+  --animal-border-hover: #a89878; /* 输入框 hover */
 
   /* 状态色 */
-  --animal-success:        #6fba2c;
+  --animal-success: #6fba2c;
   --animal-success-active: #5a9e1e;
-  --animal-warning:        #f5c31c;
+  --animal-warning: #f5c31c;
   --animal-warning-active: #dba90e;
-  --animal-error:          #e05a5a;
-  --animal-error-active:   #c94444;
+  --animal-error: #e05a5a;
+  --animal-error-active: #c94444;
 
   /* 游戏特殊色 */
-  --animal-focus-yellow:   #ffcc00;    /* 焦点高亮（非蓝色！） */
-  --animal-focus-yellow-d: #e0b800;    /* 焦点阴影 */
-  --animal-sidebar-active: #B7C6E5;    /* 侧边栏选中背景 */
-  --animal-sidebar-hover:  #d6dff0;    /* 侧边栏 hover 背景 */
+  --animal-focus-yellow: #ffcc00; /* 焦点高亮（非蓝色！） */
+  --animal-focus-yellow-d: #e0b800; /* 焦点阴影 */
+  --animal-sidebar-active: #b7c6e5; /* 侧边栏选中背景 */
+  --animal-sidebar-hover: #d6dff0; /* 侧边栏 hover 背景 */
 
   /* 3D 阴影色（底部厚阴影，无 elevation shadow） */
-  --animal-shadow-btn:     #bdaea0;    /* 按钮 3D 阴影 */
-  --animal-shadow-input:   #d4c9b4;    /* 输入框 3D 阴影 */
-  --animal-shadow-switch:  #5a9e1e;    /* Switch 开启 3D 阴影 */
+  --animal-shadow-btn: #bdaea0; /* 按钮 3D 阴影 */
+  --animal-shadow-input: #d4c9b4; /* 输入框 3D 阴影 */
+  --animal-shadow-switch: #5a9e1e; /* Switch 开启 3D 阴影 */
 
   /* 圆角 */
-  --animal-radius-sm:      12px;
-  --animal-radius:         18px;
-  --animal-radius-lg:      20px;
-  --animal-radius-pill:    50px;       /* 按钮/输入框必须用 pill 形 */
+  --animal-radius-sm: 12px;
+  --animal-radius: 18px;
+  --animal-radius-lg: 20px;
+  --animal-radius-pill: 50px; /* 按钮/输入框必须用 pill 形 */
 
   /* 动效 */
-  --animal-ease:           cubic-bezier(0.4, 0, 0.2, 1);
-  --animal-duration-fast:  0.15s;
-  --animal-duration:       0.25s;
-  --animal-duration-slow:  0.35s;
+  --animal-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --animal-duration-fast: 0.15s;
+  --animal-duration: 0.25s;
+  --animal-duration-slow: 0.35s;
 }
 
 /* === 强制应用官方字体 === */
@@ -100,50 +101,50 @@ body {
 
 :root {
   /* animal-island-ui 官方浅色主题 */
-  --background: 45 20% 96%;          /* #f8f8f0 奶油米白 - 主背景 */
-  --foreground: 30 40% 28%;          /* #725d42 温暖棕色 - 主文字 */
+  --background: 45 20% 96%; /* #f8f8f0 奶油米白 - 主背景 */
+  --foreground: 30 40% 28%; /* #725d42 温暖棕色 - 主文字 */
 
   /* Cards */
-  --card: 45 25% 94%;                /* #f0e8d8 浅米色 */
-  --card-foreground: 30 40% 28%;     /* #725d42 棕色 */
+  --card: 45 25% 94%; /* #f0e8d8 浅米色 */
+  --card-foreground: 30 40% 28%; /* #725d42 棕色 */
 
   /* Popovers */
   --popover: 45 25% 94%;
   --popover-foreground: 30 40% 28%;
 
   /* Primary - 薄荷青绿 */
-  --primary: 174 72% 56%;            /* #19c8b9 */
+  --primary: 174 72% 56%; /* #19c8b9 */
   --primary-foreground: 0 0% 100%;
 
   /* Secondary - 铃钱金 */
-  --secondary: 43 84% 53%;           /* #d4b030 */
+  --secondary: 43 84% 53%; /* #d4b030 */
   --secondary-foreground: 30 40% 28%;
 
   /* Muted */
-  --muted: 45 20% 90%;               /* #f0ece2 */
-  --muted-foreground: 30 15% 65%;    /* #9f927d */
+  --muted: 45 20% 90%; /* #f0ece2 */
+  --muted-foreground: 30 15% 65%; /* #9f927d */
 
   /* Accent - 萝卜绿 */
-  --accent: 122 68% 56%;            /* #5ec850 */
+  --accent: 122 68% 56%; /* #5ec850 */
   --accent-foreground: 0 0% 100%;
 
   /* Destructive - 烂萝卜红 */
-  --destructive: 0 72% 70%;          /* #ff6464 */
+  --destructive: 0 72% 70%; /* #ff6464 */
   --destructive-foreground: 0 0% 98%;
 
   /* Borders */
-  --border: 30 30% 65%;              /* #9f927d */
-  --input: 45 25% 88%;               /* #f0ece2 */
-  --ring: 174 72% 56%;              /* #19c8b9 */
+  --border: 30 30% 65%; /* #9f927d */
+  --input: 45 25% 88%; /* #f0ece2 */
+  --ring: 174 72% 56%; /* #19c8b9 */
 
   /* Radius */
-  --radius: 0.75rem;                /* 12px - 官方最小圆角 */
+  --radius: 0.75rem; /* 12px - 官方最小圆角 */
 }
 
 @theme inline {
-  --color-background: hsl(var(--background));        /* #f8f8f0 浅色 */
-  --color-foreground: hsl(var(--foreground));        /* #725d42 棕色 */
-  --color-card: hsl(var(--card));                    /* #f0e8d8 */
+  --color-background: hsl(var(--background)); /* #f8f8f0 浅色 */
+  --color-foreground: hsl(var(--foreground)); /* #725d42 棕色 */
+  --color-card: hsl(var(--card)); /* #f0e8d8 */
   --color-card-foreground: hsl(var(--card-foreground));
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
@@ -170,9 +171,9 @@ body {
   --color-leaf: #7bc96a;
 
   /* 圆角 */
-  --radius-card: 0.75rem;           /* 12px */
-  --radius-button: 3.125rem;        /* 50px - 胶囊形状 */
-  --radius-pill: 3.125rem;          /* 50px */
+  --radius-card: 0.75rem; /* 12px */
+  --radius-button: 3.125rem; /* 50px - 胶囊形状 */
+  --radius-pill: 3.125rem; /* 50px */
 
   /* 阴影 */
   --shadow-paper: 0 2px 8px rgba(115, 93, 66, 0.1);
@@ -214,20 +215,19 @@ body {
 
 /* DIY 纸张纹理效果 */
 .diy-paper {
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      rgba(94, 200, 80, 0.03) 0px,
-      rgba(94, 200, 80, 0.03) 1px,
-      transparent 1px,
-      transparent 2px
-    );
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(94, 200, 80, 0.03) 0px,
+    rgba(94, 200, 80, 0.03) 1px,
+    transparent 1px,
+    transparent 2px
+  );
   background-size: 100% 4px;
 }
 
 /* 动森卡片样式 - 浅色版本 */
 .acnh-card {
-  background: rgb(247, 243, 223);     /* 奶油米白 */
+  background: rgb(247, 243, 223); /* 奶油米白 */
   border: 2px solid rgba(94, 200, 80, 0.3);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(115, 93, 66, 0.1);
@@ -245,7 +245,7 @@ body {
 
 /* Glassmorphism Effect - ACNH Style (浅色版本) */
 .glass {
-  background: rgba(248, 248, 240, 0.85);  /* 半透明奶油米白 */
+  background: rgba(248, 248, 240, 0.85); /* 半透明奶油米白 */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(159, 146, 125, 0.3);
@@ -254,9 +254,9 @@ body {
 
 /* Body 样式 - 浅色主题 */
 body {
-  background: hsl(var(--background));  /* #f8f8f0 奶油米白 */
-  color: hsl(var(--foreground));       /* #725d42 温暖棕色 */
-  font-family: var(--animal-font);     /* Nunito 字体 */
+  background: hsl(var(--background)); /* #f8f8f0 奶油米白 */
+  color: hsl(var(--foreground)); /* #725d42 温暖棕色 */
+  font-family: var(--animal-font); /* Nunito 字体 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -282,7 +282,7 @@ body {
 
 /* 图标尺寸（匹配原有 h-4 w-4, h-5 w-5 等类） */
 .icon-acnh-sm {
-  width: 1rem;   /* 16px */
+  width: 1rem; /* 16px */
   height: 1rem;
 }
 
@@ -292,7 +292,7 @@ body {
 }
 
 .icon-acnh-lg {
-  width: 1.5rem;  /* 24px */
+  width: 1.5rem; /* 24px */
   height: 1.5rem;
 }
 
@@ -308,15 +308,15 @@ body {
 
 @theme inline {
   /* === 卡片圆角系统 === */
-  --radius-card-sm: 0.75rem;   /* 12px - 小卡片 */
-  --radius-card-md: 1.125rem;  /* 18px - 标准卡片 */
-  --radius-card-lg: 1.5rem;    /* 24px - 大卡片 */
-  --radius-pill: 3.125rem;     /* 50px - 胶囊形状 */
+  --radius-card-sm: 0.75rem; /* 12px - 小卡片 */
+  --radius-card-md: 1.125rem; /* 18px - 标准卡片 */
+  --radius-card-lg: 1.5rem; /* 24px - 大卡片 */
+  --radius-pill: 3.125rem; /* 50px - 胶囊形状 */
 
   /* === 间距系统 === */
-  --spacing-card: 1.5rem;      /* 24px - 卡片内边距 */
-  --spacing-section: 1rem;     /* 16px - 区块间距 */
-  --spacing-element: 0.75rem;  /* 12px - 元素间距 */
+  --spacing-card: 1.5rem; /* 24px - 卡片内边距 */
+  --spacing-section: 1rem; /* 16px - 区块间距 */
+  --spacing-element: 0.75rem; /* 12px - 元素间距 */
 
   /* === 统一阴影 === */
   --shadow-card: 0 2px 8px rgba(115, 93, 66, 0.1);
@@ -371,7 +371,8 @@ body {
 /* ========== 统一动画关键帧 ========== */
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -380,7 +381,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(94, 200, 80, 0.3);
   }
   50% {
@@ -389,7 +391,8 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   25% {
@@ -427,4 +430,3 @@ body {
 .transition-fast {
   transition: all var(--transition-fast);
 }
-

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+
 import { DEFAULT_TAGS } from '@/lib/constants/tags'
 
 interface TagState {

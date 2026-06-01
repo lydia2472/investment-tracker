@@ -24,17 +24,14 @@ export function getAccountById(
   accounts: Array<{ id: string }>,
   id: string
 ): { id: string } | undefined {
-  return accounts.find(acc => acc.id === id)
+  return accounts.find((acc) => acc.id === id)
 }
 
 /**
  * 根据ID查找账户名称
  */
-export function getAccountName(
-  accounts: Array<{ id: string; name: string }>,
-  id: string
-): string {
-  const account = accounts.find(acc => acc.id === id)
+export function getAccountName(accounts: Array<{ id: string; name: string }>, id: string): string {
+  const account = accounts.find((acc) => acc.id === id)
   return account?.name || '未知账户'
 }
 
@@ -46,9 +43,10 @@ export function searchAccounts(
   query: string
 ): Array<{ name: string; description?: string }> {
   const lowerQuery = query.toLowerCase()
-  return accounts.filter(acc =>
-    acc.name.toLowerCase().includes(lowerQuery) ||
-    (acc.description && acc.description.toLowerCase().includes(lowerQuery))
+  return accounts.filter(
+    (acc) =>
+      acc.name.toLowerCase().includes(lowerQuery) ||
+      (acc.description && acc.description.toLowerCase().includes(lowerQuery))
   )
 }
 

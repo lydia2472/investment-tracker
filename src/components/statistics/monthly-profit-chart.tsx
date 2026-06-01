@@ -1,5 +1,6 @@
 'use client'
 
+import { format } from 'date-fns'
 import { useMemo } from 'react'
 import {
   LineChart,
@@ -11,18 +12,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+
 import type { MonthlyProfit } from '@/types'
-import { format } from 'date-fns'
 
 interface MonthlyProfitChartProps {
   data: MonthlyProfit[]
   selectedAccounts?: string[] // 如果指定，只显示这些账户
 }
 
-export function MonthlyProfitChart({
-  data,
-  selectedAccounts,
-}: MonthlyProfitChartProps) {
+export function MonthlyProfitChart({ data, selectedAccounts }: MonthlyProfitChartProps) {
   // 过滤并转换数据用于图表显示
   const chartData = useMemo(() => {
     // 按月份分组数据
@@ -94,7 +92,8 @@ export function MonthlyProfitChart({
 
           return (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {isPositive ? '+' : ''}{value.toFixed(2)} 元
+              {entry.name}: {isPositive ? '+' : ''}
+              {value.toFixed(2)} 元
             </p>
           )
         })}
@@ -106,9 +105,7 @@ export function MonthlyProfitChart({
   if (chartData.length === 0) {
     return (
       <div className="flex h-[400px] items-center justify-center rounded-lg border bg-muted/20">
-        <p className="text-muted-foreground">
-          暂无月度收益数据，请先记录月末快照
-        </p>
+        <p className="text-muted-foreground">暂无月度收益数据，请先记录月末快照</p>
       </div>
     )
   }
@@ -118,15 +115,8 @@ export function MonthlyProfitChart({
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-[#5ec850]/10" />
-          <XAxis
-            dataKey="month"
-            className="text-xs"
-            tick={{ fill: '#c8e6c0' }}
-          />
-          <YAxis
-            tick={{ fill: '#c8e6c0' }}
-            tickFormatter={(value) => `💰 ${value.toFixed(0)}`}
-          />
+          <XAxis dataKey="month" className="text-xs" tick={{ fill: '#c8e6c0' }} />
+          <YAxis tick={{ fill: '#c8e6c0' }} tickFormatter={(value) => `💰 ${value.toFixed(0)}`} />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
           {accountNames.map((accountName, index) => (

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from 'animal-island-ui'
+import { useState } from 'react'
+
 import { XIcon } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils/cn'
 
@@ -16,7 +17,7 @@ export function TagFilterBar({ availableTags, value, onChange }: TagFilterBarPro
 
   const toggleTag = (tag: string) => {
     if (value.includes(tag)) {
-      onChange(value.filter(t => t !== tag))
+      onChange(value.filter((t) => t !== tag))
     } else {
       onChange([...value, tag])
     }
@@ -36,26 +37,16 @@ export function TagFilterBar({ availableTags, value, onChange }: TagFilterBarPro
         <h3 className="text-sm font-semibold">
           标签筛选
           {value.length > 0 && (
-            <span className="ml-2 text-sm text-muted-foreground">
-              (已选 {value.length} 个)
-            </span>
+            <span className="ml-2 text-sm text-muted-foreground">(已选 {value.length} 个)</span>
           )}
         </h3>
         <div className="flex gap-2">
           {value.length > 0 && (
-            <Button
-              type="default"
-              size="small"
-              onClick={clearSelection}
-            >
+            <Button type="default" size="small" onClick={clearSelection}>
               清除
             </Button>
           )}
-          <Button
-            type="default"
-            size="small"
-            onClick={handleToggleExpand}
-          >
+          <Button type="default" size="small" onClick={handleToggleExpand}>
             {isExpanded ? '收起' : '展开'}
           </Button>
         </div>
@@ -66,7 +57,7 @@ export function TagFilterBar({ availableTags, value, onChange }: TagFilterBarPro
           {availableTags.length === 0 ? (
             <p className="text-sm text-muted-foreground">暂无可用标签</p>
           ) : (
-            availableTags.map(tag => {
+            availableTags.map((tag) => {
               const isSelected = value.includes(tag)
               return (
                 <button
@@ -81,9 +72,7 @@ export function TagFilterBar({ availableTags, value, onChange }: TagFilterBarPro
                   )}
                 >
                   {tag}
-                  {isSelected && (
-                    <span className="ml-2">✓</span>
-                  )}
+                  {isSelected && <span className="ml-2">✓</span>}
                 </button>
               )
             })
@@ -94,7 +83,7 @@ export function TagFilterBar({ availableTags, value, onChange }: TagFilterBarPro
       {/* 已选标签展示 */}
       {value.length > 0 && !isExpanded && (
         <div className="flex flex-wrap gap-2">
-          {value.map(tag => (
+          {value.map((tag) => (
             <div
               key={tag}
               className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm"

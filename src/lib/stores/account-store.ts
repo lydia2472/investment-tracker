@@ -1,18 +1,21 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { Account } from '@/types';
-import { RiskLevel } from '@/types';
-import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid'
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
+import { RiskLevel } from '@/types'
+
+import type { Account } from '@/types'
 
 interface AccountState {
-  accounts: Account[];
-  version: number;
-  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => Account;
-  updateAccount: (id: string, updates: Partial<Account>) => void;
-  deleteAccount: (id: string) => void;
-  getAccount: (id: string) => Account | undefined;
-  updateBalance: (id: string, newBalance: number) => void;
+  accounts: Account[]
+  version: number
+  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => Account
+  updateAccount: (id: string, updates: Partial<Account>) => void
+  deleteAccount: (id: string) => void
+  deleteAccounts: (ids: string[]) => void
+  getAccount: (id: string) => Account | undefined
+  updateBalance: (id: string, newBalance: number) => void
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -28,43 +31,46 @@ export const useAccountStore = create<AccountState>()(
           id: uuidv4(),
           createdAt: new Date(),
           updatedAt: new Date(),
-        };
-        set((state) => ({ accounts: [...state.accounts, newAccount] }));
-        return newAccount;
+        }
+        set((state) => ({ accounts: [...state.accounts, newAccount] }))
+        return newAccount
       },
 
       updateAccount: (id, updates) => {
         set((state) => {
           const updatedAccounts = state.accounts.map((acc) =>
-            acc.id === id
-              ? { ...acc, ...updates, updatedAt: new Date() }
-              : acc
-          );
+            acc.id === id ? { ...acc, ...updates, updatedAt: new Date() } : acc
+          )
           return {
             accounts: updatedAccounts,
             version: state.version + 1,
-          };
-        });
+          }
+        })
       },
 
       deleteAccount: (id) => {
         set((state) => ({
           accounts: state.accounts.filter((acc) => acc.id !== id),
-        }));
+        }))
+      },
+
+      deleteAccounts: (ids) => {
+        set((state) => ({
+          accounts: state.accounts.filter((acc) => !ids.includes(acc.id)),
+          version: state.version + 1,
+        }))
       },
 
       getAccount: (id) => {
-        return get().accounts.find((acc) => acc.id === id);
+        return get().accounts.find((acc) => acc.id === id)
       },
 
       updateBalance: (id, newBalance) => {
         set((state) => ({
           accounts: state.accounts.map((acc) =>
-            acc.id === id
-              ? { ...acc, balance: newBalance, updatedAt: new Date() }
-              : acc
+            acc.id === id ? { ...acc, balance: newBalance, updatedAt: new Date() } : acc
           ),
-        }));
+        }))
       },
     }),
     {
@@ -88,15 +94,15 @@ export const useAccountStore = create<AccountState>()(
           console.log('[AccountStore] 迁移到版本2：添加定期存款支持')
 
           // 为所有账户添加空配置（向后兼容）
-          const migratedAccounts = oldState.accounts.map(acc => ({
+          const migratedAccounts = oldState.accounts.map((acc) => ({
             ...acc,
-            fixedDepositConfig: undefined  // 新字段，默认为 undefined
+            fixedDepositConfig: undefined, // 新字段，默认为 undefined
           }))
 
           return {
             ...oldState,
             accounts: migratedAccounts,
-            version: 2
+            version: 2,
           }
         }
 
@@ -115,4 +121,4 @@ export const useAccountStore = create<AccountState>()(
       },
     }
   )
-);
+)

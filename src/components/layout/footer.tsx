@@ -2,6 +2,7 @@
 
 import { Footer } from 'animal-island-ui'
 import Link from 'next/link'
+
 import { cn } from '@/lib/utils'
 
 interface AppFooterProps {
@@ -14,14 +15,20 @@ export function AppFooter({ className }: AppFooterProps) {
   return (
     <footer className={cn('w-full', className)} role="contentinfo" aria-label="网站页脚">
       {/* 导航链接区域 */}
-      <div className="w-full bg-background border-t" style={{
-        borderColor: 'rgba(159, 146, 125, 0.3)',
-        padding: '24px 0'
-      }}>
+      <div
+        className="w-full bg-background border-t"
+        style={{
+          borderColor: 'rgba(159, 146, 125, 0.3)',
+          padding: '24px 0',
+        }}
+      >
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* 左侧: 链接 */}
-            <nav className="flex flex-wrap justify-center md:justify-start gap-6" aria-label="页脚导航">
+            <nav
+              className="flex flex-wrap justify-center md:justify-start gap-6"
+              aria-label="页脚导航"
+            >
               <FooterLink href="/help">帮助中心</FooterLink>
               <FooterLink href="/about">关于我们</FooterLink>
               <FooterLink href="/privacy">隐私政策</FooterLink>

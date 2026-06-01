@@ -1,35 +1,42 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
+
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   HomeIcon,
   ShellIcon,
   ArrowRightLeftIcon,
   BarChartIcon,
+  CalendarIcon,
 } from '@/lib/components/icon-adapter'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 
 const navItems = [
   {
     href: '/',
     label: '总览',
-    icon: HomeIcon
+    icon: HomeIcon,
   },
   {
     href: '/accounts',
     label: '账户',
-    icon: ShellIcon
+    icon: ShellIcon,
   },
   {
     href: '/transactions',
     label: '交易',
-    icon: ArrowRightLeftIcon
+    icon: ArrowRightLeftIcon,
+  },
+  {
+    href: '/snapshots',
+    label: '月末快照',
+    icon: CalendarIcon,
   },
   {
     href: '/statistics',
     label: '统计',
-    icon: BarChartIcon
+    icon: BarChartIcon,
   },
 ]
 
@@ -46,11 +53,14 @@ export function Sidebar() {
           paddingBottom: '12px',
           paddingTop: '20px',
           paddingLeft: '16px',
-          paddingRight: '16px'
+          paddingRight: '16px',
         }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#19c8b9' }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: '#19c8b9' }}
+          >
             <img
               src="/animal-crossing-icon.jpg"
               alt="Animal Crossing Icon"
@@ -63,12 +73,14 @@ export function Sidebar() {
               style={{
                 fontSize: '15px',
                 color: '#725d42',
-                letterSpacing: '-0.3px'
+                letterSpacing: '-0.3px',
               }}
             >
               投资管理
             </h1>
-            <p className="text-xs" style={{ color: '#8a7b66' }}>智能资产追踪</p>
+            <p className="text-xs" style={{ color: '#8a7b66' }}>
+              智能资产追踪
+            </p>
           </div>
         </div>
       </div>
@@ -94,7 +106,7 @@ export function Sidebar() {
                   fontWeight: '600',
                   transition: 'all 0.15s',
                   color: isActive ? '#fff' : '#8a7b66',
-                  backgroundColor: isActive ? '#8ac68a' : 'transparent'
+                  backgroundColor: isActive ? '#8ac68a' : 'transparent',
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
@@ -121,11 +133,15 @@ export function Sidebar() {
             padding: '16px',
             borderRadius: '16px',
             backgroundColor: 'rgba(25, 200, 185, 0.1)',
-            border: '1px solid rgba(25, 200, 185, 0.2)'
+            border: '1px solid rgba(25, 200, 185, 0.2)',
           }}
         >
-          <p className="text-xs mb-2" style={{ color: '#8a7b66' }}>需要帮助?</p>
-          <p className="text-sm font-[600]" style={{ color: '#725d42' }}>查看使用指南</p>
+          <p className="text-xs mb-2" style={{ color: '#8a7b66' }}>
+            需要帮助?
+          </p>
+          <p className="text-sm font-[600]" style={{ color: '#725d42' }}>
+            查看使用指南
+          </p>
         </div>
       </ScrollArea>
     </div>

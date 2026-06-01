@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { isValid } from 'date-fns'
-import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { TransactionForm, TransactionFormData } from './transaction-form'
-import { toast } from 'sonner'
+import { useTransactionStore, useAccountStore } from '@/lib/stores'
 import { TransactionType } from '@/types'
+
+import { TransactionForm, TransactionFormData } from './transaction-form'
+
 import type { Transaction } from '@/types'
 
 interface EditTransactionDialogProps {
@@ -43,15 +46,19 @@ export function EditTransactionDialog({
     let newBalance = account.balance
 
     // 收入类型：减少余额
-    if (txn.type === TransactionType.INCOME ||
-        txn.type === TransactionType.DEPOSIT ||
-        txn.type === TransactionType.TRANSFER_IN) {
+    if (
+      txn.type === TransactionType.INCOME ||
+      txn.type === TransactionType.DEPOSIT ||
+      txn.type === TransactionType.TRANSFER_IN
+    ) {
       newBalance -= txn.amount || 0
     }
     // 支出类型：增加余额
-    else if (txn.type === TransactionType.CONSUMPTION ||
-             txn.type === TransactionType.TRANSFER_OUT ||
-             txn.type === TransactionType.LOAN) {
+    else if (
+      txn.type === TransactionType.CONSUMPTION ||
+      txn.type === TransactionType.TRANSFER_OUT ||
+      txn.type === TransactionType.LOAN
+    ) {
       newBalance += txn.amount || 0
     }
     // 快照不回退（历史数据）
@@ -67,15 +74,19 @@ export function EditTransactionDialog({
     let newBalance = account.balance
 
     // 收入类型：增加余额
-    if (data.type === TransactionType.INCOME ||
-        data.type === TransactionType.DEPOSIT ||
-        data.type === TransactionType.TRANSFER_IN) {
+    if (
+      data.type === TransactionType.INCOME ||
+      data.type === TransactionType.DEPOSIT ||
+      data.type === TransactionType.TRANSFER_IN
+    ) {
       newBalance += data.amount || 0
     }
     // 支出类型：减少余额
-    else if (data.type === TransactionType.CONSUMPTION ||
-             data.type === TransactionType.TRANSFER_OUT ||
-             data.type === TransactionType.LOAN) {
+    else if (
+      data.type === TransactionType.CONSUMPTION ||
+      data.type === TransactionType.TRANSFER_OUT ||
+      data.type === TransactionType.LOAN
+    ) {
       newBalance -= data.amount || 0
     } else if (data.type === TransactionType.SNAPSHOT) {
       newBalance = data.balance || 0
@@ -103,7 +114,7 @@ export function EditTransactionDialog({
         balance: data.balance,
         description: data.description,
         note: data.note,
-        tags: data.tags,  // 新增：标签字段
+        tags: data.tags, // 新增：标签字段
         createdAt: data.date, // 使用 createdAt 存储用户选择的日期
       })
 
@@ -131,11 +142,12 @@ export function EditTransactionDialog({
         balance: transaction.balance,
         description: transaction.description,
         note: transaction.note,
-        tags: transaction.tags,  // 新增：标签字段
+        tags: transaction.tags, // 新增：标签字段
         date: (() => {
-          const dateValue = transaction.createdAt instanceof Date
-            ? transaction.createdAt
-            : new Date(transaction.createdAt)
+          const dateValue =
+            transaction.createdAt instanceof Date
+              ? transaction.createdAt
+              : new Date(transaction.createdAt)
           return isValid(dateValue) ? dateValue : new Date()
         })(),
       }
@@ -146,9 +158,7 @@ export function EditTransactionDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>编辑交易</DialogTitle>
-          <DialogDescription>
-            修改交易信息，账户余额将自动调整
-          </DialogDescription>
+          <DialogDescription>修改交易信息，账户余额将自动调整</DialogDescription>
         </DialogHeader>
         {transaction && initialData && (
           <TransactionForm

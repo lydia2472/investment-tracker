@@ -62,11 +62,7 @@ const LUCIDE_ICONS = {
 function createAnimalIslandIcon(iconName: keyof typeof ANIMAL_ISLAND_ICONS) {
   return function Icon({ className = '', size = 20 }: IconProps) {
     return (
-      <AnimalIslandIcon
-        name={ANIMAL_ISLAND_ICONS[iconName]}
-        size={size}
-        className={className}
-      />
+      <AnimalIslandIcon name={ANIMAL_ISLAND_ICONS[iconName]} size={size} className={className} />
     )
   }
 }

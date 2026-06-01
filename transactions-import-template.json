@@ -1,0 +1,61 @@
+[
+  {
+    "comment": "普通收入示例",
+    "accountName": "招商银行",
+    "type": "income",
+    "amount": 10000,
+    "description": "工资收入",
+    "note": "月度工资",
+    "tags": ["薪资", "重要"],
+    "createdAt": "2026-01-15T10:00:00.000Z"
+  },
+  {
+    "comment": "普通消费示例",
+    "accountName": "支付宝",
+    "type": "consumption",
+    "amount": 89.5,
+    "description": "午餐",
+    "note": "外卖支付",
+    "tags": ["餐饮"],
+    "createdAt": "2026-01-15T12:30:00.000Z"
+  },
+  {
+    "comment": "账户转账示例",
+    "accountName": "招商银行",
+    "type": "transfer",
+    "amount": 1000,
+    "transferToAccountName": "支付宝",
+    "description": "转账至支付宝",
+    "note": "银行卡充值",
+    "createdAt": "2026-01-16T09:00:00.000Z"
+  },
+  {
+    "comment": "存款示例",
+    "accountName": "现金",
+    "type": "deposit",
+    "amount": 5000,
+    "description": "存入银行",
+    "note": "定期存款",
+    "createdAt": "2026-01-20T14:00:00.000Z"
+  },
+  {
+    "comment": "月末快照示例（使用 balance 字段）",
+    "accountName": "招商银行",
+    "type": "snapshot",
+    "balance": 50000,
+    "description": "月末余额",
+    "note": "月末统计快照",
+    "createdAt": "2026-01-31T23:59:59.000Z"
+  },
+  {
+    "comment": "带完整信息的交易示例",
+    "accountName": "招商银行",
+    "type": "income",
+    "amount": 5000,
+    "description": "奖金收入",
+    "note": "季度奖金",
+    "tags": ["收入", "奖金"],
+    "createdAt": "2026-01-25T16:00:00.000Z",
+    "updatedAt": "2026-01-25T16:00:00.000Z"
+  }
+]

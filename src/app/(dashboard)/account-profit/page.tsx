@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useAccountStore, useTransactionStore } from '@/lib/stores'
+
 import { DateFilterBar, type DateRange } from '@/components/dashboard/date-filter-bar'
 import { AccountCardGrid } from '@/components/profit/account-card-grid'
 import { AccountProfitChart } from '@/components/profit/account-profit-chart'
-import { ProfitSummaryTable } from '@/components/profit/profit-summary-table'
 import { ProfitRanking } from '@/components/profit/profit-ranking'
 import { ProfitSummary } from '@/components/profit/profit-summary'
+import { ProfitSummaryTable } from '@/components/profit/profit-summary-table'
+import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { calculateMonthlyProfits } from '@/lib/utils/profit-calculator'
 
 export default function AccountProfitPage() {
@@ -37,14 +38,17 @@ export default function AccountProfitPage() {
 
   // 按账户汇总收益
   const accountProfits = useMemo(() => {
-    const accountMap = new Map<string, {
-      accountId: string
-      accountName: string
-      totalProfit: number
-      profitRate: number
-      startBalance: number
-      endBalance: number
-    }>()
+    const accountMap = new Map<
+      string,
+      {
+        accountId: string
+        accountName: string
+        totalProfit: number
+        profitRate: number
+        startBalance: number
+        endBalance: number
+      }
+    >()
 
     filteredProfits.forEach((profit) => {
       const existing = accountMap.get(profit.accountId)
@@ -71,9 +75,7 @@ export default function AccountProfitPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">账户收益</h2>
-        <p className="text-muted-foreground">
-          查看各个账户的收益金额和收益率情况
-        </p>
+        <p className="text-muted-foreground">查看各个账户的收益金额和收益率情况</p>
       </div>
 
       {/* 日期筛选栏 */}

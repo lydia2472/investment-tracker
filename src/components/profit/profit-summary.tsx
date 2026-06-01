@@ -1,10 +1,11 @@
 'use client'
 
 import { Card } from 'animal-island-ui'
+
 import { ShellIcon, TrendingUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
 import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
+import { formatCurrencyCompact, formatPercentage } from '@/lib/utils/formatters'
 
 interface AccountProfit {
   accountId: string
@@ -21,11 +22,12 @@ interface ProfitSummaryProps {
 
 export function ProfitSummary({ accountProfits }: ProfitSummaryProps) {
   const totalProfit = accountProfits.reduce((sum, a) => sum + a.totalProfit, 0)
-  const avgProfitRate = accountProfits.length > 0
-    ? accountProfits.reduce((sum, a) => sum + a.profitRate, 0) / accountProfits.length
-    : 0
-  const profitCount = accountProfits.filter(a => a.totalProfit > 0).length
-  const lossCount = accountProfits.filter(a => a.totalProfit < 0).length
+  const avgProfitRate =
+    accountProfits.length > 0
+      ? accountProfits.reduce((sum, a) => sum + a.profitRate, 0) / accountProfits.length
+      : 0
+  const profitCount = accountProfits.filter((a) => a.totalProfit > 0).length
+  const lossCount = accountProfits.filter((a) => a.totalProfit < 0).length
 
   return (
     <div className="grid gap-4 md:grid-cols-4">
@@ -40,7 +42,10 @@ export function ProfitSummary({ accountProfits }: ProfitSummaryProps) {
           </div>
         </div>
         <div className="p-6 pt-0">
-          <div className="text-3xl font-black" style={{ color: 'var(--animal-text-body)', letterSpacing: '0.02em' }}>
+          <div
+            className="text-3xl font-black"
+            style={{ color: 'var(--animal-text-body)', letterSpacing: '0.02em' }}
+          >
             {totalProfit >= 0 ? '+' : ''}💰 {formatCurrencyCompact(totalProfit)}
           </div>
         </div>
@@ -49,16 +54,15 @@ export function ProfitSummary({ accountProfits }: ProfitSummaryProps) {
       {/* 平均收益率 - 盈利指标 → app-green */}
       <Card color="app-green" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            平均收益率
-          </h3>
+          <h3 className="text-sm font-semibold text-white">平均收益率</h3>
           <div className={cn(iconClasses.container, iconClasses.hover, 'bg-[var(--color-profit)]')}>
             <TrendingUpIcon className="h-full w-full text-white" />
           </div>
         </div>
         <div className="p-6 pt-0">
           <div className="text-3xl font-black text-white" style={{ letterSpacing: '0.02em' }}>
-            {avgProfitRate >= 0 ? '+' : ''}{formatPercentage(avgProfitRate)}
+            {avgProfitRate >= 0 ? '+' : ''}
+            {formatPercentage(avgProfitRate)}
           </div>
         </div>
       </Card>
@@ -66,9 +70,7 @@ export function ProfitSummary({ accountProfits }: ProfitSummaryProps) {
       {/* 盈利账户 - 盈利计数 → app-green */}
       <Card color="app-green" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            盈利账户
-          </h3>
+          <h3 className="text-sm font-semibold text-white">盈利账户</h3>
           <div className={cn(iconClasses.container, iconClasses.hover, 'bg-[var(--color-profit)]')}>
             <TrendingUpIcon className="h-full w-full text-white" />
           </div>
@@ -83,9 +85,7 @@ export function ProfitSummary({ accountProfits }: ProfitSummaryProps) {
       {/* 亏损账户 - 亏损计数 → app-red */}
       <Card color="app-red" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            亏损账户
-          </h3>
+          <h3 className="text-sm font-semibold text-white">亏损账户</h3>
           <div className={cn(iconClasses.container, iconClasses.hover, 'bg-[var(--color-loss)]')}>
             <TrendingDownIcon className="h-full w-full text-white" />
           </div>

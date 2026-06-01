@@ -1,10 +1,11 @@
 'use client'
 
 import { Card } from 'animal-island-ui'
+
 import { TurnipIcon, TrendingUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact } from '@/lib/utils/formatters'
-import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
 import { cn } from '@/lib/utils/cn'
+import { iconClasses, animationClasses } from '@/lib/utils/design-classes'
+import { formatCurrencyCompact } from '@/lib/utils/formatters'
 
 interface ProfitCardData {
   totalProfit: number
@@ -33,12 +34,8 @@ export function ProfitCard({ data }: ProfitCardProps) {
           </div>
         </div>
         <div className="p-6 pt-0">
-          <div className="text-2xl font-black text-white">
-            暂无数据
-          </div>
-          <p className="text-xs opacity-80 mt-2">
-            请记录月末快照以查看收益
-          </p>
+          <div className="text-2xl font-black text-white">暂无数据</div>
+          <p className="text-xs opacity-80 mt-2">请记录月末快照以查看收益</p>
         </div>
       </Card>
     )

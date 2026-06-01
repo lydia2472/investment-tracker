@@ -5,16 +5,20 @@
 ## 需要的图标文件
 
 ### icon.png (1024x1024)
+
 通用应用图标，PNG 格式，建议尺寸 1024x1024 像素。
 
 ### icon.icns
+
 macOS 应用图标。
 
 可以使用在线工具将 PNG 转换为 ICNS：
+
 - https://cloudconvert.com/png-to-icns
 - https://www.img2icnsapp.com/
 
 ### icon.ico (可选)
+
 Windows 应用图标。
 
 ## 临时方案

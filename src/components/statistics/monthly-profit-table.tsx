@@ -1,9 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import React from 'react'
-import type { MonthlyProfit } from '@/types'
-import { formatCurrency } from '@/lib/utils/formatters'
+import React, { useState } from 'react'
+
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -11,24 +9,25 @@ import {
   TrendingUpIcon,
   TrendingDownIcon,
 } from '@/lib/components/icon-adapter'
+import { formatCurrency } from '@/lib/utils/formatters'
+
+import type { MonthlyProfit } from '@/types'
 
 interface MonthlyProfitTableProps {
   data: MonthlyProfit[]
   selectedAccounts?: string[]
 }
 
-export function MonthlyProfitTable({
-  data,
-  selectedAccounts,
-}: MonthlyProfitTableProps) {
+export function MonthlyProfitTable({ data, selectedAccounts }: MonthlyProfitTableProps) {
   const [sortField, setSortField] = useState<keyof MonthlyProfit>('year')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())
 
-  // 过滤数据
-  const filteredData = selectedAccounts
-    ? data.filter((profit) => selectedAccounts.includes(profit.accountId))
-    : data
+  // 过滤数据（与图表保持一致：只在选择账户时才过滤）
+  const filteredData =
+    selectedAccounts && selectedAccounts.length > 0
+      ? data.filter((profit) => selectedAccounts.includes(profit.accountId))
+      : data
 
   // 排序数据
   const sortedData = [...filteredData].sort((a, b) => {
@@ -40,9 +39,7 @@ export function MonthlyProfitTable({
     }
 
     if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
+      return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
     }
 
     return 0
@@ -116,9 +113,7 @@ export function MonthlyProfitTable({
   if (sortedData.length === 0) {
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-lg border bg-muted/20">
-        <p className="text-muted-foreground">
-          暂无月度收益数据，请先记录月末快照
-        </p>
+        <p className="text-muted-foreground">暂无月度收益数据，请先记录月末快照</p>
       </div>
     )
   }
@@ -208,9 +203,7 @@ export function MonthlyProfitTable({
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {profits.length} 个账户
-                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{profits.length} 个账户</td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3">
@@ -244,9 +237,7 @@ export function MonthlyProfitTable({
                         key={`${monthKey}-${profit.accountId}`}
                         className="border-b bg-muted/10 text-sm"
                       >
-                        <td className="px-4 py-3 pl-12">
-                          {profit.accountName}
-                        </td>
+                        <td className="px-4 py-3 pl-12">{profit.accountName}</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-right">
                           {formatCurrency(profit.startBalance)}
@@ -254,14 +245,10 @@ export function MonthlyProfitTable({
                         <td className="px-4 py-3 text-right">
                           {formatCurrency(profit.endBalance)}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          {renderProfitTrend(profit)}
-                        </td>
+                        <td className="px-4 py-3 text-right">{renderProfitTrend(profit)}</td>
                         <td className="px-4 py-3 text-right">
                           <span
-                            className={
-                              profit.netFlow >= 0 ? 'text-[#5ec850]' : 'text-[#ff6464]'
-                            }
+                            className={profit.netFlow >= 0 ? 'text-[#5ec850]' : 'text-[#ff6464]'}
                           >
                             {profit.netFlow >= 0 ? '+' : ''}
                             {formatCurrency(profit.netFlow)}

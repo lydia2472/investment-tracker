@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>清理重复记录</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #cc0000;
+    }
+    button.secondary {
+      background: #4CAF50;
+    }
+    button.secondary:hover {
+      background: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      display: none;
+    }
+    .result.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .result.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    pre {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      border: 1px solid #ffeaa7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗑️ 清理重复记录工具</h1>
+
+    <div class="warning">
+      <strong>⚠️ 警告：</strong><br>
+      此工具将删除重复的交易记录和快照。<br>
+      重复定义：相同账户、相同日期、相同类型的记录。<br>
+      建议先备份数据！
+    </div>
+
+    <button onclick="cleanupDuplicates()">🧹 清理重复记录</button>
+    <button class="secondary" onclick="checkDuplicates()">🔍 检查重复记录（不删除）</button>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    function getStorage() {
+      // 从 localStorage 读取数据（Zustand persist 存储）
+      const transactions = JSON.parse(localStorage.getItem('transaction-storage') || '[]');
+      const snapshots = JSON.parse(localStorage.getItem('snapshot-storage') || '[]');
+      return { transactions, snapshots };
+    }
+
+    function setStorage(transactions, snapshots) {
+      localStorage.setItem('transaction-storage', JSON.stringify(transactions));
+      localStorage.setItem('snapshot-storage', JSON.stringify(snapshots));
+    }
+
+    function findDuplicates() {
+      const { transactions, snapshots } = getStorage();
+
+      // 查找重复的交易
+      const transactionMap = new Map();
+      const duplicateTransactions = [];
+
+      transactions.forEach((txn) => {
+        const date = new Date(txn.createdAt);
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const key = `${txn.accountId}:${dateKey}:${txn.type}`;
+
+        if (transactionMap.has(key)) {
+          duplicateTransactions.push({ ...txn, existingId: transactionMap.get(key) });
+        } else {
+          transactionMap.set(key, txn.id);
+        }
+      });
+
+      // 查找重复的快照
+      const snapshotMap = new Map();
+      const duplicateSnapshots = [];
+
+      snapshots.forEach((snap) => {
+        const date = new Date(snap.snapshotDate);
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const key = `${snap.accountId}:${dateKey}`;
+
+        if (snapshotMap.has(key)) {
+          duplicateSnapshots.push({ ...snap, existingId: snapshotMap.get(key) });
+        } else {
+          snapshotMap.set(key, snap.id);
+        }
+      });
+
+      return { duplicateTransactions, duplicateSnapshots };
+    }
+
+    function checkDuplicates() {
+      const resultDiv = document.getElementById('result');
+      const { transactions, snapshots } = getStorage();
+      const { duplicateTransactions, duplicateSnapshots } = findDuplicates();
+
+      let html = '<h3>检查结果：</h3>';
+      html += `<p>📊 原始数据：</p>`;
+      html += `<pre>- 交易记录：${transactions.length} 条\n- 快照记录：${snapshots.length} 条</pre>`;
+      html += `<p>⚠️ 发现重复：</p>`;
+      html += `<pre>- 重复交易：${duplicateTransactions.length} 条\n- 重复快照：${duplicateSnapshots.length} 条</pre>`;
+
+      if (duplicateTransactions.length > 0) {
+        html += '<h4>重复交易详情：</h4>';
+        html += '<pre>' + JSON.stringify(duplicateTransactions, null, 2) + '</pre>';
+      }
+
+      if (duplicateSnapshots.length > 0) {
+        html += '<h4>重复快照详情：</h4>';
+        html += '<pre>' + JSON.stringify(duplicateSnapshots, null, 2) + '</pre>';
+      }
+
+      resultDiv.className = 'result success';
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = html;
+    }
+
+    function cleanupDuplicates() {
+      if (!confirm('确定要删除所有重复记录吗？此操作不可撤销！')) {
+        return;
+      }
+
+      const resultDiv = document.getElementById('result');
+      const { transactions, snapshots } = getStorage();
+      const { duplicateTransactions, duplicateSnapshots } = findDuplicates();
+
+      const duplicateTxnIds = new Set(duplicateTransactions.map(t => t.id));
+      const duplicateSnapIds = new Set(duplicateSnapshots.map(s => s.id));
+
+      // 过滤掉重复记录
+      const cleanedTransactions = transactions.filter(t => !duplicateTxnIds.has(t.id));
+      const cleanedSnapshots = snapshots.filter(s => !duplicateSnapIds.has(s.id));
+
+      // 保存清理后的数据
+      setStorage(cleanedTransactions, cleanedSnapshots);
+
+      // 显示结果
+      let html = '<h3>✅ 清理完成！</h3>';
+      html += `<p>📊 清理统计：</p>`;
+      html += `<pre>- 删除交易：${transactions.length - cleanedTransactions.length} 条\n- 删除快照：${snapshots.length - cleanedSnapshots.length} 条</pre>`;
+      html += `<pre>- 剩余交易：${cleanedTransactions.length} 条\n- 剩余快照：${cleanedSnapshots.length} 条</pre>`;
+      html += '<p>💡 请刷新应用页面查看更新后的数据</p>';
+
+      resultDiv.className = 'result success';
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

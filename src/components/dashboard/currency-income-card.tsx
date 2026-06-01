@@ -1,21 +1,29 @@
 'use client'
 
-import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
+import { useState, memo } from 'react'
+
 import { ChevronDownIcon, ChevronUpIcon, TrendingUpIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
+import {
+  getPriorityCurrency,
+  formatPriorityCurrencyDisplay,
+} from '@/lib/utils/currency-priority-helpers'
 import { iconClasses } from '@/lib/utils/design-classes'
-import { getPriorityCurrency, formatPriorityCurrencyDisplay } from '@/lib/utils/currency-priority-helpers'
-import type { MultiCurrencySummary, CurrencyStatistics } from '@/types'
+import { formatCurrencyCompact } from '@/lib/utils/formatters'
+
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
+import type { MultiCurrencySummary, CurrencyStatistics } from '@/types'
 
 interface CurrencyIncomeCardProps {
   data: MultiCurrencySummary
   dateRange?: DateRange
 }
 
-export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateRange }: CurrencyIncomeCardProps) {
+export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({
+  data,
+  dateRange,
+}: CurrencyIncomeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -34,16 +42,14 @@ export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateR
   const rangeLabel = formatRangeLabel()
 
   // 过滤出有收入的货币
-  const currenciesWithIncome = data.currencies.filter(c => c.totalIncome > 0)
+  const currenciesWithIncome = data.currencies.filter((c) => c.totalIncome > 0)
 
   // 无收入数据
   if (currenciesWithIncome.length === 0) {
     return (
       <Card color="app-green" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            各货币收入
-          </h3>
+          <h3 className="text-sm font-semibold text-white">各货币收入</h3>
           <div className={cn(iconClasses.container, 'bg-white/20')}>
             <TrendingUpIcon className="h-full w-full text-white" />
           </div>
@@ -65,14 +71,9 @@ export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateR
   return (
     <Card color="app-green" className="group">
       {/* 折叠状态：汇总信息 */}
-      <div
-        className="cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            各货币收入
-          </h3>
+          <h3 className="text-sm font-semibold text-white">各货币收入</h3>
           <div className={cn(iconClasses.container, 'bg-white/20')}>
             <TrendingUpIcon className="h-full w-full text-white" />
           </div>
@@ -81,8 +82,8 @@ export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateR
         <div className="p-6 pt-0">
           <div className="text-2xl font-black text-white">
             {formatPriorityCurrencyDisplay(
-              getPriorityCurrency(currenciesWithIncome, c => c.totalIncome),
-              c => c.totalIncome,
+              getPriorityCurrency(currenciesWithIncome, (c) => c.totalIncome),
+              (c) => c.totalIncome,
               '+'
             )}
           </div>
@@ -111,19 +112,14 @@ export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateR
             <div className="mb-4 pb-3 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/70">筛选范围</span>
-                <span className="text-sm font-semibold text-white">
-                  {rangeLabel}
-                </span>
+                <span className="text-sm font-semibold text-white">{rangeLabel}</span>
               </div>
             </div>
           )}
 
           <div className="space-y-3">
             {currenciesWithIncome.map((currency) => (
-              <IncomeDetailItem
-                key={currency.currency}
-                currency={currency}
-              />
+              <IncomeDetailItem key={currency.currency} currency={currency} />
             ))}
           </div>
         </div>
@@ -133,15 +129,15 @@ export const CurrencyIncomeCard = memo(function CurrencyIncomeCard({ data, dateR
 })
 
 // 单币种视图（降级显示）
-const SingleIncomeView = memo(function SingleIncomeView({ currency }: {
+const SingleIncomeView = memo(function SingleIncomeView({
+  currency,
+}: {
   currency: CurrencyStatistics
 }) {
   return (
     <Card color="app-green" className="group">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <h3 className="text-sm font-semibold text-white">
-          各货币收入
-        </h3>
+        <h3 className="text-sm font-semibold text-white">各货币收入</h3>
         <div className={cn(iconClasses.container, 'bg-white/20')}>
           <TrendingUpIcon className="h-full w-full text-white" />
         </div>
@@ -151,27 +147,25 @@ const SingleIncomeView = memo(function SingleIncomeView({ currency }: {
         <div className="text-3xl font-black text-white">
           +{currency.symbol} {formatCurrencyCompact(currency.totalIncome)}
         </div>
-        <p className="text-xs opacity-80 mt-2">
-          {currency.accountCount} 个账户
-        </p>
+        <p className="text-xs opacity-80 mt-2">{currency.accountCount} 个账户</p>
       </div>
     </Card>
   )
 })
 
 // 单个货币收入明细项
-const IncomeDetailItem = memo(function IncomeDetailItem({ currency }: { currency: CurrencyStatistics }) {
+const IncomeDetailItem = memo(function IncomeDetailItem({
+  currency,
+}: {
+  currency: CurrencyStatistics
+}) {
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-3">
       {/* 主要收入：工资 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-white">
-            {currency.currency}
-          </span>
-          <span className="text-xs text-white/70">
-            ({currency.accountCount} 个账户)
-          </span>
+          <span className="text-lg font-bold text-white">{currency.currency}</span>
+          <span className="text-xs text-white/70">({currency.accountCount} 个账户)</span>
         </div>
         <div className="text-right">
           <div className="text-xl font-bold text-green-700">

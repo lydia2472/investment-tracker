@@ -1,0 +1,23 @@
+# 依赖
+node_modules
+
+# 构建输出
+.next
+out
+dist
+dist-electron
+
+# 缓存
+.turbo
+.coverage
+
+# 环境文件
+.env
+.env.local
+.env.*.local
+
+# 其他
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+electron

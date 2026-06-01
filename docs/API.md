@@ -32,35 +32,35 @@ An account represents a user's financial account, such as a bank account, securi
 
 ```typescript
 interface Account {
-  id: string                  // 唯一标识符 / Unique identifier (UUID)
-  name: string                // 账户名称 / Account name
-  type: AccountType           // 账户类型 / Account type
-  balance: number             // 当前余额 / Current balance
-  initialBalance: number      // 初始余额 / Initial balance
-  currency: string            // 币种代码 / Currency code (CNY, USD, etc.)
-  description?: string        // 描述信息 / Description (optional)
-  color: string               // 颜色标识 / Color identifier (hex color)
-  icon?: string               // 图标名称 / Icon name (optional)
-  createdAt: Date             // 创建时间 / Creation timestamp
-  updatedAt: Date             // 更新时间 / Last update timestamp
+  id: string // 唯一标识符 / Unique identifier (UUID)
+  name: string // 账户名称 / Account name
+  type: AccountType // 账户类型 / Account type
+  balance: number // 当前余额 / Current balance
+  initialBalance: number // 初始余额 / Initial balance
+  currency: string // 币种代码 / Currency code (CNY, USD, etc.)
+  description?: string // 描述信息 / Description (optional)
+  color: string // 颜色标识 / Color identifier (hex color)
+  icon?: string // 图标名称 / Icon name (optional)
+  createdAt: Date // 创建时间 / Creation timestamp
+  updatedAt: Date // 更新时间 / Last update timestamp
 }
 ```
 
 **字段说明 / Field Descriptions**:
 
-| 字段 / Field | 类型 / Type | 必需 / Required | 说明 / Description |
-|-------------|------------|---------------|------------------|
-| `id` | `string` | ✅ | UUID 格式的唯一标识 |
-| `name` | `string` | ✅ | 账户名称，如"招商银行" |
-| `type` | `AccountType` | ✅ | 账户类型枚举值 |
-| `balance` | `number` | ✅ | 当前余额（根据交易自动更新）|
-| `initialBalance` | `number` | ✅ | 创建账户时的初始余额 |
-| `currency` | `string` | ✅ | 币种代码，默认 "CNY" |
-| `description` | `string` | ❌ | 账户描述或备注 |
-| `color` | `string` | ✅ | 用于图表显示的颜色值 |
-| `icon` | `string` | ❌ | 图标名称（预留字段）|
-| `createdAt` | `Date` | ✅ | 账户创建时间 |
-| `updatedAt` | `Date` | ✅ | 最后更新时间 |
+| 字段 / Field     | 类型 / Type   | 必需 / Required | 说明 / Description           |
+| ---------------- | ------------- | --------------- | ---------------------------- |
+| `id`             | `string`      | ✅              | UUID 格式的唯一标识          |
+| `name`           | `string`      | ✅              | 账户名称，如"招商银行"       |
+| `type`           | `AccountType` | ✅              | 账户类型枚举值               |
+| `balance`        | `number`      | ✅              | 当前余额（根据交易自动更新） |
+| `initialBalance` | `number`      | ✅              | 创建账户时的初始余额         |
+| `currency`       | `string`      | ✅              | 币种代码，默认 "CNY"         |
+| `description`    | `string`      | ❌              | 账户描述或备注               |
+| `color`          | `string`      | ✅              | 用于图表显示的颜色值         |
+| `icon`           | `string`      | ❌              | 图标名称（预留字段）         |
+| `createdAt`      | `Date`        | ✅              | 账户创建时间                 |
+| `updatedAt`      | `Date`        | ✅              | 最后更新时间                 |
 
 ---
 
@@ -74,41 +74,41 @@ A transaction represents a record of fund flow in an account.
 
 ```typescript
 interface Transaction {
-  id: string                      // 唯一标识符 / Unique identifier (UUID)
-  accountId: string              // 关联账户 ID / Associated account ID
-  type: TransactionType          // 交易类型 / Transaction type
-  category: TransactionCategory  // 交易分类 / Transaction category
-  amount?: number                // 交易金额 / Transaction amount
-  balance?: number               // 余额快照 / Balance snapshot
-  transferToAccountId?: string   // 转入账户 ID / Transfer to account ID
+  id: string // 唯一标识符 / Unique identifier (UUID)
+  accountId: string // 关联账户 ID / Associated account ID
+  type: TransactionType // 交易类型 / Transaction type
+  category: TransactionCategory // 交易分类 / Transaction category
+  amount?: number // 交易金额 / Transaction amount
+  balance?: number // 余额快照 / Balance snapshot
+  transferToAccountId?: string // 转入账户 ID / Transfer to account ID
   transferFromAccountId?: string // 转出账户 ID / Transfer from account ID
-  transferId?: string            // 转账组 ID / Transfer group ID
-  description?: string           // 描述 / Description
-  note?: string                  // 备注信息 / Additional notes
-  tags?: string[]                // 标签数组 / Tags array
-  createdAt: Date                // 创建时间 / Creation timestamp
-  updatedAt: Date                // 更新时间 / Last update timestamp
+  transferId?: string // 转账组 ID / Transfer group ID
+  description?: string // 描述 / Description
+  note?: string // 备注信息 / Additional notes
+  tags?: string[] // 标签数组 / Tags array
+  createdAt: Date // 创建时间 / Creation timestamp
+  updatedAt: Date // 更新时间 / Last update timestamp
 }
 ```
 
 **字段说明 / Field Descriptions**:
 
-| 字段 / Field | 类型 / Type | 必需 / Required | 说明 / Description |
-|-------------|------------|---------------|------------------|
-| `id` | `string` | ✅ | UUID 格式的唯一标识 |
-| `accountId` | `string` | ✅ | 关联的账户 ID |
-| `type` | `TransactionType` | ✅ | 交易类型枚举值 |
-| `category` | `TransactionCategory` | ✅ | 交易分类枚举值 |
-| `amount` | `number` | ❌ | 交易金额（快照类型无此字段）|
-| `balance` | `number` | ❌ | 余额快照（快照类型专用）|
-| `transferToAccountId` | `string` | ❌ | 转账目标账户 ID |
-| `transferFromAccountId` | `string` | ❌ | 转账来源账户 ID |
-| `transferId` | `string` | ❌ | 转账组 ID（关联转出和转入）|
-| `description` | `string` | ❌ | 交易描述 |
-| `note` | `string` | ❌ | 详细备注 |
-| `tags` | `string[]` | ❌ | 标签（预留字段）|
-| `createdAt` | `Date` | ✅ | 交易创建时间 |
-| `updatedAt` | `Date` | ✅ | 最后更新时间 |
+| 字段 / Field            | 类型 / Type           | 必需 / Required | 说明 / Description           |
+| ----------------------- | --------------------- | --------------- | ---------------------------- |
+| `id`                    | `string`              | ✅              | UUID 格式的唯一标识          |
+| `accountId`             | `string`              | ✅              | 关联的账户 ID                |
+| `type`                  | `TransactionType`     | ✅              | 交易类型枚举值               |
+| `category`              | `TransactionCategory` | ✅              | 交易分类枚举值               |
+| `amount`                | `number`              | ❌              | 交易金额（快照类型无此字段） |
+| `balance`               | `number`              | ❌              | 余额快照（快照类型专用）     |
+| `transferToAccountId`   | `string`              | ❌              | 转账目标账户 ID              |
+| `transferFromAccountId` | `string`              | ❌              | 转账来源账户 ID              |
+| `transferId`            | `string`              | ❌              | 转账组 ID（关联转出和转入）  |
+| `description`           | `string`              | ❌              | 交易描述                     |
+| `note`                  | `string`              | ❌              | 详细备注                     |
+| `tags`                  | `string[]`            | ❌              | 标签（预留字段）             |
+| `createdAt`             | `Date`                | ✅              | 交易创建时间                 |
+| `updatedAt`             | `Date`                | ✅              | 最后更新时间                 |
 
 ---
 
@@ -118,10 +118,10 @@ interface Transaction {
 
 ```typescript
 enum AccountType {
-  SECURITIES = 'SECURITIES',  // 证券账户 / Securities account
-  BANK = 'BANK',              // 银行账户 / Bank account
-  CASH = 'CASH',              // 现金 / Cash
-  OTHER = 'OTHER'             // 其他 / Other
+  SECURITIES = 'SECURITIES', // 证券账户 / Securities account
+  BANK = 'BANK', // 银行账户 / Bank account
+  CASH = 'CASH', // 现金 / Cash
+  OTHER = 'OTHER', // 其他 / Other
 }
 ```
 
@@ -129,10 +129,10 @@ enum AccountType {
 
 ```typescript
 enum TransactionType {
-  INCOME = 'income',          // 收入 / Income
-  EXPENSE = 'expense',        // 支出 / Expense
-  TRANSFER = 'transfer',      // 转账 / Transfer
-  SNAPSHOT = 'snapshot'       // 快照 / Snapshot
+  INCOME = 'income', // 收入 / Income
+  EXPENSE = 'expense', // 支出 / Expense
+  TRANSFER = 'transfer', // 转账 / Transfer
+  SNAPSHOT = 'snapshot', // 快照 / Snapshot
 }
 ```
 
@@ -140,24 +140,24 @@ enum TransactionType {
 
 ```typescript
 enum TransactionCategory {
-  DEPOSIT = 'deposit',                    // 存款 / Deposit
-  WITHDRAW = 'withdraw',                  // 取款 / Withdraw
-  INVESTMENT_GAIN = 'investment_gain',    // 投资收益 / Investment gain
-  INVESTMENT_LOSS = 'investment_loss',    // 投资亏损 / Investment loss
-  TRANSFER_OUT = 'transfer_out',          // 转出 / Transfer out
-  TRANSFER_IN = 'transfer_in',            // 转入 / Transfer in
-  SNAPSHOT = 'snapshot'                   // 快照 / Snapshot
+  DEPOSIT = 'deposit', // 存款 / Deposit
+  WITHDRAW = 'withdraw', // 取款 / Withdraw
+  INVESTMENT_GAIN = 'investment_gain', // 投资收益 / Investment gain
+  INVESTMENT_LOSS = 'investment_loss', // 投资亏损 / Investment loss
+  TRANSFER_OUT = 'transfer_out', // 转出 / Transfer out
+  TRANSFER_IN = 'transfer_in', // 转入 / Transfer in
+  SNAPSHOT = 'snapshot', // 快照 / Snapshot
 }
 ```
 
 **分类与类型的关系 / Category-Type Relationship**:
 
 | TransactionType | 可用 TransactionCategory / Available Categories |
-|-----------------|------------------------------------------------------|
-| `INCOME` | `DEPOSIT`, `TRANSFER_IN`, `INVESTMENT_GAIN` |
-| `EXPENSE` | `WITHDRAW`, `TRANSFER_OUT`, `INVESTMENT_LOSS` |
-| `TRANSFER` | `TRANSFER_OUT`, `TRANSFER_IN` |
-| `SNAPSHOT` | `SNAPSHOT` |
+| --------------- | ----------------------------------------------- |
+| `INCOME`        | `DEPOSIT`, `TRANSFER_IN`, `INVESTMENT_GAIN`     |
+| `EXPENSE`       | `WITHDRAW`, `TRANSFER_OUT`, `INVESTMENT_LOSS`   |
+| `TRANSFER`      | `TRANSFER_OUT`, `TRANSFER_IN`                   |
+| `SNAPSHOT`      | `SNAPSHOT`                                      |
 
 ---
 
@@ -175,7 +175,7 @@ Manages account state and operations.
 
 ```typescript
 interface AccountState {
-  accounts: Account[]  // 账户列表 / List of accounts
+  accounts: Account[] // 账户列表 / List of accounts
 }
 ```
 
@@ -212,11 +212,12 @@ addAccount({
   initialBalance: 10000,
   currency: 'CNY',
   color: '#3b82f6',
-  description: '工资卡'
+  description: '工资卡',
 })
 ```
 
 **参数 / Parameters**:
+
 - `accountData.accountName`: `string` - 账户名称
 - `accountData.type`: `AccountType` - 账户类型
 - `accountData.initialBalance`: `number` - 初始余额
@@ -227,6 +228,7 @@ addAccount({
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 创建新账户
 - 自动设置 `balance = initialBalance`
 - 自动生成 `id`, `createdAt`, `updatedAt`
@@ -245,17 +247,19 @@ const updateAccount = useAccountStore((state) => state.updateAccount)
 
 updateAccount('account-id', {
   name: '新名称',
-  description: '更新后的描述'
+  description: '更新后的描述',
 })
 ```
 
 **参数 / Parameters**:
+
 - `id`: `string` - 账户 ID
 - `data`: `Partial<Account>` - 要更新的字段
 
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 更新指定字段
 - 自动更新 `updatedAt` 时间戳
 - 数据持久化到 localStorage
@@ -275,11 +279,13 @@ deleteAccount('account-id')
 ```
 
 **参数 / Parameters**:
+
 - `id`: `string` - 账户 ID
 
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 删除账户
 - 删除该账户的所有交易记录（通过 transaction-store）
 - 数据持久化到 localStorage
@@ -297,16 +303,18 @@ Update account balance (usually triggered automatically by transactions).
 ```typescript
 const updateBalance = useAccountStore((state) => state.updateBalance)
 
-updateBalance('account-id', 15000.00)
+updateBalance('account-id', 15000.0)
 ```
 
 **参数 / Parameters**:
+
 - `id`: `string` - 账户 ID
 - `newBalance`: `number` - 新余额
 
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 更新账户余额
 - 自动更新 `updatedAt` 时间戳
 - 数据持久化到 localStorage
@@ -327,7 +335,7 @@ Manages transaction state and operations.
 
 ```typescript
 interface TransactionState {
-  transactions: Transaction[]  // 交易列表 / List of transactions
+  transactions: Transaction[] // 交易列表 / List of transactions
 }
 ```
 
@@ -364,11 +372,12 @@ addTransaction({
   category: TransactionCategory.DEPOSIT,
   amount: 5000,
   description: '工资收入',
-  note: '5月份工资'
+  note: '5月份工资',
 })
 ```
 
 **参数 / Parameters**:
+
 - `transactionData.accountId`: `string` - 关联账户 ID
 - `transactionData.type`: `TransactionType` - 交易类型
 - `transactionData.category`: `TransactionCategory` - 交易分类
@@ -380,6 +389,7 @@ addTransaction({
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 创建新交易记录
 - 自动更新关联账户的余额
   - 收入: `balance += amount`
@@ -401,17 +411,19 @@ const updateTransaction = useTransactionStore((state) => state.updateTransaction
 
 updateTransaction('transaction-id', {
   amount: 6000,
-  description: '更新后的描述'
+  description: '更新后的描述',
 })
 ```
 
 **参数 / Parameters**:
+
 - `id`: `string` - 交易 ID
 - `data`: `Partial<Transaction>` - 要更新的字段
 
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 更新交易记录
 - 如果修改 `amount` 或 `accountId`，重新计算并更新账户余额
 - 自动更新 `updatedAt` 时间戳
@@ -432,11 +444,13 @@ deleteTransaction('transaction-id')
 ```
 
 **参数 / Parameters**:
+
 - `id`: `string` - 交易 ID
 
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 删除交易记录
 - 自动恢复关联账户的余额
   - 收入: `balance -= amount`
@@ -454,15 +468,11 @@ Transfer funds between accounts (automatically generates dual transaction record
 ```typescript
 const transfer = useTransactionStore((state) => state.transfer)
 
-transfer(
-  'from-account-id',
-  'to-account-id',
-  1000,
-  '生活费转账'
-)
+transfer('from-account-id', 'to-account-id', 1000, '生活费转账')
 ```
 
 **参数 / Parameters**:
+
 - `fromAccountId`: `string` - 转出账户 ID
 - `toAccountId`: `string` - 转入账户 ID
 - `amount`: `number` - 转账金额
@@ -471,6 +481,7 @@ transfer(
 **返回值 / Returns**: `void`
 
 **副作用 / Side Effects**:
+
 - 创建两条交易记录：
   1. 转出账户的支出交易（`TRANSFER_OUT`）
   2. 转入账户的收入交易（`TRANSFER_IN`）
@@ -517,21 +528,23 @@ Format amount as localized currency string.
 ```typescript
 import { formatCurrency } from '@/lib/utils/formatters'
 
-formatCurrency(1234.56)  // "¥1,234.56"
-formatCurrency(1000, 'USD')  // "$1,000.00"
+formatCurrency(1234.56) // "¥1,234.56"
+formatCurrency(1000, 'USD') // "$1,000.00"
 ```
 
 **参数 / Parameters**:
+
 - `amount`: `number` - 金额数值
 - `currency`: `string` - 币种代码（默认 "CNY"）
 
 **返回值 / Returns**: `string` - 格式化的货币字符串
 
 **示例 / Examples**:
+
 ```typescript
-formatCurrency(0)           // "¥0.00"
-formatCurrency(100)         // "¥100.00"
-formatCurrency(1234.56)     // "¥1,234.56"
+formatCurrency(0) // "¥0.00"
+formatCurrency(100) // "¥100.00"
+formatCurrency(1234.56) // "¥1,234.56"
 formatCurrency(1000, 'USD') // "$1,000.00"
 formatCurrency(1000, 'EUR') // "€1,000.00"
 ```
@@ -549,18 +562,20 @@ Format date as localized string.
 ```typescript
 import { formatDate } from '@/lib/utils/formatters'
 
-formatDate(new Date())  // "2026/5/20"
+formatDate(new Date()) // "2026/5/20"
 ```
 
 **参数 / Parameters**:
+
 - `date`: `Date` - 日期对象
 
 **返回值 / Returns**: `string` - 格式化的日期字符串
 
 **示例 / Examples**:
+
 ```typescript
-formatDate(new Date('2026-05-20'))  // "2026/5/20"
-formatDate(new Date('2026-01-01'))  // "2026/1/1"
+formatDate(new Date('2026-05-20')) // "2026/5/20"
+formatDate(new Date('2026-01-01')) // "2026/1/1"
 ```
 
 ---
@@ -581,11 +596,13 @@ cn('px-4 py-2', isHover && 'bg-blue-500')
 ```
 
 **参数 / Parameters**:
+
 - `...inputs`: `ClassValue` - className 数组或对象
 
 **返回值 / Returns**: `string` - 合并后的 className 字符串
 
 **用途 / Use Cases**:
+
 - 合并 Tailwind CSS 类名
 - 条件化添加类名
 - 避免类名冲突（tailwind-merge 自动处理）
@@ -607,34 +624,36 @@ import { useAccountStatistics } from '@/lib/hooks/use-account-statistics'
 
 const stats = useAccountStatistics()
 
-console.log(stats.totalIncome)    // 总收入 / Total income
-console.log(stats.totalExpense)   // 总支出 / Total expense
-console.log(stats.netIncome)      // 净收入 / Net income
+console.log(stats.totalIncome) // 总收入 / Total income
+console.log(stats.totalExpense) // 总支出 / Total expense
+console.log(stats.netIncome) // 净收入 / Net income
 ```
 
 #### 返回值 / Returns
 
 ```typescript
 interface AccountStatistics {
-  totalIncome: number          // 总收入 / Total income
-  totalExpense: number         // 总支出 / Total expense
-  netIncome: number            // 净收入 (收入 - 支出) / Net income
-  transactionCount: number     // 交易数量 / Transaction count
-  depositCount: number         // 存款次数 / Deposit count
-  withdrawCount: number        // 取款次数 / Withdraw count
-  investmentGain: number       // 投资收益 / Investment gains
-  investmentLoss: number       // 投资亏损 / Investment losses
-  lastTransactionDate?: Date   // 最后交易时间 / Last transaction date
+  totalIncome: number // 总收入 / Total income
+  totalExpense: number // 总支出 / Total expense
+  netIncome: number // 净收入 (收入 - 支出) / Net income
+  transactionCount: number // 交易数量 / Transaction count
+  depositCount: number // 存款次数 / Deposit count
+  withdrawCount: number // 取款次数 / Withdraw count
+  investmentGain: number // 投资收益 / Investment gains
+  investmentLoss: number // 投资亏损 / Investment losses
+  lastTransactionDate?: Date // 最后交易时间 / Last transaction date
 }
 ```
 
 #### 特性 / Characteristics
 
 **性能优化 / Performance Optimization**:
+
 - 使用 `useMemo` 缓存计算结果
 - 仅在 `transactions` 变化时重新计算
 
 **计算逻辑 / Calculation Logic**:
+
 ```typescript
 totalIncome = 所有类型为 INCOME 的交易金额之和
 totalExpense = 所有类型为 EXPENSE 的交易金额之和
@@ -777,13 +796,7 @@ export function AccountList() {
 All types can be imported from `@/types`:
 
 ```typescript
-import {
-  Account,
-  Transaction,
-  AccountType,
-  TransactionType,
-  TransactionCategory
-} from '@/types'
+import { Account, Transaction, AccountType, TransactionType, TransactionCategory } from '@/types'
 ```
 
 ---
@@ -839,6 +852,7 @@ const total = (transaction.amount || 0) + (transaction.fee || 0)
 3. **循环转账**: 转账账户与目标账户相同（应在前端验证）
 
 **建议 / Recommendations**:
+
 - 在调用 store 方法前验证输入
 - 使用 try-catch 包裹异步操作（如果有的话）
 - 提供用户友好的错误提示

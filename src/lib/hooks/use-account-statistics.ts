@@ -1,7 +1,8 @@
 'use client'
+import { useMemo } from 'react'
+
 import { useTransactionStore } from '@/lib/stores'
 import { TransactionType, AccountStatistics } from '@/types'
-import { useMemo } from 'react'
 
 export function useAccountStatistics(): AccountStatistics {
   const transactions = useTransactionStore((state) => state.transactions)

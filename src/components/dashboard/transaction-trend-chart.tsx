@@ -1,8 +1,18 @@
 'use client'
 
-import { useMemo } from 'react'
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format, startOfMonth, eachMonthOfInterval } from 'date-fns'
+import { useMemo } from 'react'
+import {
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+
 import type { Transaction } from '@/types'
 
 interface TransactionTrendChartProps {
@@ -14,36 +24,37 @@ export function TransactionTrendChart({ transactions }: TransactionTrendChartPro
     if (transactions.length === 0) return []
 
     // 获取日期范围
-    const dates = transactions.map(t =>
+    const dates = transactions.map((t) =>
       t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
     )
-    const minDate = startOfMonth(new Date(Math.min(...dates.map(d => d.getTime()))))
-    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
+    const minDate = startOfMonth(new Date(Math.min(...dates.map((d) => d.getTime()))))
+    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())))
 
     // 生成月份区间
     const months = eachMonthOfInterval({ start: minDate, end: maxDate })
 
     // 按月统计收支
-    return months.map(month => {
-      const monthTxns = transactions.filter(t => {
+    return months.map((month) => {
+      const monthTxns = transactions.filter((t) => {
         const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-        return txnDate.getMonth() === month.getMonth() &&
-               txnDate.getFullYear() === month.getFullYear()
+        return (
+          txnDate.getMonth() === month.getMonth() && txnDate.getFullYear() === month.getFullYear()
+        )
       })
 
       const income = monthTxns
-        .filter(t => t.type === 'income' || t.type === 'deposit' || t.type === 'transfer_in')
+        .filter((t) => t.type === 'income' || t.type === 'deposit' || t.type === 'transfer_in')
         .reduce((sum, t) => sum + (t.amount || 0), 0)
 
       const expense = monthTxns
-        .filter(t => t.type === 'consumption' || t.type === 'loan' || t.type === 'transfer_out')
+        .filter((t) => t.type === 'consumption' || t.type === 'loan' || t.type === 'transfer_out')
         .reduce((sum, t) => sum + (t.amount || 0), 0)
 
       return {
         date: format(month, 'yyyy-MM'),
         month: format(month, 'MM月'),
         income,
-        expense
+        expense,
       }
     })
   }, [transactions])
@@ -66,16 +77,13 @@ export function TransactionTrendChart({ transactions }: TransactionTrendChartPro
             className="text-xs"
             tick={{ fill: 'hsl(var(--muted-foreground))' }}
           />
-          <YAxis
-            className="text-xs"
-            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-          />
+          <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
           <Tooltip
             contentStyle={{
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
               borderRadius: '8px',
               border: 'none',
-              color: '#fff'
+              color: '#fff',
             }}
           />
           <Legend />

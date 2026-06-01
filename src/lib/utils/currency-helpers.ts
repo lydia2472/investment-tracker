@@ -1,5 +1,5 @@
-import { Account, Transaction, CurrencyStatistics, MultiCurrencySummary } from '@/types'
-import { TransactionType } from '@/types'
+import { Account, Transaction, CurrencyStatistics, MultiCurrencySummary , TransactionType } from '@/types'
+
 import { getAccountBalanceAtDate } from './snapshot-balance-helpers'
 
 // 货币配置（从 account-form.tsx 提取）
@@ -25,47 +25,60 @@ export function groupByCurrency(
   endDate?: Date
 ): MultiCurrencySummary {
   // 1. 按货币分组账户
-  const accountsByCurrency = accounts.reduce((acc, account) => {
-    if (!acc[account.currency]) {
-      acc[account.currency] = []
-    }
-    acc[account.currency].push(account)
-    return acc
-  }, {} as Record<string, Account[]>)
+  const accountsByCurrency = accounts.reduce(
+    (acc, account) => {
+      if (!acc[account.currency]) {
+        acc[account.currency] = []
+      }
+      acc[account.currency].push(account)
+      return acc
+    },
+    {} as Record<string, Account[]>
+  )
 
   // 2. 按货币分组交易（通过accountId查找账户货币）
-  const accountCurrencyMap = new Map(accounts.map(a => [a.id, a.currency]))
+  const accountCurrencyMap = new Map(accounts.map((a) => [a.id, a.currency]))
 
-  const transactionsByCurrency = transactions.reduce((acc, transaction) => {
-    const currency = accountCurrencyMap.get(transaction.accountId)
-    if (currency) {
-      if (!acc[currency]) {
-        acc[currency] = {
-          income: 0,           // INCOME + DEPOSIT
-          expense: 0,          // CONSUMPTION + LOAN
+  const transactionsByCurrency = transactions.reduce(
+    (acc, transaction) => {
+      const currency = accountCurrencyMap.get(transaction.accountId)
+      if (currency) {
+        if (!acc[currency]) {
+          acc[currency] = {
+            income: 0, // INCOME + DEPOSIT
+            expense: 0, // CONSUMPTION + LOAN
+          }
+        }
+
+        // 统计收入类型（INCOME, DEPOSIT）
+        if (
+          transaction.type === TransactionType.INCOME ||
+          transaction.type === TransactionType.DEPOSIT
+        ) {
+          acc[currency].income += transaction.amount || 0
+        }
+
+        // 支出统计（CONSUMPTION, LOAN）
+        if (
+          transaction.type === TransactionType.CONSUMPTION ||
+          transaction.type === TransactionType.LOAN
+        ) {
+          acc[currency].expense += transaction.amount || 0
         }
       }
-
-      // 统计收入类型（INCOME, DEPOSIT）
-      if (transaction.type === TransactionType.INCOME ||
-          transaction.type === TransactionType.DEPOSIT) {
-        acc[currency].income += (transaction.amount || 0)
+      return acc
+    },
+    {} as Record<
+      string,
+      {
+        income: number
+        expense: number
       }
-
-      // 支出统计（CONSUMPTION, LOAN）
-      if (transaction.type === TransactionType.CONSUMPTION ||
-          transaction.type === TransactionType.LOAN) {
-        acc[currency].expense += (transaction.amount || 0)
-      }
-    }
-    return acc
-  }, {} as Record<string, {
-    income: number
-    expense: number
-  }>)
+    >
+  )
 
   // 3. 构建货币统计数组
-  const currencies: CurrencyStatistics[] = Object.keys(accountsByCurrency).map(currencyCode => {
+  const currencies: CurrencyStatistics[] = Object.keys(accountsByCurrency).map((currencyCode) => {
     const currencyAccounts = accountsByCurrency[currencyCode]
     const data = transactionsByCurrency[currencyCode] || {
       income: 0,
@@ -73,17 +86,18 @@ export function groupByCurrency(
     }
     const config = CURRENCY_CONFIG[currencyCode as keyof typeof CURRENCY_CONFIG] || {
       symbol: currencyCode,
-      label: currencyCode
+      label: currencyCode,
     }
 
     return {
       currency: currencyCode,
       symbol: config.symbol,
-      totalAssets: currencyAccounts.reduce((sum, acc) =>
-        sum + getAccountBalanceAtDate(transactions, acc, endDate), 0
+      totalAssets: currencyAccounts.reduce(
+        (sum, acc) => sum + getAccountBalanceAtDate(transactions, acc, endDate),
+        0
       ),
-      totalIncome: data.income,                    // INCOME + DEPOSIT
-      totalExpense: data.expense,                  // CONSUMPTION + LOAN
+      totalIncome: data.income, // INCOME + DEPOSIT
+      totalExpense: data.expense, // CONSUMPTION + LOAN
       accountCount: currencyAccounts.length,
       netIncome: data.income - data.expense,
     }

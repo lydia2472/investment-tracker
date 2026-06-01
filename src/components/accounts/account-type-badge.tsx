@@ -16,9 +16,5 @@ interface AccountTypeBadgeProps {
 }
 
 export function AccountTypeBadge({ type }: AccountTypeBadgeProps) {
-  return (
-    <span className="text-xs bg-secondary px-2 py-1 rounded">
-      {accountTypeLabels[type]}
-    </span>
-  )
+  return <span className="text-xs bg-secondary px-2 py-1 rounded">{accountTypeLabels[type]}</span>
 }

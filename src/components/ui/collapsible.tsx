@@ -1,7 +1,8 @@
 'use client'
 
-import * as React from 'react'
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
+import * as React from 'react'
+
 import { cn } from '@/lib/utils/cn'
 
 const Collapsible = CollapsiblePrimitive.Root
@@ -10,14 +11,7 @@ const CollapsibleTrigger = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
-  <CollapsiblePrimitive.Trigger
-    ref={ref}
-    className={cn(
-      'flex',
-      className
-    )}
-    {...props}
-  >
+  <CollapsiblePrimitive.Trigger ref={ref} className={cn('flex', className)} {...props}>
     {children}
   </CollapsiblePrimitive.Trigger>
 ))

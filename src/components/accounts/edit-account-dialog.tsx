@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccountStore } from '@/lib/stores'
-import type { Account } from '@/types'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useAccountStore } from '@/lib/stores'
+
 import { AccountForm } from './account-form'
+
 import type { AccountFormData } from './account-form'
-import { toast } from 'sonner'
+import type { Account } from '@/types'
 
 interface EditAccountDialogProps {
   account: Account
@@ -63,12 +66,14 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
     riskLevel: account.riskLevel,
     icon: account.icon,
     description: account.description,
-    fixedDepositConfig: account.fixedDepositConfig ? {
-      ...account.fixedDepositConfig,
-      // 确保日期字段是 Date 对象（处理 localStorage 序列化）
-      startDate: new Date(account.fixedDepositConfig.startDate),
-      maturityDate: new Date(account.fixedDepositConfig.maturityDate),
-    } : undefined,
+    fixedDepositConfig: account.fixedDepositConfig
+      ? {
+          ...account.fixedDepositConfig,
+          // 确保日期字段是 Date 对象（处理 localStorage 序列化）
+          startDate: new Date(account.fixedDepositConfig.startDate),
+          maturityDate: new Date(account.fixedDepositConfig.maturityDate),
+        }
+      : undefined,
   }
 
   return (
@@ -76,9 +81,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>编辑账户</DialogTitle>
-          <DialogDescription>
-            修改账户信息
-          </DialogDescription>
+          <DialogDescription>修改账户信息</DialogDescription>
         </DialogHeader>
         <AccountForm
           mode="edit"

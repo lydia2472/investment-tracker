@@ -1,21 +1,29 @@
 'use client'
 
-import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
+import { useState, memo } from 'react'
+
 import { ChevronDownIcon, ChevronUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
+import {
+  getPriorityCurrency,
+  formatPriorityCurrencyDisplay,
+} from '@/lib/utils/currency-priority-helpers'
 import { iconClasses } from '@/lib/utils/design-classes'
-import { getPriorityCurrency, formatPriorityCurrencyDisplay } from '@/lib/utils/currency-priority-helpers'
-import type { MultiCurrencySummary, CurrencyStatistics } from '@/types'
+import { formatCurrencyCompact } from '@/lib/utils/formatters'
+
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
+import type { MultiCurrencySummary, CurrencyStatistics } from '@/types'
 
 interface CurrencyExpenseCardProps {
   data: MultiCurrencySummary
   dateRange?: DateRange
 }
 
-export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dateRange }: CurrencyExpenseCardProps) {
+export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({
+  data,
+  dateRange,
+}: CurrencyExpenseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -34,16 +42,14 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dat
   const rangeLabel = formatRangeLabel()
 
   // 过滤出有支出的货币
-  const currenciesWithExpense = data.currencies.filter(c => c.totalExpense > 0)
+  const currenciesWithExpense = data.currencies.filter((c) => c.totalExpense > 0)
 
   // 无支出数据
   if (currenciesWithExpense.length === 0) {
     return (
       <Card color="app-red" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            各货币支出
-          </h3>
+          <h3 className="text-sm font-semibold text-white">各货币支出</h3>
           <div className={cn(iconClasses.container, 'bg-white/20')}>
             <TrendingDownIcon className="h-full w-full text-white" />
           </div>
@@ -65,14 +71,9 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dat
   return (
     <Card color="app-red" className="group">
       {/* 折叠状态：汇总信息 */}
-      <div
-        className="cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            各货币支出
-          </h3>
+          <h3 className="text-sm font-semibold text-white">各货币支出</h3>
           <div className={cn(iconClasses.container, 'bg-white/20')}>
             <TrendingDownIcon className="h-full w-full text-white" />
           </div>
@@ -81,8 +82,8 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dat
         <div className="p-6 pt-0">
           <div className="text-2xl font-black text-white">
             {formatPriorityCurrencyDisplay(
-              getPriorityCurrency(currenciesWithExpense, c => c.totalExpense),
-              c => c.totalExpense,
+              getPriorityCurrency(currenciesWithExpense, (c) => c.totalExpense),
+              (c) => c.totalExpense,
               '-'
             )}
           </div>
@@ -111,19 +112,14 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dat
             <div className="mb-4 pb-3 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/70">筛选范围</span>
-                <span className="text-sm font-semibold text-white">
-                  {rangeLabel}
-                </span>
+                <span className="text-sm font-semibold text-white">{rangeLabel}</span>
               </div>
             </div>
           )}
 
           <div className="space-y-3">
             {currenciesWithExpense.map((currency) => (
-              <ExpenseDetailItem
-                key={currency.currency}
-                currency={currency}
-              />
+              <ExpenseDetailItem key={currency.currency} currency={currency} />
             ))}
           </div>
         </div>
@@ -133,13 +129,15 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({ data, dat
 })
 
 // 单币种视图（降级显示）
-const SingleExpenseView = memo(function SingleExpenseView({ currency }: { currency: CurrencyStatistics }) {
+const SingleExpenseView = memo(function SingleExpenseView({
+  currency,
+}: {
+  currency: CurrencyStatistics
+}) {
   return (
     <Card color="app-red" className="group">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <h3 className="text-sm font-semibold text-white">
-          总支出
-        </h3>
+        <h3 className="text-sm font-semibold text-white">总支出</h3>
         <div className={cn(iconClasses.container, 'bg-white/20')}>
           <TrendingDownIcon className="h-full w-full text-white" />
         </div>
@@ -150,41 +148,35 @@ const SingleExpenseView = memo(function SingleExpenseView({ currency }: { curren
           <div className="text-3xl font-black text-white">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
-          <p className="text-xs text-white/70 mt-1">
-            总支出
-          </p>
+          <p className="text-xs text-white/70 mt-1">总支出</p>
         </div>
 
         {/* 账户数量 */}
-        <p className="text-xs opacity-80 mt-2">
-          {currency.accountCount} 个账户
-        </p>
+        <p className="text-xs opacity-80 mt-2">{currency.accountCount} 个账户</p>
       </div>
     </Card>
   )
 })
 
 // 单个货币支出明细项
-const ExpenseDetailItem = memo(function ExpenseDetailItem({ currency }: { currency: CurrencyStatistics }) {
+const ExpenseDetailItem = memo(function ExpenseDetailItem({
+  currency,
+}: {
+  currency: CurrencyStatistics
+}) {
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-3">
       {/* 主要支出 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-white">
-            {currency.currency}
-          </span>
-          <span className="text-xs text-white/70">
-            ({currency.accountCount} 个账户)
-          </span>
+          <span className="text-lg font-bold text-white">{currency.currency}</span>
+          <span className="text-xs text-white/70">({currency.accountCount} 个账户)</span>
         </div>
         <div className="text-right">
           <div className="text-xl font-bold text-red-700">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
-          <div className="text-xs text-white/70 mt-1">
-            总支出
-          </div>
+          <div className="text-xs text-white/70 mt-1">总支出</div>
         </div>
       </div>
 
@@ -198,10 +190,12 @@ const ExpenseDetailItem = memo(function ExpenseDetailItem({ currency }: { curren
         </div>
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">净支出</div>
-          <div className={cn(
-            "text-sm font-semibold",
-            currency.netIncome < 0 ? "text-red-700" : "text-green-700"
-          )}>
+          <div
+            className={cn(
+              'text-sm font-semibold',
+              currency.netIncome < 0 ? 'text-red-700' : 'text-green-700'
+            )}
+          >
             {currency.netIncome < 0 ? '-' : '+'}
             {currency.symbol} {formatCurrencyCompact(Math.abs(currency.netIncome))}
           </div>

@@ -18,8 +18,10 @@ export const iconClasses = {
 } as const
 
 export const buttonClasses = {
-  primary: 'rounded-pill bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary-hover transition-all duration-fast',
-  secondary: 'rounded-pill bg-secondary px-6 py-3 font-semibold text-secondary-foreground hover:bg-secondary-hover transition-all duration-fast',
+  primary:
+    'rounded-pill bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary-hover transition-all duration-fast',
+  secondary:
+    'rounded-pill bg-secondary px-6 py-3 font-semibold text-secondary-foreground hover:bg-secondary-hover transition-all duration-fast',
   interactive: 'transition-all duration-fast hover:scale-105 active:scale-95',
 } as const
 

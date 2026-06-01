@@ -86,12 +86,14 @@ The system uses a modern Single Page Application (SPA) architecture built on Nex
 ### 前端框架 / Frontend Framework
 
 **Next.js 14 (App Router)**
+
 - ✅ React Server Components 支持
 - ✅ 文件系统路由
 - ✅ 内置代码分割和优化
 - ✅ 优秀的开发者体验
 
 **为什么选择 Next.js 而非 Vite + React Router？**
+
 - 更好的 SEO 支持（未来可能需要）
 - 内置优化和代码分割
 - 更一致的文件组织结构
@@ -99,12 +101,14 @@ The system uses a modern Single Page Application (SPA) architecture built on Nex
 ### UI 组件库 / UI Component Library
 
 **shadcn/ui + Tailwind CSS**
+
 - ✅ 可定制的组件系统
 - ✅ 基于 Radix UI 的无障碍访问
 - ✅ TypeScript 原生支持
 - ✅ 代码直接复制到项目中，完全可控
 
 **为什么选择 shadcn/ui 而非 Mantine UI？**
+
 - 更现代的设计风格
 - 更小的包体积
 - 更好的 TypeScript 支持
@@ -113,12 +117,14 @@ The system uses a modern Single Page Application (SPA) architecture built on Nex
 ### 状态管理 / State Management
 
 **Zustand**
+
 - ✅ 简洁的 API 设计
 - ✅ 内置 persist 中间件
 - ✅ 优秀的 TypeScript 支持
 - ✅ 无需 Context Provider 包装
 
 **为什么选择 Zustand 而非 Redux？**
+
 - 更少的样板代码
 - 更直观的 API
 - 更小的包体积
@@ -127,6 +133,7 @@ The system uses a modern Single Page Application (SPA) architecture built on Nex
 ### 表单处理 / Form Handling
 
 **React Hook Form + Zod**
+
 - ✅ 高性能表单验证
 - ✅ 类型安全的 schema 定义
 - ✅ 优秀的开发者体验
@@ -135,6 +142,7 @@ The system uses a modern Single Page Application (SPA) architecture built on Nex
 ### 数据可视化 / Data Visualization
 
 **Recharts**
+
 - ✅ React 原生图表库
 - ✅ 声明式组件 API
 - ✅ 响应式设计
@@ -292,10 +300,10 @@ addTransaction: (transactionData) => {
       {
         id: uuid(),
         createdAt: new Date(),
-        ...transactionData
+        ...transactionData,
       },
-      ...state.transactions
-    ]
+      ...state.transactions,
+    ],
   }))
 }
 
@@ -336,9 +344,10 @@ Key: 'account-storage' or 'transaction-storage'
 **位置**: `src/lib/stores/account-store.ts`
 
 **状态结构**:
+
 ```typescript
 interface AccountState {
-  accounts: Account[]                    // 账户列表
+  accounts: Account[] // 账户列表
   addAccount: (account: AccountData) => void
   updateAccount: (id: string, data: Partial<Account>) => void
   deleteAccount: (id: string) => void
@@ -347,6 +356,7 @@ interface AccountState {
 ```
 
 **关键方法**:
+
 - `addAccount`: 创建新账户
 - `updateAccount`: 更新账户信息
 - `deleteAccount`: 删除账户（同时删除关联交易）
@@ -357,6 +367,7 @@ interface AccountState {
 **位置**: `src/lib/stores/transaction-store.ts`
 
 **状态结构**:
+
 ```typescript
 interface TransactionState {
   transactions: Transaction[]
@@ -368,6 +379,7 @@ interface TransactionState {
 ```
 
 **关键方法**:
+
 - `addTransaction`: 创建新交易（自动更新账户余额）
 - `updateTransaction`: 更新交易信息（自动调整余额）
 - `deleteTransaction`: 删除交易（自动恢复余额）
@@ -376,6 +388,7 @@ interface TransactionState {
 ### 持久化策略 / Persistence Strategy
 
 **配置**:
+
 ```typescript
 export const useAccountStore = create<AccountState>()(
   persist(
@@ -383,14 +396,15 @@ export const useAccountStore = create<AccountState>()(
       // Store implementation
     }),
     {
-      name: 'account-storage',  // localStorage key
-      partialize: (state) => ({ accounts: state.accounts })
+      name: 'account-storage', // localStorage key
+      partialize: (state) => ({ accounts: state.accounts }),
     }
   )
 )
 ```
 
 **特性**:
+
 - 自动序列化/反序列化
 - 页面刷新后状态恢复
 - 只持久化必要数据（partialize）
@@ -400,11 +414,14 @@ export const useAccountStore = create<AccountState>()(
 **问题**: Transaction Store 需要更新 Account Store 的余额
 
 **解决方案**: 懒加载 Account Store
+
 ```typescript
 // 在 transaction-store.ts 中
 const addTransaction = (transactionData) => {
   // 创建交易
-  const transaction = { /* ... */ }
+  const transaction = {
+    /* ... */
+  }
 
   // 懒加载 account store
   const updateBalance = useAccountStore.getState().updateBalance
@@ -418,6 +435,7 @@ const addTransaction = (transactionData) => {
 ```
 
 **优点**:
+
 - 避免循环依赖
 - 保持代码解耦
 - 更容易测试
@@ -457,6 +475,7 @@ RootLayout (根布局)
 #### 1. 单一职责 / Single Responsibility
 
 每个组件只负责一个功能：
+
 - `AccountCard`: 只显示单个账户
 - `TransactionTable`: 只显示交易列表
 - `StatsCards`: 只显示统计数据
@@ -464,12 +483,14 @@ RootLayout (根布局)
 #### 2. 可复用性 / Reusability
 
 通用组件抽取到 `components/ui/`：
+
 - `Button`, `Card`, `Dialog`, `Form` 等基础组件
 - 可以在任何页面中使用
 
 #### 3. 受控与非受控 / Controlled vs Uncontrolled
 
 **受控组件** (推荐):
+
 ```typescript
 // 表单输入由 React Hook Form 控制
 <Controller
@@ -480,6 +501,7 @@ RootLayout (根布局)
 ```
 
 **非受控组件**:
+
 ```typescript
 // 使用 Zustand store 的状态
 const accounts = useAccountStore((state) => state.accounts)
@@ -489,9 +511,9 @@ const accounts = useAccountStore((state) => state.accounts)
 
 ```typescript
 interface AccountCardProps {
-  account: Account           // 必需数据
-  compact?: boolean          // 可选配置
-  onEdit?: (id: string) => void  // 回调函数
+  account: Account // 必需数据
+  compact?: boolean // 可选配置
+  onEdit?: (id: string) => void // 回调函数
 }
 
 // 使用默认值
@@ -509,6 +531,7 @@ function AccountCard({ account, compact = false, onEdit }: AccountCardProps) {
 **业务需求**: 账户间转账需要同时记录转出和转入
 
 **实现方案**:
+
 ```typescript
 transfer: (fromAccountId, toAccountId, amount, description) => {
   const now = new Date()
@@ -539,6 +562,7 @@ transfer: (fromAccountId, toAccountId, amount, description) => {
 ```
 
 **关键点**:
+
 - 两条交易共享 `transferId`，方便关联查询
 - 转出账户余额减少
 - 转入账户余额增加
@@ -547,29 +571,34 @@ transfer: (fromAccountId, toAccountId, amount, description) => {
 ### 2. 余额自动更新 / Automatic Balance Update
 
 **触发时机**:
+
 - 添加收入/支出交易
 - 删除交易
 - 编辑交易金额
 
 **实现逻辑**:
+
 ```typescript
 const addTransaction = (transactionData) => {
   // 1. 创建交易
   const transaction = { id: uuid(), createdAt: new Date(), ...transactionData }
 
   // 2. 计算新余额
-  const account = useAccountStore.getState().accounts.find(a => a.id === transactionData.accountId)
+  const account = useAccountStore
+    .getState()
+    .accounts.find((a) => a.id === transactionData.accountId)
   const currentBalance = account?.balance || 0
-  const newBalance = transactionData.type === TransactionType.INCOME
-    ? currentBalance + (transactionData.amount || 0)
-    : currentBalance - (transactionData.amount || 0)
+  const newBalance =
+    transactionData.type === TransactionType.INCOME
+      ? currentBalance + (transactionData.amount || 0)
+      : currentBalance - (transactionData.amount || 0)
 
   // 3. 更新账户余额
   useAccountStore.getState().updateBalance(transactionData.accountId, newBalance)
 
   // 4. 添加交易记录
   set((state) => ({
-    transactions: [transaction, ...state.transactions]
+    transactions: [transaction, ...state.transactions],
   }))
 }
 ```
@@ -613,12 +642,14 @@ export function useAccountStatistics(): AccountStatistics {
 ### 存储结构 / Storage Structure
 
 **键名**:
+
 - `account-storage`: 账户数据
 - `transaction-storage`: 交易数据
 
 **数据格式**: JSON
 
 **示例**:
+
 ```json
 // localStorage['account-storage']
 {
@@ -628,8 +659,8 @@ export function useAccountStatistics(): AccountStatistics {
         "id": "123e4567-e89b-12d3-a456-426614174000",
         "name": "招商银行",
         "type": "BANK",
-        "balance": 10000.00,
-        "initialBalance": 5000.00,
+        "balance": 10000.0,
+        "initialBalance": 5000.0,
         "currency": "CNY",
         "color": "#3b82f6",
         "createdAt": "2026-05-20T10:00:00.000Z",
@@ -644,11 +675,13 @@ export function useAccountStatistics(): AccountStatistics {
 ### 数据同步 / Data Synchronization
 
 **自动同步**:
+
 - Zustand persist 中间件自动监听状态变化
 - 每次状态更新后 1ms 内同步到 localStorage
 - 页面刷新时自动从 localStorage 恢复状态
 
 **手动同步** (如需要):
+
 ```typescript
 // 强制保存
 useAccountStore.persist.setOptions({ partialize: (state) => ({ accounts: state.accounts }) })
@@ -662,11 +695,13 @@ const hydrated = useAccountStore.persist.hasHydrated()
 **限制**: localStorage 通常有 5-10MB 限制
 
 **估算**:
+
 - 单个账户: ~300 bytes
 - 单笔交易: ~400 bytes
 - 1000 个账户 + 10000 笔交易 ≈ 5MB
 
 **建议**:
+
 - 定期清理历史数据
 - 实现数据分页或归档功能
 
@@ -742,6 +777,7 @@ const hydrated = useAccountStore.persist.hasHydrated()
 ### 1. 代码分割 / Code Splitting
 
 **Next.js 自动处理**:
+
 - 页面级别代码分割
 - 动态导入大型图表组件
 
@@ -758,6 +794,7 @@ const BalanceTrendChart = dynamic(() => import('@/components/charts/balance-tren
 ### 3. 状态优化 / State Optimization
 
 **使用选择器避免不必要的重渲染**:
+
 ```typescript
 // ❌ Bad: 整个 state 变化都会重渲染
 const accounts = useAccountStore((state) => state)
@@ -769,6 +806,7 @@ const accounts = useAccountStore((state) => state.accounts)
 ### 4. 计算缓存 / Computed Caching
 
 **使用 useMemo 缓存计算结果**:
+
 ```typescript
 const sortedTransactions = useMemo(() => {
   return [...transactions].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -782,6 +820,7 @@ const sortedTransactions = useMemo(() => {
 ### 1. 输入验证 / Input Validation
 
 **使用 Zod schema 验证所有输入**:
+
 ```typescript
 const accountSchema = z.object({
   name: z.string().min(1, '账户名称必填'),
@@ -793,6 +832,7 @@ const accountSchema = z.object({
 ### 2. XSS 防护 / XSS Protection
 
 **React 自动转义输出**:
+
 ```typescript
 // 自动转义，防止 XSS
 <div>{userInput}</div>
@@ -803,6 +843,7 @@ const accountSchema = z.object({
 ### 3. 数据隐私 / Data Privacy
 
 **所有数据保存在本地**:
+
 - 不发送到服务器
 - 不被第三方追踪
 - 用户完全控制数据
@@ -814,6 +855,7 @@ const accountSchema = z.object({
 ### 1. 添加新功能 / Adding New Features
 
 **步骤**:
+
 1. 在 `types/index.ts` 添加新类型
 2. 在 `lib/stores/` 创建新 store 或扩展现有 store
 3. 在 `components/` 创建新组件
@@ -822,6 +864,7 @@ const accountSchema = z.object({
 ### 2. 添加新图表 / Adding New Charts
 
 **步骤**:
+
 1. 在 `components/charts/` 创建新图表组件
 2. 使用 Recharts 组件构建图表
 3. 使用 `useTransactionStore` 和 `useAccountStore` 获取数据
@@ -830,6 +873,7 @@ const accountSchema = z.object({
 ### 3. 自定义主题 / Custom Theme
 
 **修改 Tailwind 配置**:
+
 ```javascript
 // tailwind.config.js
 module.exports = {
@@ -838,9 +882,9 @@ module.exports = {
       colors: {
         primary: '#your-color',
         secondary: '#your-color',
-      }
-    }
-  }
+      },
+    },
+  },
 }
 ```
 

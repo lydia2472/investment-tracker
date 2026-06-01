@@ -1,22 +1,32 @@
 'use client'
 
-import { useState, memo } from 'react'
 import { Card } from 'animal-island-ui'
+import { useState, memo } from 'react'
+
 import { ChevronDownIcon, ChevronUpIcon, WalletIcon } from '@/lib/components/icon-adapter'
-import { formatCurrencyCompact } from '@/lib/utils/formatters'
 import { cn } from '@/lib/utils/cn'
+import {
+  getPriorityCurrency,
+  formatPriorityCurrencyDisplay,
+} from '@/lib/utils/currency-priority-helpers'
 import { iconClasses } from '@/lib/utils/design-classes'
-import { getPriorityCurrency, formatPriorityCurrencyDisplay } from '@/lib/utils/currency-priority-helpers'
+import { formatCurrencyCompact } from '@/lib/utils/formatters'
+
 import type { MultiCurrencySummary, CurrencyStatistics, Account } from '@/types'
 
 interface CurrencyAssetsCardProps {
   data: MultiCurrencySummary
-  accounts: Account[]  // 新增
-  onAccountClick?: (account: Account) => void  // 新增
-  dateRange?: { startDate?: Date; endDate?: Date }  // 可选：日期筛选
+  accounts: Account[] // 新增
+  onAccountClick?: (account: Account) => void // 新增
+  dateRange?: { startDate?: Date; endDate?: Date } // 可选：日期筛选
 }
 
-export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accounts, onAccountClick, dateRange }: CurrencyAssetsCardProps) {
+export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({
+  data,
+  accounts,
+  onAccountClick,
+  dateRange,
+}: CurrencyAssetsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 格式化日期范围显示
@@ -53,14 +63,9 @@ export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accou
   return (
     <Card color="app-yellow" className="group">
       {/* 折叠状态：汇总信息 */}
-      <div
-        className="cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-row items-center justify-between p-6 pb-2">
-          <h3 className="text-sm font-semibold text-white">
-            各币种资产
-          </h3>
+          <h3 className="text-sm font-semibold text-white">各币种资产</h3>
           <div className={cn(iconClasses.container, 'bg-[var(--color-profit)]')}>
             <WalletIcon className="h-full w-full text-white" />
           </div>
@@ -69,8 +74,8 @@ export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accou
         <div className="p-6 pt-0">
           <div className="text-2xl font-black text-white">
             {formatPriorityCurrencyDisplay(
-              getPriorityCurrency(data.currencies, c => c.totalAssets),
-              c => c.totalAssets
+              getPriorityCurrency(data.currencies, (c) => c.totalAssets),
+              (c) => c.totalAssets
             )}
           </div>
           <p className="text-xs opacity-80 mt-2">
@@ -96,9 +101,7 @@ export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accou
             <div className="mb-4 pb-3 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/70">筛选范围</span>
-                <span className="text-sm font-semibold text-white">
-                  {rangeLabel}
-                </span>
+                <span className="text-sm font-semibold text-white">{rangeLabel}</span>
               </div>
             </div>
           )}
@@ -120,15 +123,15 @@ export const CurrencyAssetsCard = memo(function CurrencyAssetsCard({ data, accou
 })
 
 // 单币种视图（降级显示）
-const SingleCurrencyView = memo(function SingleCurrencyView({ currency }: {
+const SingleCurrencyView = memo(function SingleCurrencyView({
+  currency,
+}: {
   currency: CurrencyStatistics
 }) {
   return (
     <Card color="app-yellow" className="group">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <h3 className="text-sm font-semibold text-white">
-          总资产
-        </h3>
+        <h3 className="text-sm font-semibold text-white">总资产</h3>
         <div className={cn(iconClasses.container, 'bg-[var(--color-profit)]')}>
           <WalletIcon className="h-full w-full text-white" />
         </div>
@@ -137,9 +140,7 @@ const SingleCurrencyView = memo(function SingleCurrencyView({ currency }: {
         <div className="text-3xl font-black text-white">
           {currency.symbol} {formatCurrencyCompact(currency.totalAssets)}
         </div>
-        <p className="text-xs opacity-80 mt-2">
-          {currency.accountCount} 个账户
-        </p>
+        <p className="text-xs opacity-80 mt-2">{currency.accountCount} 个账户</p>
       </div>
     </Card>
   )
@@ -149,26 +150,22 @@ const SingleCurrencyView = memo(function SingleCurrencyView({ currency }: {
 const CurrencyDetailItem = memo(function CurrencyDetailItem({
   currency,
   accounts,
-  onAccountClick
+  onAccountClick,
 }: {
   currency: CurrencyStatistics
   accounts: Account[]
   onAccountClick?: (account: Account) => void
 }) {
   // 过滤出该币种的账户
-  const currencyAccounts = accounts.filter(a => a.currency === currency.currency)
+  const currencyAccounts = accounts.filter((a) => a.currency === currency.currency)
 
   return (
     <div className="bg-white/10 rounded-xl p-4 space-y-2">
       {/* 货币标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-white">
-            {currency.currency}
-          </span>
-          <span className="text-xs text-white/70">
-            ({currency.accountCount} 个账户)
-          </span>
+          <span className="text-lg font-bold text-white">{currency.currency}</span>
+          <span className="text-xs text-white/70">({currency.accountCount} 个账户)</span>
         </div>
         <span className="text-xl font-bold text-white">
           {currency.symbol} {formatCurrencyCompact(currency.totalAssets)}
@@ -177,7 +174,7 @@ const CurrencyDetailItem = memo(function CurrencyDetailItem({
 
       {/* 账户列表 */}
       <div className="space-y-2 mt-3">
-        {currencyAccounts.map(account => (
+        {currencyAccounts.map((account) => (
           <div
             key={account.id}
             className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/15 cursor-pointer transition-all"
@@ -219,10 +216,9 @@ const CurrencyDetailItem = memo(function CurrencyDetailItem({
       <div className="pt-2 border-t border-white/10">
         <div className="flex items-center justify-between text-xs">
           <span className="text-white/70">净收入</span>
-          <span className={cn(
-            "font-bold",
-            currency.netIncome >= 0 ? "text-green-700" : "text-red-700"
-          )}>
+          <span
+            className={cn('font-bold', currency.netIncome >= 0 ? 'text-green-700' : 'text-red-700')}
+          >
             {currency.netIncome >= 0 ? '+' : ''}
             {currency.symbol} {formatCurrencyCompact(Math.abs(currency.netIncome))}
           </span>

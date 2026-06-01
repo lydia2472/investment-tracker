@@ -1,10 +1,14 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
+import { Input , Button } from 'animal-island-ui'
+import { format, isValid } from 'date-fns'
 import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import * as z from 'zod'
+
+import { TagInput } from '@/components/tags'
 import {
   Form,
   FormControl,
@@ -13,6 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { SearchableAccountSelect } from '@/components/ui/searchable-account-select'
 import {
   Select,
   SelectContent,
@@ -20,27 +25,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from 'animal-island-ui'
-import { Button } from 'animal-island-ui'
 import { Textarea } from '@/components/ui/textarea'
-import { TransactionType } from '@/types'
 import { useAccountStore } from '@/lib/stores'
-import { format, isValid } from 'date-fns'
 import { cn } from '@/lib/utils/cn'
-import { TagInput } from '@/components/tags'
-import { SearchableAccountSelect } from '@/components/ui/searchable-account-select'
+import { TransactionType } from '@/types'
 
 // 基础 schema - 所有字段都标记为可选
 const baseTransactionSchema = z.object({
   accountId: z.string().optional(),
-  fromAccountId: z.string().optional(),  // 转账专用：转出账户
-  toAccountId: z.string().optional(),    // 转账专用：转入账户
+  fromAccountId: z.string().optional(), // 转账专用：转出账户
+  toAccountId: z.string().optional(), // 转账专用：转入账户
   type: z.nativeEnum(TransactionType),
   amount: z.number().optional(),
   balance: z.number().optional(),
   description: z.string().optional(),
   note: z.string().optional(),
-  tags: z.array(z.string()).optional(),  // 新增：标签字段
+  tags: z.array(z.string()).optional(), // 新增：标签字段
   date: z.date(),
 })
 
@@ -49,10 +49,7 @@ const transactionFormSchema = baseTransactionSchema.refine(
   (data) => {
     // 转账类型：必须有 fromAccountId, toAccountId, amount
     if (data.type === TransactionType.TRANSFER) {
-      return data.fromAccountId &&
-             data.toAccountId &&
-             data.amount !== undefined &&
-             data.amount > 0
+      return data.fromAccountId && data.toAccountId && data.amount !== undefined && data.amount > 0
     }
     // 非快照类型：必须有 accountId
     if (data.type !== TransactionType.SNAPSHOT) {
@@ -61,8 +58,8 @@ const transactionFormSchema = baseTransactionSchema.refine(
     return true
   },
   {
-    message: "请填写完整的转账信息",
-    path: ["fromAccountId"],
+    message: '请填写完整的转账信息',
+    path: ['fromAccountId'],
   }
 )
 
@@ -129,12 +126,15 @@ export function TransactionForm({
       }
 
       // 收入和支出类型需要金额：INCOME, DEPOSIT, TRANSFER_IN, CONSUMPTION, TRANSFER_OUT, LOAN
-      if ((data.type === TransactionType.INCOME ||
-           data.type === TransactionType.DEPOSIT ||
-           data.type === TransactionType.TRANSFER_IN ||
-           data.type === TransactionType.CONSUMPTION ||
-           data.type === TransactionType.TRANSFER_OUT ||
-           data.type === TransactionType.LOAN) && !data.amount) {
+      if (
+        (data.type === TransactionType.INCOME ||
+          data.type === TransactionType.DEPOSIT ||
+          data.type === TransactionType.TRANSFER_IN ||
+          data.type === TransactionType.CONSUMPTION ||
+          data.type === TransactionType.TRANSFER_OUT ||
+          data.type === TransactionType.LOAN) &&
+        !data.amount
+      ) {
         toast.error('请输入金额')
         return
       }
@@ -191,23 +191,25 @@ export function TransactionForm({
               )}
             />
           </>
-        ) : selectedType !== TransactionType.SNAPSHOT && (
-          <FormField
-            control={form.control}
-            name="accountId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>账户</FormLabel>
-                <SearchableAccountSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  accounts={accounts}
-                  placeholder="选择账户"
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        ) : (
+          selectedType !== TransactionType.SNAPSHOT && (
+            <FormField
+              control={form.control}
+              name="accountId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>账户</FormLabel>
+                  <SearchableAccountSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    accounts={accounts}
+                    placeholder="选择账户"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )
         )}
 
         {/* 交易类型 */}
@@ -217,11 +219,7 @@ export function TransactionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>交易类型</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-                disabled={mode === 'edit'}
-              >
+              <Select onValueChange={field.onChange} value={field.value} disabled={mode === 'edit'}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="选择类型" />
@@ -300,8 +298,11 @@ export function TransactionForm({
                 <Input
                   type="date"
                   value={(() => {
-                    const dateValue = field.value instanceof Date ? field.value : new Date(field.value)
-                    return isValid(dateValue) ? format(dateValue, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                    const dateValue =
+                      field.value instanceof Date ? field.value : new Date(field.value)
+                    return isValid(dateValue)
+                      ? format(dateValue, 'yyyy-MM-dd')
+                      : format(new Date(), 'yyyy-MM-dd')
                   })()}
                   onChange={(e) => field.onChange(new Date(e.target.value))}
                 />
@@ -319,11 +320,7 @@ export function TransactionForm({
             <FormItem>
               <FormLabel>描述</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="输入描述"
-                  value={field.value || ''}
-                  onChange={field.onChange}
-                />
+                <Input placeholder="输入描述" value={field.value || ''} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -371,9 +368,7 @@ export function TransactionForm({
                   placeholder="输入标签，按回车或逗号添加"
                 />
               </FormControl>
-              <p className="text-xs text-muted-foreground mt-1">
-                从全局标签中选择或输入新标签
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">从全局标签中选择或输入新标签</p>
               <FormMessage />
             </FormItem>
           )}

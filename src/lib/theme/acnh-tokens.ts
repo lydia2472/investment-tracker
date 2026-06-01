@@ -6,33 +6,33 @@
 export const ACNHTokens = {
   // 盈利状态 - 新鲜白萝卜
   profit: {
-    primary: '#5ec850',    // 萝卜绿
+    primary: '#5ec850', // 萝卜绿
     gradient: 'linear-gradient(135deg, #5ec850 0%, #7bc96a 100%)',
     glow: '0 0 20px rgba(94, 200, 80, 0.3)',
   },
 
   // 亏损状态 - 烂萝卜
   loss: {
-    primary: '#ff6464',    // 烂萝卜红
+    primary: '#ff6464', // 烂萝卜红
     gradient: 'linear-gradient(135deg, #ff6464 0%, #ff3363 100%)',
     glow: '0 0 20px rgba(255, 100, 100, 0.3)',
   },
 
   // 货币 - 铃钱
   bells: {
-    primary: '#d4b030',    // 铃钱金
+    primary: '#d4b030', // 铃钱金
     gradient: 'linear-gradient(135deg, #d4b030 0%, #e6b842 100%)',
     glow: '0 0 20px rgba(212, 176, 48, 0.3)',
   },
 
   // 中性 - 动物岛薄荷青
   neutral: {
-    primary: '#19c8b9',    // animal-island-ui 主色
+    primary: '#19c8b9', // animal-island-ui 主色
     background: '#f8f8f0', // 奶油米白背景
-    text: '#794f27',       // 温暖棕色文字
-    shadow: '#bdaea0',     // 按钮 3D 阴影
+    text: '#794f27', // 温暖棕色文字
+    shadow: '#bdaea0', // 按钮 3D 阴影
     inputShadow: '#d4c9b4', // 输入框 3D 阴影
-    focus: '#ffcc00',      // 焦点黄（禁止蓝色）
+    focus: '#ffcc00', // 焦点黄（禁止蓝色）
   },
 } as const
 

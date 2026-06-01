@@ -1,5 +1,4 @@
-import { MonthlyProfit } from '@/types'
-import { Account } from '@/types'
+import { MonthlyProfit , Account } from '@/types'
 
 export interface AssetTrendPoint {
   date: string // "2024年1月"

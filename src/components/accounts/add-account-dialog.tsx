@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccountStore } from '@/lib/stores'
-import { useTransactionStore } from '@/lib/stores'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { AccountForm } from './account-form'
-import type { AccountFormData } from './account-form'
-import { toast } from 'sonner'
-import { AccountType } from '@/types'
 import { FixedDepositService } from '@/lib/services/fixed-deposit-service'
+import { useAccountStore , useTransactionStore } from '@/lib/stores'
+import { AccountType } from '@/types'
+
+import { AccountForm } from './account-form'
+
+import type { AccountFormData } from './account-form'
 
 interface AddAccountDialogProps {
   trigger?: React.ReactNode
@@ -55,11 +57,11 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
           const monthlyPayments = FixedDepositService.generateMonthlyInterestPayments(
             accountWithId,
             new Date(),
-            []  // 新建账户，没有已存在的交易
+            [] // 新建账户，没有已存在的交易
           )
 
           // 批量添加月度利息
-          monthlyPayments.forEach(payment => {
+          monthlyPayments.forEach((payment) => {
             addTransaction(payment)
             console.log(`[AddAccount] 生成月度利息 ${payment.amount}元 (${payment.description})`)
           })
@@ -88,21 +90,13 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>添加新账户</DialogTitle>
-          <DialogDescription>
-            创建一个新的投资账户来跟踪您的资产
-          </DialogDescription>
+          <DialogDescription>创建一个新的投资账户来跟踪您的资产</DialogDescription>
         </DialogHeader>
-        <AccountForm
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isSubmitting={isSubmitting}
-        />
+        <AccountForm onSubmit={handleSubmit} onCancel={handleCancel} isSubmitting={isSubmitting} />
       </DialogContent>
     </Dialog>
   )

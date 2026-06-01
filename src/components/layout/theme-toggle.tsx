@@ -1,8 +1,9 @@
 'use client'
-import * as React from 'react'
-import { MoonIcon, SunIcon } from '@/lib/components/icon-adapter'
-import { useTheme } from 'next-themes'
 import { Button } from 'animal-island-ui'
+import { useTheme } from 'next-themes'
+import * as React from 'react'
+
+import { MoonIcon, SunIcon } from '@/lib/components/icon-adapter'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -21,11 +22,7 @@ export function ThemeToggle() {
       className="hover:bg-muted/50"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
     >
-      {theme === 'dark' ? (
-        <SunIcon className="h-5 w-5" />
-      ) : (
-        <MoonIcon className="h-5 w-5" />
-      )}
+      {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
     </Button>
   )
 }

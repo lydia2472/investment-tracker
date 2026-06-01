@@ -38,4 +38,4 @@ export const DEFAULT_TAGS = [
   'personal',
 ] as const
 
-export type DefaultTag = typeof DEFAULT_TAGS[number]
+export type DefaultTag = (typeof DEFAULT_TAGS)[number]

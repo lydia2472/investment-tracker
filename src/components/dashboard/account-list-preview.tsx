@@ -1,7 +1,9 @@
 import { Card } from 'animal-island-ui'
-import { formatCurrency } from '@/lib/utils/formatters'
-import type { Account } from '@/types'
+
 import { ShellIcon } from '@/lib/components/icon-adapter'
+import { formatCurrency } from '@/lib/utils/formatters'
+
+import type { Account } from '@/types'
 
 interface AccountListPreviewProps {
   accounts: Account[]
@@ -20,9 +22,7 @@ export function AccountListPreview({ accounts, limit = 5 }: AccountListPreviewPr
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center mb-4">
               <ShellIcon className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              暂无账户，请先创建账户
-            </p>
+            <p className="text-sm text-muted-foreground">暂无账户，请先创建账户</p>
           </div>
         </div>
       </Card>

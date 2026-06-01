@@ -1,11 +1,9 @@
 'use client'
 
+import { Button , Input } from 'animal-island-ui'
 import * as React from 'react'
-import { useTagStore } from '@/lib/stores'
-import { TagBadge } from '@/components/ui/tag-badge'
-import { Button } from 'animal-island-ui'
-import { PlusIcon, TrashIcon } from '@/lib/components/icon-adapter'
-import { Input } from 'animal-island-ui'
+import { toast } from 'sonner'
+
 import {
   Dialog,
   DialogContent,
@@ -14,7 +12,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { TagBadge } from '@/components/ui/tag-badge'
+import { PlusIcon, TrashIcon } from '@/lib/components/icon-adapter'
+import { useTagStore } from '@/lib/stores'
 
 export function TagManager() {
   const [open, setOpen] = React.useState(false)
@@ -25,9 +25,7 @@ export function TagManager() {
 
   const filteredTags = React.useMemo(() => {
     if (!filter.trim()) return availableTags
-    return availableTags.filter((tag) =>
-      tag.toLowerCase().includes(filter.toLowerCase())
-    )
+    return availableTags.filter((tag) => tag.toLowerCase().includes(filter.toLowerCase()))
   }, [availableTags, filter])
 
   const handleAddTag = () => {
@@ -63,9 +61,7 @@ export function TagManager() {
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>标签管理</DialogTitle>
-          <DialogDescription>
-            管理全局预设标签，这些标签将在所有账户的交易中可用
-          </DialogDescription>
+          <DialogDescription>管理全局预设标签，这些标签将在所有账户的交易中可用</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">

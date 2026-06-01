@@ -5,14 +5,14 @@
 
 export const designTokens = {
   borderRadius: {
-    sm: '12px',   // 卡片小组件
-    md: '18px',   // 标准卡片
-    lg: '24px',   // 大卡片/模态框
+    sm: '12px', // 卡片小组件
+    md: '18px', // 标准卡片
+    lg: '24px', // 大卡片/模态框
     pill: '50px', // 按钮/输入框（胶囊形状）
   },
 
   spacing: {
-    card: '24px',    // 卡片内边距
+    card: '24px', // 卡片内边距
     section: '16px', // 区块间距
     element: '12px', // 元素间距
   },

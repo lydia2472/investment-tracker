@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from 'react'
-import { cn } from '@/lib/utils'
+
 import { ANIMAL_CROSSING_ICONS } from '@/lib/constants/icons'
+import { cn } from '@/lib/utils'
 
 interface IconPickerProps {
   value?: string

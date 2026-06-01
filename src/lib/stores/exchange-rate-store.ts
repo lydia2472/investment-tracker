@@ -46,9 +46,7 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
         set({ isLoading: true, error: null, lastFetchAttempt: new Date() })
 
         try {
-          const response = await fetch(
-            'https://api.exchangerate-api.com/v4/latest/CNY'
-          )
+          const response = await fetch('https://api.exchangerate-api.com/v4/latest/CNY')
 
           if (!response.ok) {
             throw new Error(`API请求失败: ${response.status}`)
@@ -91,11 +89,7 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
       },
 
       // 货币转换
-      convert: (
-        amount: number,
-        from: SupportedCurrency,
-        to: SupportedCurrency = 'CNY'
-      ) => {
+      convert: (amount: number, from: SupportedCurrency, to: SupportedCurrency = 'CNY') => {
         const { rates } = get()
 
         if (!rates) {
@@ -115,13 +109,10 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
 
         // 处理从 localStorage 恢复的数据（lastUpdated 可能是字符串）
         const lastUpdated =
-          typeof rates.lastUpdated === 'string'
-            ? new Date(rates.lastUpdated)
-            : rates.lastUpdated
+          typeof rates.lastUpdated === 'string' ? new Date(rates.lastUpdated) : rates.lastUpdated
 
         const now = new Date()
-        const hoursSinceUpdate =
-          (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60)
+        const hoursSinceUpdate = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60)
         return hoursSinceUpdate >= hours
       },
 
