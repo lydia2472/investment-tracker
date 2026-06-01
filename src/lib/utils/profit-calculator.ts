@@ -187,25 +187,17 @@ export function calculateProfitForPeriod(
     console.log(`  期末快照余额: ${endBalance.toFixed(2)}`)
     console.log(`  收益: ${calculatedProfit.toFixed(2)}`)
   } else {
-    // 非定期存款：改为基于交易类型汇总计算收益
-    // 汇总期间交易的各种类型
-    const investmentProfitTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INVESTMENT_PROFIT)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+    // 非定期存款（基金、股票等）：使用快照余额差计算收益
+    // 收益 = 本月快照金额 - 上月快照金额 - 本月转入金额
+    calculatedProfit = endBalance - startBalance - periodTransferIn
 
-    const investmentLossTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INVESTMENT_LOSS)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-
-    const incomeTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INCOME)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-
-    // 利息已经在 periodInterestIncome 中计算过了
-
-    // 计算收益：投资收益 + 投资亏损 + 收入 + 利息
-    // 注意：投资亏损金额本身是负数，所以相加即等于减去
-    calculatedProfit = investmentProfitTotal + investmentLossTotal + incomeTotal + periodInterestIncome
+    console.log(`\n[收益计算] ${accountName} (${accountType})`)
+    console.log(`  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`)
+    console.log(`  收益计算方式: 快照余额差法`)
+    console.log(`  月初快照余额: ${startBalance.toFixed(2)}`)
+    console.log(`  月末快照余额: ${endBalance.toFixed(2)}`)
+    console.log(`  本月转入金额: ${periodTransferIn.toFixed(2)}`)
+    console.log(`  收益: ${calculatedProfit.toFixed(2)} (月末 - 月初 - 转入)`)
   }
 
   // 计算收益率（处理除零情况，分母仍使用期初余额）
@@ -220,33 +212,7 @@ export function calculateProfitForPeriod(
     console.log(`  收益率: ${profitRate.toFixed(2)}%`)
     console.log(`  ----------------------------------------`)
   } else {
-    // 非定期存款的完整日志
-    console.log(`\n[收益计算] ${accountName} (${accountType})`)
-    console.log(
-      `  期间: ${startDate.toLocaleDateString('zh-CN')} - ${endDate.toLocaleDateString('zh-CN')}`
-    )
-    console.log(`  月初快照余额: ${startBalance.toFixed(2)}`)
-    console.log(`  月末快照余额: ${endBalance.toFixed(2)}`)
-    console.log(`  收益计算方式: 基于交易类型汇总`)
-
-    // 显示各种交易类型的汇总
-    const investmentProfitTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INVESTMENT_PROFIT)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-    const investmentLossTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INVESTMENT_LOSS)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-    const incomeTotal = periodTransactions
-      .filter((txn) => txn.type === TransactionType.INCOME)
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0)
-
-    console.log(`  投资收益: ${investmentProfitTotal.toFixed(2)}元`)
-    console.log(`  投资亏损: ${investmentLossTotal.toFixed(2)}元`)
-    console.log(`  收入: ${incomeTotal.toFixed(2)}元`)
-    console.log(
-      `  利息收入: ${periodInterestIncome.toFixed(2)}元 ${periodInterestIncome > 0 ? '✓' : ''}`
-    )
-    console.log(`  最终收益: ${calculatedProfit.toFixed(2)}元`)
+    // 非定期存款：显示收益率
     console.log(`  收益率: ${profitRate.toFixed(2)}%`)
     console.log(`  ----------------------------------------`)
   }
