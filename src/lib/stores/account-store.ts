@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware'
 
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { RiskLevel } from '@/types'
+import { useTransactionStore } from './transaction-store'
 
 import type { Account } from '@/types'
 
@@ -49,12 +50,20 @@ export const useAccountStore = create<AccountState>()(
       },
 
       deleteAccount: (id) => {
+        // 先删除该账户的所有交易
+        useTransactionStore.getState().deleteTransactionsByAccountIds([id])
+
+        // 再删除账户
         set((state) => ({
           accounts: state.accounts.filter((acc) => acc.id !== id),
         }))
       },
 
       deleteAccounts: (ids) => {
+        // 先删除这些账户的所有交易
+        useTransactionStore.getState().deleteTransactionsByAccountIds(ids)
+
+        // 再删除账户
         set((state) => ({
           accounts: state.accounts.filter((acc) => !ids.includes(acc.id)),
           version: state.version + 1,

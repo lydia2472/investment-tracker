@@ -3,14 +3,15 @@
 import { format } from 'date-fns'
 import { useMemo } from 'react'
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 
 import type { MonthlyProfit } from '@/types'
@@ -23,8 +24,8 @@ interface MonthlyProfitChartProps {
 export function MonthlyProfitChart({ data, selectedAccounts }: MonthlyProfitChartProps) {
   // 过滤并转换数据用于图表显示
   const chartData = useMemo(() => {
-    // 按月份分组数据
-    const monthMap = new Map<string, Record<string, string | number>>()
+    // 按月份分组数据，计算每月总收益
+    const monthMap = new Map<string, { month: string; totalProfit: number }>()
 
     data.forEach((profit) => {
       // 如果指定了账户筛选，跳过未选中的账户
@@ -36,12 +37,12 @@ export function MonthlyProfitChart({ data, selectedAccounts }: MonthlyProfitChar
       const monthLabel = `${profit.year}年${profit.month}月`
 
       if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { month: monthLabel })
+        monthMap.set(monthKey, { month: monthLabel, totalProfit: 0 })
       }
 
       const monthData = monthMap.get(monthKey)!
-      // 使用账户名作为键
-      monthData[profit.accountName] = profit.calculatedProfit
+      // 累加该月的总收益
+      monthData.totalProfit += profit.calculatedProfit
     })
 
     // 转换为数组并按月份排序
@@ -52,53 +53,28 @@ export function MonthlyProfitChart({ data, selectedAccounts }: MonthlyProfitChar
     })
   }, [data, selectedAccounts])
 
-  // 获取所有唯一的账户名称（用于生成不同颜色的线条）
-  const accountNames = useMemo(() => {
-    const names = new Set<string>()
-    data.forEach((profit) => {
-      if (selectedAccounts && selectedAccounts.length > 0) {
-        if (selectedAccounts.includes(profit.accountId)) {
-          names.add(profit.accountName)
-        }
-      } else {
-        names.add(profit.accountName)
-      }
-    })
-    return Array.from(names)
-  }, [data, selectedAccounts])
-
-  // ACNH 颜色调色板
-  const colors = [
-    '#5ec850', // 萝卜绿（profit green）
-    '#d4b030', // 铃钱金（bells gold）
-    '#7bc96a', // 叶子绿（leaf green）
-    '#e6b842', // 贝壳黄（shell yellow）
-    '#c49944', // 橡果棕（acorn brown）
-    '#ff6464', // 烂萝卜红（loss red）
-    '#7bc96a', // 薄荷绿
-    '#5ec850', // 萝卜绿
-  ]
-
   // 自定义 Tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null
 
+    const value = payload[0].value as number
+    const isPositive = value >= 0
+    const color = isPositive ? '#5ec850' : '#ff6464'
+
     return (
       <div className="rounded-lg border bg-background p-3 shadow-md">
         <p className="mb-2 font-semibold">{payload[0].payload.month}</p>
-        {payload.map((entry: any, index: number) => {
-          const value = entry.value as number
-          const isPositive = value >= 0
-
-          return (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {isPositive ? '+' : ''}
-              {value.toFixed(2)} 元
-            </p>
-          )
-        })}
+        <p className="text-sm" style={{ color }}>
+          {isPositive ? '收益' : '亏损'}: {isPositive ? '+' : ''}
+          {value.toFixed(2)} 元
+        </p>
       </div>
     )
+  }
+
+  // 为每个柱子设置颜色
+  const getBarColor = (value: number) => {
+    return value >= 0 ? '#5ec850' : '#ff6464'
   }
 
   // 如果没有数据
@@ -113,37 +89,31 @@ export function MonthlyProfitChart({ data, selectedAccounts }: MonthlyProfitChar
   return (
     <div className="space-y-4">
       <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-[#5ec850]/10" />
           <XAxis dataKey="month" className="text-xs" tick={{ fill: '#c8e6c0' }} />
-          <YAxis tick={{ fill: '#c8e6c0' }} tickFormatter={(value) => `💰 ${value.toFixed(0)}`} />
+          <YAxis tick={{ fill: '#c8e6c0' }} tickFormatter={(value) => `¥${value.toFixed(0)}`} />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
-          {accountNames.map((accountName, index) => (
-            <Line
-              key={accountName}
-              type="monotone"
-              dataKey={accountName}
-              stroke={colors[index % colors.length]}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          ))}
-        </LineChart>
+          <Bar dataKey="totalProfit" name="月度收益">
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={getBarColor(entry.totalProfit)} />
+            ))}
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
 
       {/* 图例说明 */}
       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-[#5ec850]" />
-          <span>盈利</span>
+          <div className="h-3 w-3 rounded bg-[#5ec850]" />
+          <span>收益</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-[#ff6464]" />
+          <div className="h-3 w-3 rounded bg-[#ff6464]" />
           <span>亏损</span>
         </div>
-        <p>💡 提示：月度收益 = 本月末快照余额 - 上月末快照余额</p>
+        <p>💡 提示：月度收益 = 本月末快照余额 - 上月末快照余额（包含利息收入）</p>
       </div>
     </div>
   )

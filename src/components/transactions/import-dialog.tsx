@@ -23,6 +23,7 @@ import {
   calculateInvestmentAmounts,
   detectOverlappingAccountMonths,
 } from '@/lib/utils/transaction-import'
+import { detectPotentialFilterIssues } from '@/lib/utils/csv-validator'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 
 import type { Transaction, ImportResult } from '@/types'
@@ -76,6 +77,30 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       // 根据文件扩展名选择解析器
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase()
       let importedData
+
+      // CSV文件筛选检测
+      if (fileExtension === 'csv') {
+        const validation = detectPotentialFilterIssues(content)
+        if (validation.hasIssue) {
+          const warningMsg = validation.warnings.join('；')
+          const suggestionMsg = validation.suggestions.join('；')
+
+          toast.warning('CSV文件可能存在问题', {
+            description: `${warningMsg}。建议：${suggestionMsg}`,
+            duration: 5000,
+          })
+
+          // 询问用户是否继续
+          const shouldContinue = confirm(
+            `CSV文件可能存在问题：\n\n${warningMsg}\n\n建议：${suggestionMsg}\n\n是否继续导入？`
+          )
+
+          if (!shouldContinue) {
+            setIsProcessing(false)
+            return
+          }
+        }
+      }
 
       if (fileExtension === 'csv') {
         importedData = parseImportedCSV(content, accounts)
@@ -314,6 +339,86 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         }
       })
 
+      // 自动创建收益交易
+      console.log('[快照导入] 开始自动创建收益交易')
+      const allSnapshots = useSnapshotStore.getState().snapshots
+
+      // 按账户分组快照
+      const snapshotsByAccount = new Map<string, typeof allSnapshots>()
+      allSnapshots.forEach((snapshot) => {
+        if (!snapshotsByAccount.has(snapshot.accountId)) {
+          snapshotsByAccount.set(snapshot.accountId, [])
+        }
+        snapshotsByAccount.get(snapshot.accountId)!.push(snapshot)
+      })
+
+      let profitCreatedCount = 0
+
+      // 为每个账户计算并创建收益交易
+      snapshotsByAccount.forEach((accountSnapshots, accountId) => {
+        // 按日期排序（升序：旧→新）
+        const sortedSnapshots = [...accountSnapshots].sort(
+          (a, b) => new Date(a.snapshotDate).getTime() - new Date(b.snapshotDate).getTime()
+        )
+
+        // 验证账户是否存在
+        const accountExists = accounts.some((acc) => acc.id === accountId)
+        console.log(`[快照导入] 账户 ${accountId}，共 ${sortedSnapshots.length} 个快照，账户存在: ${accountExists}`)
+
+        if (!accountExists) {
+          console.log(`[快照导入] ⚠️ 警告：账户 ${accountId} 不存在于系统中！`)
+          console.log(`[快照导入] 系统中的账户列表:`, accounts.map((a) => `${a.name} (${a.id})`))
+          console.log(`[快照导入] 跳过该账户的收益计算`)
+          return // 跳过该账户，不创建收益交易
+        }
+
+        // 创建收益交易（需要至少2个快照）
+        if (sortedSnapshots.length >= 2) {
+          for (let i = 1; i < sortedSnapshots.length; i++) {
+            const current = sortedSnapshots[i]
+            const previous = sortedSnapshots[i - 1]
+
+            // 计算收益：本月快照 - 上月快照 - 本月转入
+            const profit = current.balance - previous.balance - (current.investmentAmount || 0)
+
+            console.log(
+              `[快照导入]   计算收益: ${current.balance} - ${previous.balance} - ${current.investmentAmount || 0} = ${profit}`
+            )
+
+            if (profit === 0) {
+              console.log(`[快照导入]   收益为0，跳过`)
+              continue
+            }
+
+            // 确定交易类型
+            const txnType = profit > 0 ? TransactionType.INVESTMENT_PROFIT : TransactionType.INVESTMENT_LOSS
+
+            // 计算月份（使用本月快照的日期）
+            const snapshotDate = new Date(current.snapshotDate)
+            const year = snapshotDate.getFullYear()
+            const month = snapshotDate.getMonth() + 1
+
+            // 创建收益交易
+            addTransaction({
+              accountId,
+              type: txnType,
+              amount: Math.abs(profit),
+              balance: current.balance,
+              description: `${year}年${month}月投资${profit > 0 ? '收益' : '亏损'}（导入自动生成）`,
+              tags: ['投资收益', '导入生成'],
+              createdAt: new Date(current.snapshotDate),
+            })
+
+            profitCreatedCount++
+            console.log(
+              `[快照导入]   ✓ 创建收益交易: ${year}年${month}月 ${profit > 0 ? '收益' : '亏损'} = ${profit.toFixed(2)}元`
+            )
+          }
+        }
+      })
+
+      console.log(`[快照导入] 完成：创建了 ${profitCreatedCount} 个收益交易`)
+
       // 步骤 5: 显示综合结果
       const totalSuccess = otherTransactionSuccess + snapshotSuccessCount
       const totalUpdated = otherTransactionUpdated
@@ -344,6 +449,9 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           message += `\n其中 ${snapshotSuccessCount} 个月末快照已创建`
           if (totalInvestment > 0) {
             message += `，总投资金额: ${totalInvestment.toFixed(0)}元`
+          }
+          if (profitCreatedCount > 0) {
+            message += `，自动创建 ${profitCreatedCount} 个收益交易`
           }
         }
 

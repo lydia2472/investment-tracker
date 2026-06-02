@@ -101,6 +101,9 @@ export function TransactionFilters({ filters, onFiltersChange }: TransactionFilt
               { label: '收入', value: TransactionType.INCOME },
               { label: '消费', value: TransactionType.CONSUMPTION },
               { label: '放贷', value: TransactionType.LOAN },
+              { label: '转入', value: TransactionType.TRANSFER_IN },
+              { label: '投资收益', value: TransactionType.INVESTMENT_PROFIT },
+              { label: '投资亏损', value: TransactionType.INVESTMENT_LOSS },
             ]}
             value={filters.types || []}
             onChange={(types) =>

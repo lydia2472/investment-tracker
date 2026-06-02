@@ -19,6 +19,7 @@ import { useAccountStore } from '@/lib/stores'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/formatters'
+import { SnapshotImportDialog } from '@/components/snapshots/snapshot-import-dialog'
 
 export default function SnapshotsPage() {
   const accounts = useAccountStore((state) => state.accounts)
@@ -90,6 +91,12 @@ export default function SnapshotsPage() {
           <h1 className="text-3xl font-bold">月末快照</h1>
           <p className="text-muted-foreground mt-1">查看和管理所有账户的月末快照记录</p>
         </div>
+        <SnapshotImportDialog
+          onImportSuccess={() => {
+            // 刷新页面或重新加载数据
+            window.location.reload()
+          }}
+        />
       </div>
 
       {/* 筛选器 */}

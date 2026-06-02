@@ -69,6 +69,8 @@ export function parseImportedCSV(content: string, accounts: Account[]): Transact
 
   // 创建账户名称到ID的映射
   const accountNameToId = new Map(accounts.map((acc) => [acc.name, acc.id]))
+  console.log('[CSV账户映射] 可用账户列表:', Array.from(accountNameToId.entries()))
+  console.log('[CSV账户映射] 账户数量:', accounts.length)
 
   // 解析表头
   const headers = parseCSVLine(lines[0])
@@ -177,7 +179,18 @@ function mapCSVRowToTransactionImport(
   }
 
   const id = getValue('id')
-  const accountId = getValue('accountId') || accountNameToId.get(getValue('accountName')) || ''
+  const accountNameFromCSV = getValue('accountName')
+  const rawAccountId = getValue('accountId')
+
+  // 验证accountId是否有效（存在于系统中）
+  const validAccountIds = new Set(accountNameToId.values())
+  const isAccountIdValid = rawAccountId && validAccountIds.has(rawAccountId)
+
+  console.log('[CSV账户映射] 原始accountId:', rawAccountId, '是否有效:', isAccountIdValid)
+  console.log('[CSV账户映射] 查找账户:', accountNameFromCSV, '结果:', accountNameToId.get(accountNameFromCSV))
+
+  // 如果CSV中的accountId无效，使用accountName查找
+  const accountId = isAccountIdValid ? rawAccountId : (accountNameToId.get(accountNameFromCSV) || '')
   const typeStr = getValue('type')
   const amountStr = getValue('amount')
   const balanceStr = getValue('balance')
@@ -194,6 +207,7 @@ function mapCSVRowToTransactionImport(
   let finalAccountId = accountId
   if (!finalAccountId) {
     const accountName = getValue('accountName')
+    console.log('[CSV账户映射] 二次查找账户:', accountName, '结果:', accountNameToId.get(accountName))
     if (accountName) {
       finalAccountId = accountNameToId.get(accountName) || ''
     }
@@ -203,6 +217,7 @@ function mapCSVRowToTransactionImport(
     // 改进错误消息，明确指出是账户不存在，并列出可用账户
     const accountName = getValue('accountName')
     const availableAccounts = Array.from(accountNameToId.keys()).join(', ')
+    console.log('[CSV账户映射] 错误: 账户未找到 - 账户名称:', accountName, '可用账户:', availableAccounts)
 
     throw new Error(
       `账户名称 "${accountName}" 在系统中不存在。\n` +

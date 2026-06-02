@@ -31,6 +31,7 @@ import {
   calculateMonthlyProfits,
   aggregateMonthlyProfitsByMonth,
   calculateMonthlyIncomeExpense,
+  calculateMonthlyProfitsFromInvestmentTransactions,
 } from '@/lib/utils/profit-calculator'
 import {
   getRiskLevelLabel,
@@ -46,7 +47,7 @@ export default function StatisticsPage() {
   const addTransaction = useTransactionStore((state) => state.addTransaction)
   const snapshots = useSnapshotStore((state) => state.snapshots)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
-  const [autoCreateProfitTxns, setAutoCreateProfitTxns] = useState(true)
+  const [autoCreateProfitTxns, setAutoCreateProfitTxns] = useState(false)  // 禁用自动创建，避免与导入时创建的重复
 
   // Account distribution data
   const accountData = accounts.map((account) => ({
@@ -128,14 +129,13 @@ export default function StatisticsPage() {
 
   // Calculate monthly profits
   const monthlyProfits = useMemo(() => {
-    const allProfits = calculateMonthlyProfits(transactions, accounts)
-
-    // 当选择"全部账户"时，按月份汇总
+    // 当选择"全部账户"时，直接从投资收益/亏损交易计算
     if (selectedAccounts.length === 0) {
-      return aggregateMonthlyProfitsByMonth(allProfits)
+      return calculateMonthlyProfitsFromInvestmentTransactions(transactions, accounts)
     }
 
-    // 当选择特定账户时，返回原始数据（由组件内部过滤）
+    // 当选择特定账户时，使用快照计算（由组件内部过滤）
+    const allProfits = calculateMonthlyProfits(transactions, accounts)
     return allProfits
   }, [transactions, accounts, selectedAccounts])
 
@@ -166,6 +166,8 @@ export default function StatisticsPage() {
       const existingTxn = transactions.find((t) => {
         if (t.accountId !== profit.accountId) return false
         if (t.type !== txnType) return false
+        // 只要已有"投资收益"标签的交易就不再创建（避免重复）
+        if (!t.tags?.includes('投资收益')) return false
         if (!t.createdAt) return false
 
         const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
@@ -259,6 +261,8 @@ export default function StatisticsPage() {
         const existingTxn = transactions.find((t) => {
           if (t.accountId !== accountId) return false
           if (t.type !== txnType) return false
+          // 只要已有"投资收益"标签的交易就不再创建（避免重复）
+          if (!t.tags?.includes('投资收益')) return false
           if (!t.createdAt) return false
 
           const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
@@ -387,12 +391,12 @@ export default function StatisticsPage() {
           },
           {
             key: 'income-expense',
-            label: '收支分析',
+            label: '支出分析',
             children: (
               <div className="space-y-4">
                 <Card color="app-yellow">
                   <div className="p-6 pb-3">
-                    <h3 className="font-semibold text-lg">收入支出统计</h3>
+                    <h3 className="font-semibold text-lg">支出统计</h3>
                   </div>
                   <div className="p-6 pt-0">
                     {transactions.length === 0 ? (
@@ -409,7 +413,6 @@ export default function StatisticsPage() {
                             formatter={(value: any) => `¥${Number(value ?? 0).toFixed(2)}`}
                           />
                           <Legend />
-                          <Bar dataKey="收入" fill="#10b981" />
                           <Bar dataKey="支出" fill="#ef4444" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -419,9 +422,9 @@ export default function StatisticsPage() {
 
                 <Card color="app-yellow">
                   <div className="p-6 pb-3">
-                    <h3 className="font-semibold text-lg">月度收支明细</h3>
+                    <h3 className="font-semibold text-lg">月度支出明细</h3>
                     <p className="text-sm text-muted-foreground">
-                      按月统计收入和支出分类汇总
+                      按月统计支出分类汇总
                     </p>
                   </div>
                   <div className="p-6 pt-0">

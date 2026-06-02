@@ -232,9 +232,9 @@ export function MonthlyProfitTable({ data, selectedAccounts }: MonthlyProfitTabl
 
                   {/* 展开的账户详情 */}
                   {isExpanded &&
-                    profits.map((profit) => (
+                    profits.map((profit, index) => (
                       <tr
-                        key={`${monthKey}-${profit.accountId}`}
+                        key={`${monthKey}-${profit.accountId}-${index}`}
                         className="border-b bg-muted/10 text-sm"
                       >
                         <td className="px-4 py-3 pl-12">{profit.accountName}</td>
