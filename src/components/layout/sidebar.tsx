@@ -9,6 +9,7 @@ import {
   ArrowRightLeftIcon,
   BarChartIcon,
   CalendarIcon,
+  TrendingUpIcon,
 } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils'
 
@@ -32,6 +33,11 @@ const navItems = [
     href: '/snapshots',
     label: '月末快照',
     icon: CalendarIcon,
+  },
+  {
+    href: '/holdings',
+    label: '持有份额',
+    icon: TrendingUpIcon,
   },
   {
     href: '/statistics',

@@ -1,8 +1,6 @@
 'use client'
 import { Card, Divider , Tabs } from 'animal-island-ui'
-import { useState, useMemo, useEffect } from 'react'
-import { v4 as uuidv4 } from 'uuid'
-import { endOfMonth } from 'date-fns'
+import { startTransition, useDeferredValue, useMemo, useState } from 'react'
 import {
   PieChart,
   Pie,
@@ -17,281 +15,187 @@ import {
   CartesianGrid,
 } from 'recharts'
 
+import { DateFilterBar } from '@/components/dashboard/date-filter-bar'
 import { ExchangeRateStatus } from '@/components/exchange-rate/exchange-rate-status'
+import { MonthlyIncomeExpenseTable } from '@/components/statistics/monthly-income-expense-table'
 import { MonthlyProfitChart } from '@/components/statistics/monthly-profit-chart'
 import { MonthlyProfitTable } from '@/components/statistics/monthly-profit-table'
-import { MonthlyIncomeExpenseTable } from '@/components/statistics/monthly-income-expense-table'
-import { useAccountStore, useTransactionStore, useExchangeRateStore, useSnapshotStore } from '@/lib/stores'
+import { useAccountStore, useSnapshotStore, useTransactionStore } from '@/lib/stores'
 import { getAccountTypeLabel } from '@/lib/utils/account-helpers'
+import { convertBalanceToCNY } from '@/lib/utils/currency-conversion-helpers'
 import {
-  groupAccountsByTypeInCNY,
-  groupAccountsByRiskInCNY,
-} from '@/lib/utils/currency-conversion-helpers'
-import {
-  calculateMonthlyProfits,
-  aggregateMonthlyProfitsByMonth,
   calculateMonthlyIncomeExpense,
   calculateMonthlyProfitsFromInvestmentTransactions,
 } from '@/lib/utils/profit-calculator'
-import {
-  getRiskLevelLabel,
-  getRiskLevelColor,
-  RISK_LEVEL_CONFIG,
-} from '@/lib/utils/risk-level-helpers'
-import { TransactionType, RiskLevel, AccountType, MonthlyIncomeExpense } from '@/types'
+import { getRiskLevelLabel } from '@/lib/utils/risk-level-helpers'
+import { getAccountBalanceAtDate } from '@/lib/utils/snapshot-balance-helpers'
+import { RiskLevel, AccountType } from '@/types'
+
+import type { DateRange } from '@/components/dashboard/date-filter-bar'
+
+const PIE_CHART_COLORS = [
+  '#1d4ed8',
+  '#047857',
+  '#c2410c',
+  '#be123c',
+  '#6d28d9',
+  '#0f766e',
+  '#a16207',
+  '#9d174d',
+  '#4338ca',
+  '#15803d',
+]
+
+const PIE_LABEL_COLOR = '#020617'
+const PIE_LABEL_STROKE = '#fffaf0'
+const PIE_LEGEND_COLOR = '#0f172a'
+const PIE_TOOLTIP_STYLE = {
+  backgroundColor: '#fffdf5',
+  border: '1px solid #d6d3c4',
+  borderRadius: '12px',
+  color: '#0f172a',
+}
+const RADIAN = Math.PI / 180
+
+const RISK_PIE_COLORS: Record<RiskLevel, string> = {
+  [RiskLevel.HIGH]: '#b91c1c',
+  [RiskLevel.MEDIUM]: '#a16207',
+  [RiskLevel.LOW]: '#15803d',
+}
 
 export default function StatisticsPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
-  const { rates } = useExchangeRateStore()
-  const addTransaction = useTransactionStore((state) => state.addTransaction)
   const snapshots = useSnapshotStore((state) => state.snapshots)
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
-  const [autoCreateProfitTxns, setAutoCreateProfitTxns] = useState(false)  // 禁用自动创建，避免与导入时创建的重复
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const deferredDateRange = useDeferredValue(dateRange)
+  const effectiveEndDate = deferredDateRange?.endDate
+
+  const balancesByAccountId = useMemo(() => {
+    return new Map(
+      accounts.map((account) => {
+        // 始终用 getAccountBalanceAtDate：无 endDate 时它取最新快照（真实市值），
+        // 不用 account.balance（后者是交易累加值，投资类账户会严重高估）。
+        const balance = getAccountBalanceAtDate(transactions, account, effectiveEndDate, snapshots)
+        return [account.id, balance]
+      })
+    )
+  }, [accounts, transactions, effectiveEndDate, snapshots])
 
   // Account distribution data
-  const accountData = accounts.map((account) => ({
-    name: account.name,
-    value: account.balance,
-    color: account.color,
-  }))
+  const accountData = useMemo(
+    () =>
+      accounts
+        .map((account, index) => ({
+          name: account.name,
+          value: balancesByAccountId.get(account.id) || 0,
+          color: PIE_CHART_COLORS[index % PIE_CHART_COLORS.length],
+        }))
+        .filter((account) => account.value > 0),
+    [accounts, balancesByAccountId]
+  )
 
   // Risk distribution data
   const riskDistribution = useMemo(() => {
-    const distribution = groupAccountsByRiskInCNY(accounts)
+    const distribution = accounts.reduce(
+      (acc, account) => {
+        if (!account.riskLevel) {
+          return acc
+        }
+
+        const balance = balancesByAccountId.get(account.id) || 0
+        const cnyAmount = convertBalanceToCNY(balance, account.currency)
+        acc[account.riskLevel] = (acc[account.riskLevel] || 0) + cnyAmount
+        return acc
+      },
+      {} as Record<string, number>
+    )
 
     return [
       {
         name: getRiskLevelLabel(RiskLevel.HIGH),
         value: distribution[RiskLevel.HIGH] || 0,
-        color: getRiskLevelColor(RiskLevel.HIGH),
+        color: RISK_PIE_COLORS[RiskLevel.HIGH],
       },
       {
         name: getRiskLevelLabel(RiskLevel.MEDIUM),
         value: distribution[RiskLevel.MEDIUM] || 0,
-        color: getRiskLevelColor(RiskLevel.MEDIUM),
+        color: RISK_PIE_COLORS[RiskLevel.MEDIUM],
       },
       {
         name: getRiskLevelLabel(RiskLevel.LOW),
         value: distribution[RiskLevel.LOW] || 0,
-        color: getRiskLevelColor(RiskLevel.LOW),
+        color: RISK_PIE_COLORS[RiskLevel.LOW],
       },
     ].filter((item) => item.value > 0)
-  }, [accounts, rates])
+  }, [accounts, balancesByAccountId])
 
   // Account type distribution data
   const accountTypeDistribution = useMemo(() => {
-    const distribution = groupAccountsByTypeInCNY(accounts)
+    const distribution = accounts.reduce(
+      (acc, account) => {
+        const balance = balancesByAccountId.get(account.id) || 0
+        const cnyAmount = convertBalanceToCNY(balance, account.currency)
+        acc[account.type] = (acc[account.type] || 0) + cnyAmount
+        return acc
+      },
+      {} as Record<string, number>
+    )
 
     return [
       {
         name: getAccountTypeLabel(AccountType.SECURITIES),
         value: distribution[AccountType.SECURITIES] || 0,
-        color: '#3b82f6', // 蓝色
+        color: '#1d4ed8', // 深蓝
       },
       {
         name: getAccountTypeLabel(AccountType.BANK),
         value: distribution[AccountType.BANK] || 0,
-        color: '#10b981', // 绿色
+        color: '#047857', // 深绿
       },
       {
         name: getAccountTypeLabel(AccountType.CASH),
         value: distribution[AccountType.CASH] || 0,
-        color: '#f59e0b', // 橙色
+        color: '#c2410c', // 深橙
       },
       {
         name: getAccountTypeLabel(AccountType.FIXED_DEPOSIT),
         value: distribution[AccountType.FIXED_DEPOSIT] || 0,
-        color: '#8b5cf6', // 紫色
+        color: '#6d28d9', // 深紫
       },
       {
         name: getAccountTypeLabel(AccountType.FUND),
         value: distribution[AccountType.FUND] || 0,
-        color: '#ec4899', // 粉色
+        color: '#be185d', // 深粉
       },
       {
         name: getAccountTypeLabel(AccountType.STOCK),
         value: distribution[AccountType.STOCK] || 0,
-        color: '#ef4444', // 红色
+        color: '#b91c1c', // 深红
       },
       {
         name: getAccountTypeLabel(AccountType.GOLD),
         value: distribution[AccountType.GOLD] || 0,
-        color: '#eab308', // 黄色
+        color: '#a16207', // 深金色
       },
       {
         name: getAccountTypeLabel(AccountType.OTHER),
         value: distribution[AccountType.OTHER] || 0,
-        color: '#6b7280', // 灰色
+        color: '#334155', // 深灰蓝
       },
     ].filter((item) => item.value > 0) // 只显示有余额的类型
-  }, [accounts, rates])
+  }, [accounts, balancesByAccountId])
 
   // Calculate monthly profits
   const monthlyProfits = useMemo(() => {
-    // 当选择"全部账户"时，直接从投资收益/亏损交易计算
-    if (selectedAccounts.length === 0) {
-      return calculateMonthlyProfitsFromInvestmentTransactions(transactions, accounts)
-    }
-
-    // 当选择特定账户时，使用快照计算（由组件内部过滤）
-    const allProfits = calculateMonthlyProfits(transactions, accounts)
-    return allProfits
+    // 统一使用投资收益交易计算（支持账户筛选）
+    return calculateMonthlyProfitsFromInvestmentTransactions(
+      transactions,
+      accounts,
+      selectedAccounts.length > 0 ? selectedAccounts : undefined
+    )
   }, [transactions, accounts, selectedAccounts])
-
-  // Auto-create profit transactions from snapshots
-  useEffect(() => {
-    if (!autoCreateProfitTxns) return
-
-    // Get all account profits
-    const allProfits = calculateMonthlyProfits(transactions, accounts)
-
-    // For each profit, check if a corresponding investment profit transaction exists
-    allProfits.forEach((profit) => {
-      // Skip if profit is zero
-      if (profit.calculatedProfit === 0) return
-
-      // Skip if it's from incomplete data (no snapshot pair)
-      if (!profit.hasCompleteData) return
-
-      // Determine transaction type based on profit sign
-      const txnType = profit.calculatedProfit > 0
-        ? TransactionType.INVESTMENT_PROFIT
-        : TransactionType.INVESTMENT_LOSS
-
-      // Check if a profit/loss transaction already exists for this month/account
-      const monthStart = new Date(profit.year, profit.month - 1, 1)
-      const monthEnd = endOfMonth(monthStart)
-
-      const existingTxn = transactions.find((t) => {
-        if (t.accountId !== profit.accountId) return false
-        if (t.type !== txnType) return false
-        // 只要已有"投资收益"标签的交易就不再创建（避免重复）
-        if (!t.tags?.includes('投资收益')) return false
-        if (!t.createdAt) return false
-
-        const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-        return txnDate >= monthStart && txnDate <= monthEnd
-      })
-
-      // If no existing transaction, create one
-      if (!existingTxn) {
-        const txnDate = monthEnd
-        txnDate.setHours(23, 59, 59, 999)
-
-        const absProfit = Math.abs(profit.calculatedProfit)
-        const profitType = profit.calculatedProfit > 0 ? '收益' : '亏损'
-
-        addTransaction({
-          accountId: profit.accountId,
-          type: txnType,
-          amount: absProfit,
-          balance: profit.endBalance,
-          description: `${profit.year}年${profit.month}月投资${profitType}（自动生成）`,
-          tags: ['投资收益', '自动生成'],
-          createdAt: txnDate,
-        })
-
-        console.log(`[自动创建] 为 ${profit.accountName} 创建 ${profit.year}年${profit.month}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
-      }
-    })
-  }, [transactions, accounts, autoCreateProfitTxns])
-
-  // Auto-create profit transactions from snapshot-store
-  useEffect(() => {
-    if (!autoCreateProfitTxns) return
-    if (snapshots.length === 0) return
-
-    // Group snapshots by account
-    const snapshotsByAccount = new Map<string, typeof snapshots>()
-    snapshots.forEach((snapshot) => {
-      if (!snapshotsByAccount.has(snapshot.accountId)) {
-        snapshotsByAccount.set(snapshot.accountId, [])
-      }
-      snapshotsByAccount.get(snapshot.accountId)!.push(snapshot)
-    })
-
-    // For each account, calculate profits from snapshots
-    snapshotsByAccount.forEach((accountSnapshots, accountId) => {
-      // Sort by date descending (newest first)
-      const sortedSnapshots = [...accountSnapshots].sort((a, b) =>
-        new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime()
-      )
-
-      // Calculate profit for each pair of consecutive snapshots
-      for (let i = 0; i < sortedSnapshots.length - 1; i++) {
-        const currentSnapshot = sortedSnapshots[i]
-        const previousSnapshot = sortedSnapshots[i + 1]
-
-        // Calculate profit
-        const profit = currentSnapshot.balance - previousSnapshot.balance
-
-        // Skip if profit is zero
-        if (profit === 0) continue
-
-        // Determine month from previous snapshot date
-        // If snapshot is on 1st day (like May 1st), it represents end of previous month (April)
-        const snapshotDate = new Date(previousSnapshot.snapshotDate)
-        let monthStart: Date
-        let monthEnd: Date
-        let year: number
-        let month: number
-
-        if (snapshotDate.getDate() === 1) {
-          // 5月1日的快照代表4月月末
-          monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth() - 1, 1)
-          monthEnd = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 0) // 上月最后一天
-          monthEnd.setHours(23, 59, 59, 999)
-          year = monthStart.getFullYear()
-          month = monthStart.getMonth() + 1 // 1-based month for display
-        } else {
-          // 其他日期使用正常逻辑
-          monthStart = new Date(snapshotDate.getFullYear(), snapshotDate.getMonth(), 1)
-          monthEnd = endOfMonth(monthStart)
-          year = snapshotDate.getFullYear()
-          month = snapshotDate.getMonth() + 1
-        }
-
-        // Determine transaction type
-        const txnType = profit > 0
-          ? TransactionType.INVESTMENT_PROFIT
-          : TransactionType.INVESTMENT_LOSS
-
-        // Check if transaction already exists for this month
-        const existingTxn = transactions.find((t) => {
-          if (t.accountId !== accountId) return false
-          if (t.type !== txnType) return false
-          // 只要已有"投资收益"标签的交易就不再创建（避免重复）
-          if (!t.tags?.includes('投资收益')) return false
-          if (!t.createdAt) return false
-
-          const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-          return txnDate >= monthStart && txnDate <= monthEnd
-        })
-
-        // Create transaction if doesn't exist
-        if (!existingTxn) {
-          const account = accounts.find((a) => a.id === accountId)
-          const accountName = account?.name || accountId
-
-          const absProfit = Math.abs(profit)
-          const profitType = profit > 0 ? '收益' : '亏损'
-
-          addTransaction({
-            accountId,
-            type: txnType,
-            amount: absProfit,
-            balance: currentSnapshot.balance,
-            description: `${year}年${month}月投资${profitType}（从快照自动生成）`,
-            tags: ['投资收益', '快照生成'],
-            createdAt: monthEnd,
-          })
-
-          console.log(`[快照生成] 为 ${accountName} 创建 ${year}年${month}月 ${profitType}交易: ${absProfit.toFixed(2)}元`)
-        }
-      }
-    })
-  }, [snapshots, accounts, transactions, autoCreateProfitTxns])
 
   // Calculate monthly income/expense data
   const monthlyIncomeExpenseData = useMemo(() => {
@@ -331,6 +235,47 @@ export default function StatisticsPage() {
     })
   }
 
+  const renderPieLabel = ({
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    outerRadius = 0,
+    percent = 0,
+    name = '',
+  }: {
+    cx?: number
+    cy?: number
+    midAngle?: number
+    outerRadius?: number
+    percent?: number
+    name?: string
+  }) => {
+    const radius = outerRadius + 22
+    const x = cx + radius * Math.cos(-midAngle * RADIAN)
+    const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill={PIE_LABEL_COLOR}
+        fontSize={14}
+        fontWeight={700}
+        stroke={PIE_LABEL_STROKE}
+        strokeWidth={3}
+        paintOrder="stroke"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+      >
+        {`${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+      </text>
+    )
+  }
+
+  const renderLegendText = (value: string) => (
+    <span style={{ color: PIE_LEGEND_COLOR, fontWeight: 700, fontSize: '14px' }}>{value}</span>
+  )
+
   return (
     <div className="space-y-6">
       <ExchangeRateStatus />
@@ -338,6 +283,17 @@ export default function StatisticsPage() {
         <h2 className="text-3xl font-bold tracking-tight">统计分析</h2>
         <p className="text-muted-foreground">查看您的财务数据和资产趋势</p>
       </div>
+
+      <DateFilterBar
+        value={dateRange}
+        onChange={(nextRange) => {
+          startTransition(() => {
+            setDateRange(nextRange)
+          })
+        }}
+      />
+
+      <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
       <Tabs
         items={[
@@ -363,9 +319,7 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                            }
+                            label={renderPieLabel}
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -375,12 +329,17 @@ export default function StatisticsPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: any) => [
+                            contentStyle={PIE_TOOLTIP_STYLE}
+                            itemStyle={{ color: PIE_LABEL_COLOR }}
+                            formatter={(value) => [
                               `¥${Number(value ?? 0).toFixed(2)}`,
                               '余额',
                             ]}
                           />
-                          <Legend />
+                          <Legend
+                            formatter={renderLegendText}
+                            wrapperStyle={{ color: PIE_LEGEND_COLOR, paddingTop: '12px' }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     )}
@@ -391,15 +350,15 @@ export default function StatisticsPage() {
           },
           {
             key: 'income-expense',
-            label: '支出分析',
+            label: '收支分析',
             children: (
               <div className="space-y-4">
                 <Card color="app-yellow">
                   <div className="p-6 pb-3">
-                    <h3 className="font-semibold text-lg">支出统计</h3>
+                    <h3 className="font-semibold text-lg">收支统计</h3>
                   </div>
                   <div className="p-6 pt-0">
-                    {transactions.length === 0 ? (
+                    {monthlyIncomeExpenseData.length === 0 ? (
                       <div className="h-[400px] flex items-center justify-center text-muted-foreground">
                         暂无数据
                       </div>
@@ -410,9 +369,12 @@ export default function StatisticsPage() {
                           <XAxis dataKey="month" />
                           <YAxis />
                           <Tooltip
-                            formatter={(value: any) => `¥${Number(value ?? 0).toFixed(2)}`}
+                            formatter={(value) =>
+                              `¥${Number(value ?? 0).toFixed(2)}`
+                            }
                           />
                           <Legend />
+                          <Bar dataKey="收入" fill="#22c55e" />
                           <Bar dataKey="支出" fill="#ef4444" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -422,9 +384,9 @@ export default function StatisticsPage() {
 
                 <Card color="app-yellow">
                   <div className="p-6 pb-3">
-                    <h3 className="font-semibold text-lg">月度支出明细</h3>
+                    <h3 className="font-semibold text-lg">月度收支明细</h3>
                     <p className="text-sm text-muted-foreground">
-                      按月统计支出分类汇总
+                      按月统计收入、支出与投资净收益汇总
                     </p>
                   </div>
                   <div className="p-6 pt-0">
@@ -521,9 +483,7 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                            }
+                            label={renderPieLabel}
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -533,12 +493,17 @@ export default function StatisticsPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: any) => [
+                            contentStyle={PIE_TOOLTIP_STYLE}
+                            itemStyle={{ color: PIE_LABEL_COLOR }}
+                            formatter={(value) => [
                               `¥${Number(value ?? 0).toFixed(2)}`,
                               '资产',
                             ]}
                           />
-                          <Legend />
+                          <Legend
+                            formatter={renderLegendText}
+                            wrapperStyle={{ color: PIE_LEGEND_COLOR, paddingTop: '12px' }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     )}
@@ -569,9 +534,7 @@ export default function StatisticsPage() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                            }
+                            label={renderPieLabel}
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
@@ -581,12 +544,17 @@ export default function StatisticsPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: any) => [
+                            contentStyle={PIE_TOOLTIP_STYLE}
+                            itemStyle={{ color: PIE_LABEL_COLOR }}
+                            formatter={(value) => [
                               `¥${Number(value ?? 0).toFixed(2)}`,
                               '资产',
                             ]}
                           />
-                          <Legend />
+                          <Legend
+                            formatter={renderLegendText}
+                            wrapperStyle={{ color: PIE_LEGEND_COLOR, paddingTop: '12px' }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     )}

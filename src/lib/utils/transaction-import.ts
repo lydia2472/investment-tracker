@@ -1,15 +1,114 @@
 import { isValid, parse } from 'date-fns'
 import { v4 as uuidv4 } from 'uuid'
 
-import { TransactionImport, ValidationResult, ImportResult, Transaction, Account , TransactionType } from '@/types'
-import { Snapshot, useSnapshotStore } from '@/lib/stores/snapshot-store'
-import { useTransactionStore } from '@/lib/stores/transaction-store'
 import { useAccountStore } from '@/lib/stores/account-store'
+import { Snapshot, useSnapshotStore } from '@/lib/stores/snapshot-store'
+import { splitCSVLines as splitCSVRecords } from '@/lib/utils/csv-parse'
+import { Account, ImportResult, Transaction, TransactionImport, TransactionType, ValidationResult } from '@/types'
+
+type ImportRecord = Record<string, unknown>
+
+function toImportRecord(value: unknown): ImportRecord {
+  return value && typeof value === 'object' ? (value as ImportRecord) : {}
+}
+
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  return undefined
+}
+
+function parseOptionalDate(value: unknown): Date | string | undefined {
+  if (value instanceof Date || typeof value === 'string') {
+    return value
+  }
+
+  return undefined
+}
+
+function parseOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined
+}
+
+function parseOptionalStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
+function remapAccountIdsForImport(
+  item: ImportRecord,
+  accounts?: Account[]
+): ImportRecord {
+  if (!accounts || accounts.length === 0) {
+    return item
+  }
+
+  // 账户识别映射：名称 + 基金代码 都能定位到账户（代码是唯一识别）
+  const accountNameToId = new Map<string, string>()
+  accounts.forEach((account) => {
+    accountNameToId.set(account.name, account.id)
+    if (account.fundCode) {
+      accountNameToId.set(account.fundCode, account.id)
+    }
+  })
+  const validAccountIds = new Set(accounts.map((account) => account.id))
+
+  const rawAccountId = typeof item.accountId === 'string' ? item.accountId : ''
+  const rawAccountName = typeof item.accountName === 'string' ? item.accountName : ''
+  const rawAccountFundCode = typeof item.accountFundCode === 'string' ? item.accountFundCode : ''
+  const rawTransferToAccountId =
+    typeof item.transferToAccountId === 'string' ? item.transferToAccountId : ''
+  const rawTransferToAccountName =
+    typeof item.transferToAccountName === 'string' ? item.transferToAccountName : ''
+  const rawTransferFromAccountId =
+    typeof item.transferFromAccountId === 'string' ? item.transferFromAccountId : ''
+  const rawTransferFromAccountName =
+    typeof item.transferFromAccountName === 'string' ? item.transferFromAccountName : ''
+
+  const resolvedAccountId =
+    (rawAccountId && validAccountIds.has(rawAccountId) ? rawAccountId : '') ||
+    accountNameToId.get(rawAccountName) ||
+    accountNameToId.get(rawAccountFundCode) ||
+    rawAccountId
+
+  const resolvedTransferToAccountId =
+    (rawTransferToAccountId && validAccountIds.has(rawTransferToAccountId)
+      ? rawTransferToAccountId
+      : '') ||
+    accountNameToId.get(rawTransferToAccountName) ||
+    rawTransferToAccountId ||
+    undefined
+
+  const resolvedTransferFromAccountId =
+    (rawTransferFromAccountId && validAccountIds.has(rawTransferFromAccountId)
+      ? rawTransferFromAccountId
+      : '') ||
+    accountNameToId.get(rawTransferFromAccountName) ||
+    rawTransferFromAccountId ||
+    undefined
+
+  return {
+    ...item,
+    accountId: resolvedAccountId,
+    transferToAccountId: resolvedTransferToAccountId,
+    transferFromAccountId: resolvedTransferFromAccountId,
+  }
+}
 
 /**
  * 标准化交易类型（处理连字符、空格等）
  */
-export function normalizeTransactionType(type: any): TransactionType {
+export function normalizeTransactionType(type: unknown): TransactionType {
   if (!type) return TransactionType.CONSUMPTION
 
   const typeStr = String(type).toLowerCase().trim().replace(/-/g, '_').replace(/\s+/g, '')
@@ -43,17 +142,32 @@ export function normalizeTransactionType(type: any): TransactionType {
 /**
  * 解析导入的 JSON 文件内容
  */
-export function parseImportedJSON(content: string): TransactionImport[] {
+export function parseImportedJSON(content: string, accounts?: Account[]): TransactionImport[] {
   try {
-    const data = JSON.parse(content)
+    const data: unknown = JSON.parse(content)
     const items = Array.isArray(data) ? data : [data]
 
     // 标准化所有交易记录中的类型字段
-    return items.map((item: any) => ({
-      ...item,
-      type: normalizeTransactionType(item.type)
-    }))
-  } catch (error) {
+    return items.map((item): TransactionImport => {
+      const remappedItem = remapAccountIdsForImport(toImportRecord(item), accounts)
+
+      return {
+        id: parseOptionalString(remappedItem.id),
+        accountId: parseOptionalString(remappedItem.accountId) || '',
+        type: normalizeTransactionType(remappedItem.type),
+        amount: parseOptionalNumber(remappedItem.amount),
+        balance: parseOptionalNumber(remappedItem.balance),
+        transferToAccountId: parseOptionalString(remappedItem.transferToAccountId),
+        transferFromAccountId: parseOptionalString(remappedItem.transferFromAccountId),
+        transferPairId: parseOptionalString(remappedItem.transferPairId),
+        description: parseOptionalString(remappedItem.description),
+        note: parseOptionalString(remappedItem.note),
+        tags: parseOptionalStringArray(remappedItem.tags),
+        createdAt: parseOptionalDate(remappedItem.createdAt) || new Date(),
+        updatedAt: parseOptionalDate(remappedItem.updatedAt),
+      }
+    })
+  } catch {
     throw new Error('无效的 JSON 文件')
   }
 }
@@ -62,13 +176,22 @@ export function parseImportedJSON(content: string): TransactionImport[] {
  * 解析 CSV 字符串为交易导入数据
  */
 export function parseImportedCSV(content: string, accounts: Account[]): TransactionImport[] {
-  const lines = content.trim().split('\n')
+  // 注意：不能简单地 split('\n')，因为引号包裹的字段内部可能包含换行符（RFC 4180）。
+  // 例如描述字段为 "第一行\n第二行" 时，必须把整个引号段落视为同一行，否则会导致行拆分错位、
+  // 列数与表头不一致，进而触发解析失败。这里使用引号感知的行拆分。
+  const lines = splitCSVRecords(content)
   if (lines.length < 2) {
     throw new Error('CSV 文件为空或格式无效')
   }
 
-  // 创建账户名称到ID的映射
-  const accountNameToId = new Map(accounts.map((acc) => [acc.name, acc.id]))
+  // 账户识别映射：名称 + 基金代码 都能定位到账户
+  const accountNameToId = new Map<string, string>()
+  accounts.forEach((acc) => {
+    accountNameToId.set(acc.name, acc.id)
+    if (acc.fundCode) {
+      accountNameToId.set(acc.fundCode, acc.id)
+    }
+  })
   console.log('[CSV账户映射] 可用账户列表:', Array.from(accountNameToId.entries()))
   console.log('[CSV账户映射] 账户数量:', accounts.length)
 
@@ -86,13 +209,9 @@ export function parseImportedCSV(content: string, accounts: Account[]): Transact
       const transaction = mapCSVRowToTransactionImport(values, headerMap, accountNameToId)
       transactions.push(transaction)
     } catch (error) {
-      // 在验证阶段处理错误
-      transactions.push({
-        accountId: '',
-        type: TransactionType.CONSUMPTION,
-        createdAt: new Date(),
-        _parseError: error instanceof Error ? error.message : '未知解析错误',
-      } as any)
+      // 解析失败的行直接跳过，不再生成垃圾记录（避免错误行被当成 CONSUMPTION 写入）
+      const errorMsg = error instanceof Error ? error.message : '未知解析错误'
+      console.warn(`[CSV导入] 第 ${i + 1} 行解析失败，已跳过：${errorMsg}`)
     }
   }
 
@@ -145,6 +264,8 @@ function createHeaderMap(headers: string[]): Map<string, number> {
     // 中文映射
     if (normalized === 'id' || normalized === '交易id') map.set('id', index)
     if (normalized === '账户名称' || normalized === '账户name') map.set('accountName', index)
+    if (normalized === '基金代码' || normalized === 'fundcode' || normalized === 'accountfundcode')
+      map.set('fundCode', index)
     if (normalized === '账户id' || normalized === 'accountid') map.set('accountId', index)
     if (normalized === '交易类型' || normalized === '类型' || normalized === 'type')
       map.set('type', index)
@@ -181,6 +302,7 @@ function mapCSVRowToTransactionImport(
   const id = getValue('id')
   const accountNameFromCSV = getValue('accountName')
   const rawAccountId = getValue('accountId')
+  const fundCodeFromCSV = getValue('fundCode')
 
   // 验证accountId是否有效（存在于系统中）
   const validAccountIds = new Set(accountNameToId.values())
@@ -189,8 +311,10 @@ function mapCSVRowToTransactionImport(
   console.log('[CSV账户映射] 原始accountId:', rawAccountId, '是否有效:', isAccountIdValid)
   console.log('[CSV账户映射] 查找账户:', accountNameFromCSV, '结果:', accountNameToId.get(accountNameFromCSV))
 
-  // 如果CSV中的accountId无效，使用accountName查找
-  const accountId = isAccountIdValid ? rawAccountId : (accountNameToId.get(accountNameFromCSV) || '')
+  // 如果CSV中的accountId无效，先用accountName查找，失败再用基金代码查找
+  const accountId = isAccountIdValid
+    ? rawAccountId
+    : (accountNameToId.get(accountNameFromCSV) || accountNameToId.get(fundCodeFromCSV) || '')
   const typeStr = getValue('type')
   const amountStr = getValue('amount')
   const balanceStr = getValue('balance')
@@ -286,12 +410,28 @@ function mapCSVRowToTransactionImport(
       .replace(/^['"]|['"]$/g, '')
 
     // 尝试多种格式
+    // 注意：date-fns 的 parse 对模式串里的位数很严格 —— yyyy/MM/dd 只能匹配两位数的月份，
+    // 而 Excel/Numbers 经常输出单位数月份（如 2026/5/31）。因此这里同时覆盖单/双位数、
+    // 有秒/无秒、横线/斜线、ISO 等常见写法，确保 round-trip 不丢失日期。
     const formats = [
       'yyyy-MM-dd HH:mm:ss',
+      'yyyy-MM-dd HH:mm',
       'yyyy-MM-dd',
       'yyyy/MM/dd HH:mm:ss',
+      'yyyy/MM/dd HH:mm',
       'yyyy/MM/dd',
+      // 单位数月/日（Excel、Numbers 导出的常见格式，如 2026/5/31 8:00）
+      'yyyy/M/d HH:mm:ss',
+      'yyyy/M/d HH:mm',
+      'yyyy/M/d H:mm:ss',
+      'yyyy/M/d H:mm',
+      'yyyy/M/d',
+      'yyyy-M-d HH:mm:ss',
+      'yyyy-M-d HH:mm',
+      'yyyy-M-d H:mm',
+      'yyyy-M-d',
       "yyyy-MM-dd'T'HH:mm:ss",
+      "yyyy-MM-dd'T'HH:mm:ss.SSSxxx",
     ]
 
     for (const format of formats) {
@@ -300,7 +440,7 @@ function mapCSVRowToTransactionImport(
         if (isValid(date)) {
           return date
         }
-      } catch (e) {
+      } catch {
         // 继续尝试下一个格式
       }
     }
@@ -331,38 +471,39 @@ function mapCSVRowToTransactionImport(
 /**
  * 验证单个交易数据
  */
-export function validateImportedTransaction(data: any): ValidationResult {
+export function validateImportedTransaction(data: unknown): ValidationResult {
+  const item = toImportRecord(data)
   const errors: string[] = []
 
-  if (!data.accountId) {
+  if (!item.accountId) {
     errors.push('缺少账户 ID')
   }
 
-  if (!data.type) {
+  if (!item.type) {
     errors.push('缺少交易类型')
-  } else if (!Object.values(TransactionType).includes(data.type)) {
+  } else if (!Object.values(TransactionType).includes(item.type as TransactionType)) {
     errors.push('无效的交易类型')
   }
 
-  if (!data.createdAt) {
+  if (!item.createdAt) {
     errors.push('缺少创建时间')
   } else {
-    const date = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)
+    const date = item.createdAt instanceof Date ? item.createdAt : new Date(String(item.createdAt))
     if (!isValid(date)) {
       errors.push('创建时间格式无效')
     }
   }
 
-  if (data.amount !== undefined) {
-    if (typeof data.amount !== 'number') {
+  if (item.amount !== undefined) {
+    if (typeof item.amount !== 'number') {
       errors.push('金额必须是数字')
-    } else if (data.amount < 0) {
+    } else if (item.amount < 0) {
       errors.push('金额不能为负数')
     }
   }
 
-  if (data.balance !== undefined) {
-    if (typeof data.balance !== 'number') {
+  if (item.balance !== undefined) {
+    if (typeof item.balance !== 'number') {
       errors.push('余额必须是数字')
     }
   }
@@ -627,6 +768,191 @@ export function convertImportedToTransaction(data: TransactionImport): Transacti
   }
 }
 
+interface TransferEndpoints {
+  sourceAccountId?: string
+  targetAccountId?: string
+}
+
+function normalizeTransferAmount(amount: number | undefined): number | undefined {
+  if (amount === undefined) {
+    return undefined
+  }
+
+  return Math.abs(amount)
+}
+
+function getTransferTimestamp(value: Date | string | undefined): number | null {
+  if (!value) {
+    return null
+  }
+
+  const date = value instanceof Date ? value : new Date(value)
+  const time = date.getTime()
+  return Number.isNaN(time) ? null : time
+}
+
+function resolveTransferEndpoints(data: TransactionImport): TransferEndpoints {
+  if (data.type === TransactionType.TRANSFER_IN) {
+    return {
+      sourceAccountId: data.transferFromAccountId,
+      targetAccountId: data.accountId,
+    }
+  }
+
+  if (data.type === TransactionType.TRANSFER_OUT) {
+    return {
+      sourceAccountId: data.accountId,
+      targetAccountId: data.transferToAccountId,
+    }
+  }
+
+  if (data.type === TransactionType.TRANSFER) {
+    if (data.accountId && data.transferToAccountId) {
+      return {
+        sourceAccountId: data.accountId,
+        targetAccountId: data.transferToAccountId,
+      }
+    }
+
+    if (data.transferFromAccountId && data.accountId) {
+      return {
+        sourceAccountId: data.transferFromAccountId,
+        targetAccountId: data.accountId,
+      }
+    }
+  }
+
+  return {}
+}
+
+function buildTransferBusinessKey(data: TransactionImport): string | null {
+  const { sourceAccountId, targetAccountId } = resolveTransferEndpoints(data)
+  const timestamp = getTransferTimestamp(data.createdAt)
+  const amount = normalizeTransferAmount(data.amount)
+
+  if (!sourceAccountId || !targetAccountId || timestamp === null || amount === undefined) {
+    return null
+  }
+
+  return `${sourceAccountId}:${targetAccountId}:${amount}:${timestamp}`
+}
+
+function createAutoTransferPairId(data: TransactionImport, index: number): string {
+  const key = buildTransferBusinessKey(data)
+  return key ? `auto-transfer-${key}` : `auto-transfer-${index + 1}`
+}
+
+export function expandImportedTransferPairs(importedData: TransactionImport[]): TransactionImport[] {
+  const expanded: TransactionImport[] = []
+  const explicitTransferSides = new Set<string>()
+
+  importedData.forEach((data) => {
+    const businessKey = buildTransferBusinessKey(data)
+    if (!businessKey) {
+      return
+    }
+
+    if (data.type === TransactionType.TRANSFER_IN || data.type === TransactionType.TRANSFER_OUT) {
+      explicitTransferSides.add(`${data.type}:${businessKey}`)
+    }
+  })
+
+  importedData.forEach((data, index) => {
+    if (
+      data.type !== TransactionType.TRANSFER &&
+      data.type !== TransactionType.TRANSFER_IN &&
+      data.type !== TransactionType.TRANSFER_OUT
+    ) {
+      expanded.push(data)
+      return
+    }
+
+    const { sourceAccountId, targetAccountId } = resolveTransferEndpoints(data)
+    const normalizedAmount = normalizeTransferAmount(data.amount)
+    const pairId = data.transferPairId || createAutoTransferPairId(data, index)
+
+    if (!sourceAccountId || !targetAccountId || normalizedAmount === undefined) {
+      expanded.push({
+        ...data,
+        transferPairId: data.transferPairId || pairId,
+      })
+      return
+    }
+
+    const businessKey = buildTransferBusinessKey({
+      ...data,
+      amount: normalizedAmount,
+      transferPairId: pairId,
+    })
+
+    if (data.type === TransactionType.TRANSFER) {
+      expanded.push({
+        ...data,
+        accountId: sourceAccountId,
+        type: TransactionType.TRANSFER_OUT,
+        amount: normalizedAmount,
+        transferToAccountId: targetAccountId,
+        transferFromAccountId: undefined,
+        transferPairId: pairId,
+      })
+
+      expanded.push({
+        ...data,
+        accountId: targetAccountId,
+        type: TransactionType.TRANSFER_IN,
+        amount: normalizedAmount,
+        transferFromAccountId: sourceAccountId,
+        transferToAccountId: undefined,
+        transferPairId: pairId,
+      })
+      return
+    }
+
+    if (data.type === TransactionType.TRANSFER_IN) {
+      expanded.push({
+        ...data,
+        amount: normalizedAmount,
+        transferFromAccountId: sourceAccountId,
+        transferPairId: pairId,
+      })
+
+      if (businessKey && !explicitTransferSides.has(`${TransactionType.TRANSFER_OUT}:${businessKey}`)) {
+        expanded.push({
+          ...data,
+          accountId: sourceAccountId,
+          type: TransactionType.TRANSFER_OUT,
+          amount: normalizedAmount,
+          transferToAccountId: targetAccountId,
+          transferFromAccountId: undefined,
+          transferPairId: pairId,
+        })
+      }
+      return
+    }
+
+    expanded.push({
+      ...data,
+      amount: normalizedAmount,
+      transferToAccountId: targetAccountId,
+      transferPairId: pairId,
+    })
+
+    if (businessKey && !explicitTransferSides.has(`${TransactionType.TRANSFER_IN}:${businessKey}`)) {
+      expanded.push({
+        ...data,
+        accountId: targetAccountId,
+        type: TransactionType.TRANSFER_IN,
+        amount: normalizedAmount,
+        transferFromAccountId: sourceAccountId,
+        transferToAccountId: undefined,
+        transferPairId: pairId,
+      })
+    }
+  })
+
+  return expanded
+}
+
 /**
  * 分离三种交易类型：snapshot、transfer-in、其他
  * 用于导入时分别处理不同类型的交易
@@ -646,6 +972,12 @@ export function separateTransactionTypes(
   const otherTransactions: TransactionImport[] = []
 
   importedData.forEach((data) => {
+    // 防御：跳过没有有效 accountId 的记录（解析失败的垃圾记录）
+    if (!data.accountId) {
+      console.warn('[导入分类] 跳过缺少 accountId 的记录', data)
+      return
+    }
+
     if (data.type === TransactionType.SNAPSHOT) {
       snapshots.push(data)
     } else if (data.type === TransactionType.TRANSFER_IN) {

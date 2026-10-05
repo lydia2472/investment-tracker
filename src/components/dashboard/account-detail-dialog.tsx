@@ -3,13 +3,13 @@
 import { format } from 'date-fns'
 import { useState, useMemo } from 'react'
 
-import { DateFilterBar } from '@/components/dashboard/date-filter-bar'
+import { DateFilterBar, type DateRange } from '@/components/dashboard/date-filter-bar'
 import { TransactionTrendChart } from '@/components/dashboard/transaction-trend-chart'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { calculateCashflowSummary } from '@/lib/utils/cashflow-helpers'
 import { formatCurrency } from '@/lib/utils/formatters'
-
-import type { DateRange } from '@/components/dashboard/date-filter-bar'
-import type { Account, Transaction } from '@/types'
+import { getTransactionTypeLabel } from '@/lib/utils/transaction-helpers'
+import { TransactionType, type Account, type Transaction } from '@/types'
 
 interface AccountDetailDialogProps {
   account: Account | null
@@ -49,22 +49,7 @@ export function AccountDetailDialog({
   }, [allTransactions, account?.id, dateRange])
 
   // 计算统计数据
-  const stats = useMemo(() => {
-    const income = filteredTransactions
-      .filter((t) => t.type === 'income' || t.type === 'deposit' || t.type === 'transfer_in')
-      .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-    const expense = filteredTransactions
-      .filter((t) => t.type === 'consumption' || t.type === 'loan' || t.type === 'transfer_out')
-      .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-    return {
-      income,
-      expense,
-      net: income - expense,
-      count: filteredTransactions.length,
-    }
-  }, [filteredTransactions])
+  const stats = useMemo(() => calculateCashflowSummary(filteredTransactions), [filteredTransactions])
 
   if (!account) return null
 
@@ -93,24 +78,35 @@ export function AccountDetailDialog({
 
         <div className="space-y-6 mt-4">
           {/* 统计卡片 */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-xs text-muted-foreground mb-1">总收入</div>
+              <div className="text-xs text-muted-foreground mb-1">收支收入</div>
               <div className="text-lg font-bold text-green-600">
                 +{formatCurrency(stats.income)}
               </div>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-xs text-muted-foreground mb-1">总支出</div>
+              <div className="text-xs text-muted-foreground mb-1">收支支出</div>
               <div className="text-lg font-bold text-red-600">-{formatCurrency(stats.expense)}</div>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-xs text-muted-foreground mb-1">净收入</div>
+              <div className="text-xs text-muted-foreground mb-1">净收支</div>
               <div
                 className={`text-lg font-bold ${stats.net >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
                 {stats.net >= 0 ? '+' : ''}
                 {formatCurrency(stats.net)}
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground mb-1">投资净收益</div>
+              <div
+                className={`text-lg font-bold ${
+                  stats.investmentNetProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {stats.investmentNetProfit >= 0 ? '+' : ''}
+                {formatCurrency(stats.investmentNetProfit)}
               </div>
             </div>
           </div>
@@ -123,7 +119,10 @@ export function AccountDetailDialog({
 
           {/* 统计图表 */}
           <div>
-            <h3 className="text-sm font-semibold mb-3">收支趋势</h3>
+            <h3 className="text-sm font-semibold mb-1">现金流趋势</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              仅统计收入、存款、消费和放贷；投资收益/亏损单独显示在上方。
+            </p>
             <TransactionTrendChart transactions={filteredTransactions} />
           </div>
 
@@ -147,23 +146,36 @@ export function AccountDetailDialog({
                             'yyyy-MM-dd HH:mm'
                           )}
                         </div>
-                        <div className="text-xs px-2 py-0.5 rounded bg-muted">{txn.type}</div>
+                        <div className="text-xs px-2 py-0.5 rounded bg-muted">
+                          {getTransactionTypeLabel(txn.type)}
+                        </div>
                       </div>
                       {txn.description && <div className="text-sm mt-1">{txn.description}</div>}
                     </div>
                     <div
                       className={`font-bold ${
-                        txn.type === 'income' ||
-                        txn.type === 'deposit' ||
-                        txn.type === 'transfer_in'
+                        txn.type === TransactionType.INCOME ||
+                        txn.type === TransactionType.DEPOSIT ||
+                        txn.type === TransactionType.TRANSFER_IN ||
+                        txn.type === TransactionType.INVESTMENT_PROFIT
                           ? 'text-green-600'
+                          : txn.type === TransactionType.SNAPSHOT
+                            ? 'text-muted-foreground'
                           : 'text-red-600'
                       }`}
                     >
-                      {txn.type === 'income' || txn.type === 'deposit' || txn.type === 'transfer_in'
-                        ? '+'
-                        : '-'}
-                      {txn.amount ? formatCurrency(txn.amount) : '---'}
+                      {txn.type === TransactionType.SNAPSHOT
+                        ? `余额 ${txn.balance !== undefined ? formatCurrency(txn.balance) : '---'}`
+                        : `${
+                            txn.type === TransactionType.INCOME ||
+                            txn.type === TransactionType.DEPOSIT ||
+                            txn.type === TransactionType.TRANSFER_IN ||
+                            txn.type === TransactionType.INVESTMENT_PROFIT
+                              ? '+'
+                              : '-'
+                          }${
+                            txn.amount !== undefined ? formatCurrency(txn.amount) : '---'
+                          }`}
                     </div>
                   </div>
                 ))

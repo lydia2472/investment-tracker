@@ -40,12 +40,14 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
         type: data.type,
         balance: principal,
         initialBalance: principal,
+        createdAt: data.startDate,
         currency: data.currency || 'CNY',
         color: '#f0e8d8',
         icon: data.icon,
         riskLevel: data.riskLevel,
         description: data.description,
         fixedDepositConfig: data.fixedDepositConfig,
+        fundCode: data.fundCode || undefined,
       })
 
       // 2. 如果是定期存款，立即生成月度利息

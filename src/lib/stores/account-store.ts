@@ -4,19 +4,28 @@ import { persist } from 'zustand/middleware'
 
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { RiskLevel } from '@/types'
+import { useHoldingStore } from './holding-store'
+import { useSnapshotStore } from './snapshot-store'
 import { useTransactionStore } from './transaction-store'
+import { persistStorage } from './persist-storage'
 
 import type { Account } from '@/types'
 
 interface AccountState {
   accounts: Account[]
   version: number
-  addAccount: (account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => Account
+  addAccount: (
+    account: Omit<Account, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Date | string }
+  ) => Account
   updateAccount: (id: string, updates: Partial<Account>) => void
+  /** 切换账户的归档状态（归档/取消归档） */
+  toggleArchive: (id: string) => void
+  moveAccount: (draggedId: string, targetId: string) => void
   deleteAccount: (id: string) => void
   deleteAccounts: (ids: string[]) => void
   getAccount: (id: string) => Account | undefined
   updateBalance: (id: string, newBalance: number) => void
+  updateBalances: (updates: Map<string, number>) => void
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -26,11 +35,17 @@ export const useAccountStore = create<AccountState>()(
       version: 0,
 
       addAccount: (accountData) => {
+        const accountCreatedAt =
+          accountData.createdAt instanceof Date
+            ? accountData.createdAt
+            : accountData.createdAt
+              ? new Date(accountData.createdAt)
+              : new Date()
         const newAccount: Account = {
           ...accountData,
           riskLevel: accountData.riskLevel ?? getDefaultRiskLevel(),
           id: uuidv4(),
-          createdAt: new Date(),
+          createdAt: accountCreatedAt,
           updatedAt: new Date(),
         }
         set((state) => ({ accounts: [...state.accounts, newAccount] }))
@@ -49,9 +64,49 @@ export const useAccountStore = create<AccountState>()(
         })
       },
 
+      toggleArchive: (id) => {
+        set((state) => {
+          const updatedAccounts = state.accounts.map((acc) =>
+            acc.id === id
+              ? { ...acc, archived: !acc.archived, updatedAt: new Date() }
+              : acc
+          )
+          return {
+            accounts: updatedAccounts,
+            version: state.version + 1,
+          }
+        })
+      },
+
+      moveAccount: (draggedId, targetId) => {
+        if (!draggedId || !targetId || draggedId === targetId) {
+          return
+        }
+
+        set((state) => {
+          const fromIndex = state.accounts.findIndex((account) => account.id === draggedId)
+          const toIndex = state.accounts.findIndex((account) => account.id === targetId)
+
+          if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+            return state
+          }
+
+          const reorderedAccounts = [...state.accounts]
+          const [draggedAccount] = reorderedAccounts.splice(fromIndex, 1)
+          reorderedAccounts.splice(toIndex, 0, draggedAccount)
+
+          return {
+            accounts: reorderedAccounts,
+            version: state.version + 1,
+          }
+        })
+      },
+
       deleteAccount: (id) => {
-        // 先删除该账户的所有交易
+        // 先删除该账户的所有交易、快照、持仓
         useTransactionStore.getState().deleteTransactionsByAccountIds([id])
+        useSnapshotStore.getState().deleteSnapshotsByAccountIds([id])
+        useHoldingStore.getState().removeHoldingByAccountId(id)
 
         // 再删除账户
         set((state) => ({
@@ -60,8 +115,10 @@ export const useAccountStore = create<AccountState>()(
       },
 
       deleteAccounts: (ids) => {
-        // 先删除这些账户的所有交易
+        // 先删除这些账户的所有交易、快照、持仓
         useTransactionStore.getState().deleteTransactionsByAccountIds(ids)
+        useSnapshotStore.getState().deleteSnapshotsByAccountIds(ids)
+        ids.forEach((id) => useHoldingStore.getState().removeHoldingByAccountId(id))
 
         // 再删除账户
         set((state) => ({
@@ -81,9 +138,38 @@ export const useAccountStore = create<AccountState>()(
           ),
         }))
       },
+
+      updateBalances: (updates) => {
+        if (updates.size === 0) {
+          return
+        }
+
+        set((state) => {
+          let changed = false
+          const now = new Date()
+
+          const accounts = state.accounts.map((account) => {
+            const nextBalance = updates.get(account.id)
+            if (nextBalance === undefined || nextBalance === account.balance) {
+              return account
+            }
+
+            changed = true
+
+            return {
+              ...account,
+              balance: nextBalance,
+              updatedAt: now,
+            }
+          })
+
+          return changed ? { accounts } : state
+        })
+      },
     }),
     {
       name: 'account-storage',
+      storage: persistStorage,
       version: 2,
       // 添加版本迁移函数
       migrate: (persistedState: any, version: number) => {

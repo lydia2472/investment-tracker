@@ -8,6 +8,7 @@ import {
   InterestPaymentFrequency,
   Transaction,
 } from '@/types'
+import { debugLog } from '@/lib/utils/debug-log'
 
 /**
  * 定期存款利息计算服务
@@ -223,16 +224,16 @@ export class FixedDepositService {
     const endDate = asOfDate
     const maturityDate = new Date(config.maturityDate)
 
-    console.log(`[FixedDepositService] ${account.name} - 生成月度利息:`)
-    console.log(`  起息日: ${startDate.toLocaleDateString('zh-CN')}`)
-    console.log(`  截止日: ${endDate.toLocaleDateString('zh-CN')}`)
-    console.log(
+    debugLog(`[FixedDepositService] ${account.name} - 生成月度利息:`)
+    debugLog(`  起息日: ${startDate.toLocaleDateString('zh-CN')}`)
+    debugLog(`  截止日: ${endDate.toLocaleDateString('zh-CN')}`)
+    debugLog(
       `  比较结果: ${startDate.toLocaleDateString('zh-CN')} ${startDate >= endDate ? '>=' : '<'} ${endDate.toLocaleDateString('zh-CN')}`
     )
 
     // 如果起息日在未来或起息日>=截止日期，不生成利息
     if (startDate >= endDate) {
-      console.log(`  ✗ 起息日 >= 截止日，不生成利息`)
+      debugLog(`  ✗ 起息日 >= 截止日，不生成利息`)
       return []
     }
 
@@ -250,8 +251,8 @@ export class FixedDepositService {
       .map((t) => t.interestPeriod)
       .filter((period) => period !== undefined)
 
-    console.log(`  已存在快照期间数: ${existingSnapshotPeriods.length}`)
-    console.log(`  已存在利息收入期间数: ${existingIncomePeriods.length}`)
+    debugLog(`  已存在快照期间数: ${existingSnapshotPeriods.length}`)
+    debugLog(`  已存在利息收入期间数: ${existingIncomePeriods.length}`)
 
     // 从起息日开始，按月生成利息
     let currentDate = startDate
@@ -266,7 +267,7 @@ export class FixedDepositService {
 
       // 检查付息日是否超过截止日期
       if (paymentDate > endDate) {
-        console.log(
+        debugLog(
           `  ✓ 付息日 ${paymentDate.toLocaleDateString('zh-CN')} 超过截止日期 ${endDate.toLocaleDateString('zh-CN')}，停止生成利息`
         )
         break
@@ -274,7 +275,7 @@ export class FixedDepositService {
 
       // 检查付息日是否超过账户到期日
       if (paymentDate > maturityDate) {
-        console.log(
+        debugLog(
           `  ✓ 付息日 ${paymentDate.toLocaleDateString('zh-CN')} 超过到期日 ${maturityDate.toLocaleDateString('zh-CN')}，停止生成利息`
         )
         break
@@ -308,13 +309,13 @@ export class FixedDepositService {
 
         // 添加诊断日志
         const monthsPassed = differenceInMonths(paymentDate, startDate)
-        console.log(`    [生成快照] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月:`)
-        console.log(
+        debugLog(`    [生成快照] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月:`)
+        debugLog(
           `      计息期间: ${startDate.toLocaleDateString('zh-CN')} → ${paymentDate.toLocaleDateString('zh-CN')} (${monthsPassed}个月)`
         )
-        console.log(`      累积利息: ${totalInterest.toFixed(2)}元`)
-        console.log(`      本金: ${config.principal}元`)
-        console.log(`      总余额: ${totalBalance.toFixed(2)}元`)
+        debugLog(`      累积利息: ${totalInterest.toFixed(2)}元`)
+        debugLog(`      本金: ${config.principal}元`)
+        debugLog(`      总余额: ${totalBalance.toFixed(2)}元`)
 
         payments.push({
           accountId: account.id,
@@ -339,7 +340,9 @@ export class FixedDepositService {
       const monthlyInterest = this.calculateInterest(account, currentDate, paymentDate)
 
       if (monthlyInterest > 0 && !incomeAlreadyExists) {
-        console.log(`    [生成利息收入] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月: ${monthlyInterest.toFixed(2)}元`)
+        debugLog(
+          `    [生成利息收入] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月: ${monthlyInterest.toFixed(2)}元`
+        )
 
         payments.push({
           accountId: account.id,
@@ -359,7 +362,9 @@ export class FixedDepositService {
           updatedAt: paymentDate,
         })
       } else if (monthlyInterest > 0 && incomeAlreadyExists) {
-        console.log(`    [跳过利息收入] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月: 已存在`)
+        debugLog(
+          `    [跳过利息收入] ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月: 已存在`
+        )
       }
 
       // 移动到下个月

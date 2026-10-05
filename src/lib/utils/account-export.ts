@@ -22,15 +22,16 @@ export function exportAccountsToCSV(accounts: Account[]): string {
   const headers = [
     'ID',
     '账户名称',
+    '基金代码',
     '账户类型',
     '当前余额',
     '初始余额',
+    '初始余额日期',
     '货币',
     '描述',
     '主题色',
     '图标',
     '风险等级',
-    '创建时间',
     '更新时间',
   ]
 
@@ -50,16 +51,17 @@ export function exportAccountsToCSV(accounts: Account[]): string {
 
     return [
       acc.id,
-      acc.name,
+      escapeCSV(acc.name),
+      escapeCSV(acc.fundCode),
       acc.type,
       acc.balance,
       acc.initialBalance,
+      formatDate(acc.createdAt),
       acc.currency,
       escapeCSV(acc.description),
       escapeCSV(acc.color),
       escapeCSV(acc.icon),
       acc.riskLevel ? getRiskLevelLabel(acc.riskLevel) : '',
-      formatDate(acc.createdAt),
       formatDate(acc.updatedAt),
     ].join(',')
   })

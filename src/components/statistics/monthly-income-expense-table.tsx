@@ -43,11 +43,10 @@ export function MonthlyIncomeExpenseTable({ data }: MonthlyIncomeExpenseTablePro
             <TableHead className="w-[120px]">月份</TableHead>
             <TableHead className="text-right">收入</TableHead>
             <TableHead className="text-right">存款</TableHead>
-            <TableHead className="text-right">投资收益</TableHead>
+            <TableHead className="text-right">投资净收益</TableHead>
             <TableHead className="text-right">总收入</TableHead>
             <TableHead className="text-right">消费</TableHead>
             <TableHead className="text-right">放贷</TableHead>
-            <TableHead className="text-right">投资亏损</TableHead>
             <TableHead className="text-right">总支出</TableHead>
             <TableHead className="text-right">净收支</TableHead>
           </TableRow>
@@ -62,7 +61,6 @@ export function MonthlyIncomeExpenseTable({ data }: MonthlyIncomeExpenseTablePro
               <TableCell className="text-right font-semibold">{formatCurrency(item.totalIncome)}</TableCell>
               <TableCell className="text-right">{formatCurrency(item.consumption)}</TableCell>
               <TableCell className="text-right">{formatCurrency(item.loan)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(item.investmentLoss)}</TableCell>
               <TableCell className="text-right font-semibold">{formatCurrency(item.totalExpense)}</TableCell>
               <TableCell className={`text-right font-semibold ${getNetFlowColor(item.netFlow)}`}>
                 {formatCurrency(item.netFlow)}

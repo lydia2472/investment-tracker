@@ -3,9 +3,8 @@ import { useMemo } from 'react'
 
 import { useTransactionTotals } from '@/hooks/use-transaction-totals'
 import { TrashIcon, InfoIcon, EditIcon, XIcon } from '@/lib/components/icon-adapter'
-import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/formatters'
-import { TransactionType } from '@/types'
+import { filterTransactions } from '@/lib/utils/transaction-filtering'
 
 import { TransactionAmount } from './transaction-amount'
 import { TransactionTotalsDisplay } from './transaction-totals'
@@ -17,6 +16,7 @@ import type { Transaction, Account } from '@/types'
 interface TransactionTableProps {
   transactions: Transaction[]
   accounts: Account[]
+  filteredTransactions?: Transaction[]
   filters?: TransactionFilters
   onDelete: (id: string) => void
   onEdit?: (id: string) => void
@@ -27,123 +27,41 @@ interface TransactionTableProps {
 export function TransactionTable({
   transactions,
   accounts,
+  filteredTransactions: providedFilteredTransactions,
   filters,
   onDelete,
   onEdit,
   selectedIds = new Set(),
   onSelectionChange,
 }: TransactionTableProps) {
-  const getAccountName = (accountId: string) => {
-    return accounts.find((acc) => acc.id === accountId)?.name || '未知账户'
-  }
+  const accountNameMap = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.name])),
+    [accounts]
+  )
+  const accountCodeMap = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.fundCode])),
+    [accounts]
+  )
 
   // 应用过滤逻辑
   const filteredTransactions = useMemo(() => {
-    if (!filters || Object.keys(filters).length === 0) {
-      return transactions
+    if (providedFilteredTransactions) {
+      return providedFilteredTransactions
     }
 
-    return transactions.filter((txn) => {
-      // 账户过滤 - 支持单个或多个账户
-      if (filters.accountId) {
-        const accountIds = Array.isArray(filters.accountId)
-          ? filters.accountId
-          : [filters.accountId]
-
-        if (!accountIds.includes(txn.accountId)) {
-          return false
-        }
-      }
-
-      // 交易类型过滤
-      if (filters.types && filters.types.length > 0) {
-        // 检查是否包含 TRANSFER 类型
-        if (filters.types.includes(TransactionType.TRANSFER)) {
-          // 筛选转账时，显示所有转账对（有transferPairId的交易）
-          const isTransfer = !!(
-            txn.transferToAccountId ||
-            txn.transferFromAccountId ||
-            txn.transferPairId
-          )
-          if (!isTransfer && !filters.types.includes(txn.type)) {
-            return false
-          }
-        } else if (!filters.types.includes(txn.type)) {
-          // 不包含在选中的类型中
-          return false
-        }
-      }
-
-      // 日期范围过滤
-      if (filters.dateRange) {
-        const { from, to } = filters.dateRange
-        const txnDate = txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)
-        // 设置 to 的结束时间为当天的 23:59:59
-        const endTime = new Date(to)
-        endTime.setHours(23, 59, 59, 999)
-
-        // 添加调试日志
-        if (
-          txn.type === TransactionType.SNAPSHOT &&
-          txnDate.getMonth() === 3 &&
-          txnDate.getFullYear() === 2026
-        ) {
-          console.log(`[日期筛选] 快照交易: ${txn.description || '无描述'}`)
-          console.log(`  from: ${from.toISOString()} (${from.toLocaleString()})`)
-          console.log(`  to: ${to.toISOString()} (${to.toLocaleString()})`)
-          console.log(`  endTime: ${endTime.toISOString()} (${endTime.toLocaleString()})`)
-          console.log(`  txnDate: ${txnDate.toISOString()} (${txnDate.toLocaleString()})`)
-          console.log(`  结果: ${txnDate >= from && txnDate <= endTime}`)
-        }
-
-        if (txnDate < from || txnDate > endTime) {
-          return false
-        }
-      }
-
-      // 标签过滤
-      if (filters.tags && filters.tags.length > 0) {
-        const hasBlankTagFilter = filters.tags.includes('__BLANK__')
-        const regularTags = filters.tags.filter((tag) => tag !== '__BLANK__')
-
-        // 如果选择了"无标签"选项
-        if (hasBlankTagFilter) {
-          // 交易无标签：包含（符合条件）
-          const hasNoTags = !txn.tags || txn.tags.length === 0
-
-          // 交易有选中标签：包含（符合条件）
-          const hasMatchingRegularTag = regularTags.some((filterTag) =>
-            txn.tags?.includes(filterTag)
-          )
-
-          // OR 逻辑：无标签 OR 有匹配标签
-          if (!hasNoTags && !hasMatchingRegularTag) {
-            return false
-          }
-        } else {
-          // 原有逻辑：只筛选有标签的交易
-          if (!txn.tags || txn.tags.length === 0) {
-            return false
-          }
-          const hasMatchingTag = filters.tags.some((filterTag) => txn.tags?.includes(filterTag))
-          if (!hasMatchingTag) {
-            return false
-          }
-        }
-      }
-
-      return true
-    })
-  }, [transactions, filters])
+    return filterTransactions(transactions, accounts, filters)
+  }, [providedFilteredTransactions, transactions, accounts, filters])
 
   // Calculate totals for filtered transactions
   const totals = useTransactionTotals(filteredTransactions)
 
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
-    const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
-    return dateB.getTime() - dateA.getTime()
-  })
+  const sortedTransactions = useMemo(() => {
+    return [...filteredTransactions].sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt)
+      return dateB.getTime() - dateA.getTime()
+    })
+  }, [filteredTransactions])
 
   // 检查是否有过滤条件
   const hasFilters = filters && Object.keys(filters).length > 0
@@ -238,7 +156,7 @@ export function TransactionTable({
             </tr>
           </thead>
           <tbody>
-            {sortedTransactions.map((txn, index) => (
+            {sortedTransactions.map((txn) => (
               <tr
                 key={txn.id}
                 className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
@@ -262,7 +180,14 @@ export function TransactionTable({
                   </td>
                 )}
                 <td className="p-4 text-sm font-semibold">{formatDate(txn.createdAt)}</td>
-                <td className="p-4 text-sm font-semibold">{getAccountName(txn.accountId)}</td>
+                <td className="p-4 text-sm font-semibold">
+                  {accountNameMap.get(txn.accountId) || '未知账户'}
+                  {accountCodeMap.get(txn.accountId) && (
+                    <span className="ml-1.5 text-[10px] font-mono px-1 py-0.5 rounded bg-muted border text-muted-foreground align-middle">
+                      {accountCodeMap.get(txn.accountId)}
+                    </span>
+                  )}
+                </td>
                 <td className="p-4">
                   <TransactionTypeBadge type={txn.type} />
                 </td>

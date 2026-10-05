@@ -1,35 +1,16 @@
 'use client'
 
 import { Input , Button } from 'animal-island-ui'
-import { useState } from 'react'
 
 import { MultiSelect } from '@/components/ui/multi-select'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useAvailableTags } from '@/hooks/use-tag-assets'
 import { XIcon, ChevronDownIcon } from '@/lib/components/icon-adapter'
 import { useAccountStore } from '@/lib/stores'
-import { cn } from '@/lib/utils/cn'
 import { TransactionType } from '@/types'
 
-// 新增类型：支持单个或多个账户ID
-export type AccountFilter = string | string[]
+import type { TransactionFilters as SharedTransactionFilters } from '@/lib/utils/transaction-filtering'
 
-export interface TransactionFilters {
-  accountId?: AccountFilter
-  types?: TransactionType[]
-  tags?: string[]
-  search?: string
-  dateRange?: {
-    from: Date
-    to: Date
-  }
-}
+export type TransactionFilters = SharedTransactionFilters
 
 interface TransactionFiltersProps {
   filters: TransactionFilters
@@ -94,14 +75,48 @@ export function TransactionFilters({ filters, onFiltersChange }: TransactionFilt
           )}
         </div>
 
+        {/* 货币过滤：按账户币种筛选（动态生成，只显示实际存在的货币） */}
+        {(() => {
+          const currencyOptions = Array.from(new Set(accounts.map((acc) => acc.currency)))
+          if (currencyOptions.length <= 1) return null
+          return (
+            <div className="flex items-center gap-1">
+              <MultiSelect
+                options={currencyOptions.map((c) => ({ label: c, value: c }))}
+                value={filters.currencies || []}
+                onChange={(currencies) => {
+                  onFiltersChange({
+                    ...filters,
+                    currencies: currencies.length > 0 ? currencies : undefined,
+                  })
+                }}
+                placeholder="选择货币"
+                className="w-[120px]"
+              />
+              {filters.currencies && (
+                <Button
+                  type="default"
+                  size="small"
+                  className="h-8 w-8 hover:bg-muted/50"
+                  onClick={() => clearFilter('currencies')}
+                >
+                  <XIcon className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )
+        })()}
+
         {/* 交易类型过滤 */}
         <div className="flex items-center gap-1">
           <MultiSelect
             options={[
               { label: '收入', value: TransactionType.INCOME },
+              { label: '存款', value: TransactionType.DEPOSIT },
               { label: '消费', value: TransactionType.CONSUMPTION },
               { label: '放贷', value: TransactionType.LOAN },
               { label: '转入', value: TransactionType.TRANSFER_IN },
+              { label: '转出', value: TransactionType.TRANSFER_OUT },
               { label: '投资收益', value: TransactionType.INVESTMENT_PROFIT },
               { label: '投资亏损', value: TransactionType.INVESTMENT_LOSS },
             ]}
@@ -167,7 +182,10 @@ export function TransactionFilters({ filters, onFiltersChange }: TransactionFilt
                 : undefined
               onFiltersChange({
                 ...filters,
-                dateRange: from ? { from, to: filters.dateRange?.to || new Date() } : undefined,
+                dateRange:
+                  from || filters.dateRange?.to
+                    ? { from, to: filters.dateRange?.to }
+                    : undefined,
               })
             }}
             className="w-[140px]"
@@ -186,7 +204,10 @@ export function TransactionFilters({ filters, onFiltersChange }: TransactionFilt
                 : undefined
               onFiltersChange({
                 ...filters,
-                dateRange: to ? { from: filters.dateRange?.from || new Date(), to } : undefined,
+                dateRange:
+                  filters.dateRange?.from || to
+                    ? { from: filters.dateRange?.from, to }
+                    : undefined,
               })
             }}
             className="w-[140px]"

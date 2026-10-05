@@ -1,6 +1,7 @@
 import { isValid, parse } from 'date-fns'
 import { v4 as uuidv4 } from 'uuid'
 
+import { splitCSVLines as splitCSVRecords } from '@/lib/utils/csv-parse'
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
 import { AccountImport, ValidationResult, AccountImportResult, Account , AccountType, RiskLevel } from '@/types'
 
@@ -11,7 +12,7 @@ export function parseImportedAccountJSON(content: string): AccountImport[] {
   try {
     const data = JSON.parse(content)
     return Array.isArray(data) ? data : [data]
-  } catch (error) {
+  } catch {
     throw new Error('无效的 JSON 文件')
   }
 }
@@ -40,7 +41,8 @@ function detectDelimiter(line: string): string {
  * 解析 CSV 字符串为账户导入数据
  */
 export function parseImportedAccountCSV(content: string): AccountImport[] {
-  const lines = content.trim().split('\n')
+  // 引号感知的行拆分：避免引号字段内部的换行符被误判为记录分隔符
+  const lines = splitCSVRecords(content)
   if (lines.length < 2) {
     throw new Error('CSV 文件为空或格式无效')
   }
@@ -62,15 +64,9 @@ export function parseImportedAccountCSV(content: string): AccountImport[] {
       const account = mapCSVRowToAccountImport(values, headerMap)
       accounts.push(account)
     } catch (error) {
-      // 在验证阶段处理错误
-      accounts.push({
-        name: '',
-        type: AccountType.OTHER,
-        balance: 0,
-        initialBalance: 0,
-        currency: '',
-        _parseError: error instanceof Error ? error.message : '未知解析错误',
-      } as any)
+      // 解析失败的行直接跳过，不再生成垃圾记录（避免错误行被当成默认类型账户写入）
+      const errorMsg = error instanceof Error ? error.message : '未知解析错误'
+      console.warn(`[账户CSV导入] 第 ${i + 1} 行解析失败，已跳过：${errorMsg}`)
     }
   }
 
@@ -140,7 +136,17 @@ function createHeaderMap(headers: string[]): Map<string, number> {
     if (normalized === '主题色' || normalized === '颜色' || normalized === 'color')
       map.set('color', index)
     if (normalized === '图标' || normalized === 'icon') map.set('icon', index)
-    if (normalized === '创建时间' || normalized === 'createdat') map.set('createdAt', index)
+    if (normalized === '基金代码' || normalized === 'fundcode' || normalized === '代码')
+      map.set('fundCode', index)
+    if (
+      normalized === '创建时间' ||
+      normalized === 'createdat' ||
+      normalized === '起始日期' ||
+      normalized === '初始余额日期' ||
+      normalized === 'startdate'
+    ) {
+      map.set('createdAt', index)
+    }
     if (normalized === '更新时间' || normalized === 'updatedat') map.set('updatedAt', index)
   })
   return map
@@ -177,6 +183,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   const description = getValue('description')
   const color = getValue('color')
   const icon = getValue('icon')
+  const fundCodeStr = getValue('fundCode')
   const riskLevelStr = getValue('riskLevel')
   const createdAtStr = getValue('createdAt')
   const updatedAtStr = getValue('updatedAt')
@@ -184,7 +191,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
   // 解析账户类型
   let type: AccountType
   const typeLower = typeStr.toLowerCase().trim()
-  if (typeLower === 'securities' || typeLower === '证券') {
+  if (typeLower === 'securities' || typeLower === '证券' || typeLower === '债券') {
     type = AccountType.SECURITIES
   } else if (typeLower === 'bank' || typeLower === '银行') {
     type = AccountType.BANK
@@ -255,6 +262,7 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
     description: description || undefined,
     color: color || undefined,
     icon: icon || undefined,
+    fundCode: fundCodeStr?.trim() || undefined,
     riskLevel: riskLevel || undefined,
     createdAt: parseDate(createdAtStr),
     updatedAt: parseDate(updatedAtStr),
@@ -266,7 +274,9 @@ function mapCSVRowToAccountImport(values: string[], headerMap: Map<string, numbe
 /**
  * 验证单个账户数据
  */
-export function validateImportedAccount(data: any): ValidationResult {
+export function validateImportedAccount(
+  data: Partial<AccountImport> & { _parseError?: string }
+): ValidationResult {
   const errors: string[] = []
 
   if (!data.name) {
@@ -332,6 +342,7 @@ export function importAccounts(
   existingAccounts.forEach((acc) => {
     existingAccountsByName.set(acc.name.toLowerCase(), acc)
   })
+  const processedImportNames = new Set<string>()
 
   importedData.forEach((data, index) => {
     // 验证数据
@@ -347,8 +358,22 @@ export function importAccounts(
       return
     }
 
+    const normalizedName = data.name.toLowerCase()
+
+    if (processedImportNames.has(normalizedName)) {
+      result.failed++
+      result.errors.push({
+        index,
+        row: data,
+        error: `导入文件中存在重复账户名称: ${data.name}`,
+      })
+      return
+    }
+
+    processedImportNames.add(normalizedName)
+
     // 根据账户名称查找现有账户
-    const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
+    const existingAccount = existingAccountsByName.get(normalizedName)
 
     if (existingAccount) {
       // 找到同名账户，标记为更新
@@ -379,6 +404,7 @@ export function convertImportedToAccount(data: AccountImport): Account {
     description: data.description || '',
     color: data.color || '#F5F0E6',
     icon: data.icon,
+    fundCode: data.fundCode || undefined,
     riskLevel: data.riskLevel,
     createdAt:
       data.createdAt instanceof Date
@@ -400,6 +426,13 @@ export function convertImportedToAccount(data: AccountImport): Account {
  * 注意：只更新 initialBalance，保留系统中的 current balance
  */
 export function convertImportedToAccountUpdate(data: AccountImport): Partial<Account> {
+  const createdAt =
+    data.createdAt instanceof Date
+      ? data.createdAt
+      : data.createdAt
+        ? new Date(data.createdAt)
+        : undefined
+
   return {
     name: data.name,
     type: data.type,
@@ -409,6 +442,8 @@ export function convertImportedToAccountUpdate(data: AccountImport): Partial<Acc
     description: data.description || '',
     color: data.color || '#F5F0E6',
     icon: data.icon,
+    fundCode: data.fundCode || undefined,
     riskLevel: data.riskLevel,
+    ...(createdAt ? { createdAt } : {}),
   }
 }

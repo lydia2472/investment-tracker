@@ -53,20 +53,19 @@ export function useAccountStats(options?: UseAccountStatsOptions): AccountStats 
       {} as Record<AccountType, number>
     )
 
-    // 计算总收入（INCOME, DEPOSIT, TRANSFER_IN 类型）
+    // 计算总收入（仅日常现金流）
     const totalIncome = filteredTransactions
       .filter(
         (t) =>
           t.type === TransactionType.INCOME ||
-          t.type === TransactionType.DEPOSIT ||
-          t.type === TransactionType.TRANSFER_IN
+          t.type === TransactionType.DEPOSIT
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
-    // 计算总支出（CONSUMPTION, TRANSFER_OUT 类型）
+    // 计算总支出（仅日常现金流）
     const totalExpense = filteredTransactions
       .filter(
-        (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.TRANSFER_OUT
+        (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.LOAN
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 

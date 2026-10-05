@@ -2,16 +2,15 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 
 import { useAccountStore, useTransactionStore } from '@/lib/stores'
+import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 
 export function useAccountActions() {
   const deleteAccount = useAccountStore((state) => state.deleteAccount)
   const deleteAccounts = useAccountStore((state) => state.deleteAccounts)
   const updateAccount = useAccountStore((state) => state.updateAccount)
   const getAccount = useAccountStore((state) => state.getAccount)
-  const deleteTransactionsByAccountIds = useTransactionStore(
-    (state) => state.deleteTransactionsByAccountIds
-  )
   const getTransactionsByAccount = useTransactionStore((state) => state.getTransactionsByAccount)
+  const getSnapshotsByAccount = useSnapshotStore((state) => state.getSnapshotsByAccount)
 
   const handleDelete = useCallback(
     (id: string, name: string) => {
@@ -51,30 +50,23 @@ export function useAccountActions() {
       const totalTransactions = accountIds.reduce((sum, accountId) => {
         return sum + getTransactionsByAccount(accountId).length
       }, 0)
-
-      // 确认对话框
-      const accountNames = accounts.map((acc) => acc?.name).join('、')
-      const confirmMessage = `确定要删除以下 ${accounts.length} 个账户吗？\n\n账户：${accountNames}\n关联交易：${totalTransactions} 条\n\n此操作不可撤销！`
-
-      if (!confirm(confirmMessage)) {
-        return
-      }
+      const totalSnapshots = accountIds.reduce((sum, accountId) => {
+        return sum + getSnapshotsByAccount(accountId).length
+      }, 0)
 
       try {
-        // 1. 先删除所有关联的交易
-        deleteTransactionsByAccountIds(accountIds)
-
-        // 2. 删除账户
+        // 账户 store 会级联删除关联交易和快照
         deleteAccounts(accountIds)
 
-        // 3. 显示成功提示
-        toast.success(`已成功删除 ${accounts.length} 个账户及其 ${totalTransactions} 条交易记录`)
+        toast.success(
+          `已成功删除 ${accounts.length} 个账户、${totalTransactions} 条交易记录和 ${totalSnapshots} 条快照`
+        )
       } catch (error) {
         console.error('批量删除账户失败:', error)
         toast.error('删除失败，请稍后重试')
       }
     },
-    [getAccount, getTransactionsByAccount, deleteTransactionsByAccountIds, deleteAccounts]
+    [getAccount, getTransactionsByAccount, getSnapshotsByAccount, deleteAccounts]
   )
 
   return {

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button , Input } from 'animal-island-ui'
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -50,46 +50,40 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
     amount: number
   } | null>(null)
 
-  // 到期存款转账状态
-  const [isMaturedDeposit, setIsMaturedDeposit] = useState(false)
-  const [maturityDetails, setMaturityDetails] = useState<{
-    principal: number
-    interest: number
-    totalAmount: number
-    maturityDate: Date
-  } | null>(null)
-
   const transfer = useTransactionStore((state) => state.transfer)
   const accounts = useAccountStore((state) => state.accounts)
 
-  // 当转出账户改变时，检查是否是已到期的定期存款
-  useEffect(() => {
-    if (!fromAccount) {
-      setIsMaturedDeposit(false)
-      setMaturityDetails(null)
-      return
-    }
+  const selectedFromAccount = useMemo(
+    () => accounts.find((account) => account.id === fromAccount) || null,
+    [accounts, fromAccount]
+  )
+  const maturityDetails = useMemo(
+    () =>
+      selectedFromAccount ? MaturityReminderService.getMaturityDetails(selectedFromAccount) : null,
+    [selectedFromAccount]
+  )
+  const isMaturedDeposit = useMemo(
+    () =>
+      !!selectedFromAccount &&
+      !!maturityDetails &&
+      MaturityReminderService.isMatured(selectedFromAccount),
+    [maturityDetails, selectedFromAccount]
+  )
 
-    const account = accounts.find((acc) => acc.id === fromAccount)
+  const handleFromAccountChange = (accountId: string) => {
+    setFromAccount(accountId)
+
+    const account = accounts.find((item) => item.id === accountId)
     if (!account) {
-      setIsMaturedDeposit(false)
-      setMaturityDetails(null)
       return
     }
 
     const details = MaturityReminderService.getMaturityDetails(account)
     if (details && MaturityReminderService.isMatured(account)) {
-      setIsMaturedDeposit(true)
-      setMaturityDetails(details)
-      // 自动填充转账金额
       setAmount(details.totalAmount)
-      // 自动添加描述
       setDescription(`定期存款到期转出 (${details.maturityDate.toLocaleDateString('zh-CN')})`)
-    } else {
-      setIsMaturedDeposit(false)
-      setMaturityDetails(null)
     }
-  }, [fromAccount, accounts])
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,7 +127,10 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
 
     setIsSubmitting(true)
     try {
-      transfer(fromAccount, toAccount, amount, description || '转账', new Date())
+      transfer(fromAccount, toAccount, amount, description || '转账', new Date(), {
+        transferOutTags: isMaturedDeposit ? ['到期转出'] : undefined,
+        transferInTags: isMaturedDeposit ? ['到期转入'] : undefined,
+      })
 
       const fromAccountData = accounts.find((acc) => acc.id === fromAccount)
       const toAccountData = accounts.find((acc) => acc.id === toAccount)
@@ -195,7 +192,7 @@ export function TransferDialog({ trigger, fromAccountId }: TransferDialogProps) 
           {/* 转出账户 */}
           <div className="space-y-2">
             <Label htmlFor="from-account">转出账户</Label>
-            <Select value={fromAccount} onValueChange={setFromAccount} required>
+            <Select value={fromAccount} onValueChange={handleFromAccountChange} required>
               <SelectTrigger id="from-account">
                 <SelectValue placeholder="选择转出账户" />
               </SelectTrigger>

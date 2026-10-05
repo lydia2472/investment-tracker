@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import { DEFAULT_TAGS } from '@/lib/constants/tags'
+import { persistStorage } from './persist-storage'
 
 interface TagState {
   availableTags: string[]
@@ -36,6 +37,7 @@ export const useTagStore = create<TagState>()(
     }),
     {
       name: 'tag-storage',
+      storage: persistStorage,
       version: 1,
     }
   )

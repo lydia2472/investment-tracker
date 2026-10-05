@@ -14,21 +14,21 @@ import {
 } from '@/components/ui/dialog'
 import { UploadIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { useSnapshotStore } from '@/lib/stores/snapshot-store'
+import { detectPotentialFilterIssues } from '@/lib/utils/csv-validator'
+import { createSnapshotProfitSyncPlan } from '@/lib/utils/snapshot-profit-sync'
 import {
   parseImportedJSON,
   parseImportedCSV,
-  importTransactions,
   convertImportedToTransaction,
   separateTransactionTypes,
   calculateInvestmentAmounts,
   detectOverlappingAccountMonths,
+  expandImportedTransferPairs,
 } from '@/lib/utils/transaction-import'
-import { detectPotentialFilterIssues } from '@/lib/utils/csv-validator'
-import { useSnapshotStore } from '@/lib/stores/snapshot-store'
+import { type ImportResult } from '@/types'
 
-import type { Transaction, ImportResult } from '@/types'
-import { TransactionType } from '@/types'
-import { Snapshot } from '@/lib/stores/snapshot-store'
+import type { Snapshot } from '@/lib/stores/snapshot-store'
 
 interface ImportDialogProps {
   trigger?: React.ReactNode
@@ -45,10 +45,8 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
   const updateTransaction = useTransactionStore((state) => state.updateTransaction)
   const deleteMultiple = useTransactionStore((state) => state.deleteMultiple)
   const deleteSnapshot = useSnapshotStore((state) => state.deleteSnapshot)
-  const accountStore = useAccountStore.getState()
   const accounts = useAccountStore((state) => state.accounts)
   const transactions = useTransactionStore((state) => state.transactions)
-  const existingAccountIds = accounts.map((a) => a.id)
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -76,7 +74,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
       // 根据文件扩展名选择解析器
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase()
-      let importedData
+      let parsedImportData
 
       // CSV文件筛选检测
       if (fileExtension === 'csv') {
@@ -103,12 +101,14 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       }
 
       if (fileExtension === 'csv') {
-        importedData = parseImportedCSV(content, accounts)
+        parsedImportData = parseImportedCSV(content, accounts)
       } else if (fileExtension === 'json') {
-        importedData = parseImportedJSON(content)
+        parsedImportData = parseImportedJSON(content, accounts)
       } else {
         throw new Error('不支持的文件格式，请使用 JSON 或 CSV 文件')
       }
+
+      const importedData = expandImportedTransferPairs(parsedImportData)
 
       // 步骤 1: 分离三种交易类型
       const { snapshots, transferIns, otherTransactions } = separateTransactionTypes(importedData)
@@ -118,7 +118,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
       const investmentAmounts = calculateInvestmentAmounts(snapshots, transferIns)
 
       // 步骤 3: 处理其他交易和转入交易
-      let otherTransactionResult: ImportResult = {
+      const otherTransactionResult: ImportResult = {
         total: 0,
         success: 0,
         updated: 0,
@@ -130,7 +130,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         deletedAccountMonths: [],
       }
       let otherTransactionSuccess = 0
-      let otherTransactionUpdated = 0
+      const otherTransactionUpdated = 0
 
       // 将 transferIns 也作为普通交易处理
       const allOtherTransactions = [...otherTransactions, ...transferIns]
@@ -304,7 +304,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
       let snapshotSuccessCount = 0
       let snapshotErrorCount = 0
-      let snapshotErrors: Array<{ index: number; error: string }> = []
+      const snapshotErrors: Array<{ index: number; error: string }> = []
 
       snapshots.forEach((snapshotData, index) => {
         try {
@@ -339,85 +339,27 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         }
       })
 
-      // 自动创建收益交易
-      console.log('[快照导入] 开始自动创建收益交易')
-      const allSnapshots = useSnapshotStore.getState().snapshots
+      const snapshotProfitSyncPlan = createSnapshotProfitSyncPlan(
+        useAccountStore.getState().accounts,
+        useSnapshotStore.getState().snapshots,
+        useTransactionStore.getState().transactions
+      )
 
-      // 按账户分组快照
-      const snapshotsByAccount = new Map<string, typeof allSnapshots>()
-      allSnapshots.forEach((snapshot) => {
-        if (!snapshotsByAccount.has(snapshot.accountId)) {
-          snapshotsByAccount.set(snapshot.accountId, [])
-        }
-        snapshotsByAccount.get(snapshot.accountId)!.push(snapshot)
+      if (snapshotProfitSyncPlan.deleteIds.length > 0) {
+        deleteMultiple(snapshotProfitSyncPlan.deleteIds)
+      }
+
+      snapshotProfitSyncPlan.update.forEach(({ id, updates }) => {
+        updateTransaction(id, updates)
       })
 
-      let profitCreatedCount = 0
-
-      // 为每个账户计算并创建收益交易
-      snapshotsByAccount.forEach((accountSnapshots, accountId) => {
-        // 按日期排序（升序：旧→新）
-        const sortedSnapshots = [...accountSnapshots].sort(
-          (a, b) => new Date(a.snapshotDate).getTime() - new Date(b.snapshotDate).getTime()
-        )
-
-        // 验证账户是否存在
-        const accountExists = accounts.some((acc) => acc.id === accountId)
-        console.log(`[快照导入] 账户 ${accountId}，共 ${sortedSnapshots.length} 个快照，账户存在: ${accountExists}`)
-
-        if (!accountExists) {
-          console.log(`[快照导入] ⚠️ 警告：账户 ${accountId} 不存在于系统中！`)
-          console.log(`[快照导入] 系统中的账户列表:`, accounts.map((a) => `${a.name} (${a.id})`))
-          console.log(`[快照导入] 跳过该账户的收益计算`)
-          return // 跳过该账户，不创建收益交易
-        }
-
-        // 创建收益交易（需要至少2个快照）
-        if (sortedSnapshots.length >= 2) {
-          for (let i = 1; i < sortedSnapshots.length; i++) {
-            const current = sortedSnapshots[i]
-            const previous = sortedSnapshots[i - 1]
-
-            // 计算收益：本月快照 - 上月快照 - 本月转入
-            const profit = current.balance - previous.balance - (current.investmentAmount || 0)
-
-            console.log(
-              `[快照导入]   计算收益: ${current.balance} - ${previous.balance} - ${current.investmentAmount || 0} = ${profit}`
-            )
-
-            if (profit === 0) {
-              console.log(`[快照导入]   收益为0，跳过`)
-              continue
-            }
-
-            // 确定交易类型
-            const txnType = profit > 0 ? TransactionType.INVESTMENT_PROFIT : TransactionType.INVESTMENT_LOSS
-
-            // 计算月份（使用本月快照的日期）
-            const snapshotDate = new Date(current.snapshotDate)
-            const year = snapshotDate.getFullYear()
-            const month = snapshotDate.getMonth() + 1
-
-            // 创建收益交易
-            addTransaction({
-              accountId,
-              type: txnType,
-              amount: Math.abs(profit),
-              balance: current.balance,
-              description: `${year}年${month}月投资${profit > 0 ? '收益' : '亏损'}（导入自动生成）`,
-              tags: ['投资收益', '导入生成'],
-              createdAt: new Date(current.snapshotDate),
-            })
-
-            profitCreatedCount++
-            console.log(
-              `[快照导入]   ✓ 创建收益交易: ${year}年${month}月 ${profit > 0 ? '收益' : '亏损'} = ${profit.toFixed(2)}元`
-            )
-          }
-        }
+      snapshotProfitSyncPlan.create.forEach((transaction) => {
+        addTransaction(transaction)
       })
 
-      console.log(`[快照导入] 完成：创建了 ${profitCreatedCount} 个收益交易`)
+      console.log(
+        `[快照导入] 收益交易同步完成：新增 ${snapshotProfitSyncPlan.create.length}，更新 ${snapshotProfitSyncPlan.update.length}，删除 ${snapshotProfitSyncPlan.deleteIds.length}`
+      )
 
       // 步骤 5: 显示综合结果
       const totalSuccess = otherTransactionSuccess + snapshotSuccessCount
@@ -450,8 +392,15 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           if (totalInvestment > 0) {
             message += `，总投资金额: ${totalInvestment.toFixed(0)}元`
           }
-          if (profitCreatedCount > 0) {
-            message += `，自动创建 ${profitCreatedCount} 个收益交易`
+          if (
+            snapshotProfitSyncPlan.create.length > 0 ||
+            snapshotProfitSyncPlan.update.length > 0 ||
+            snapshotProfitSyncPlan.deleteIds.length > 0
+          ) {
+            message +=
+              `，收益交易同步：新增 ${snapshotProfitSyncPlan.create.length} 个` +
+              `，更新 ${snapshotProfitSyncPlan.update.length} 个` +
+              `，删除 ${snapshotProfitSyncPlan.deleteIds.length} 个`
           }
         }
 
@@ -486,7 +435,16 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     } finally {
       setIsProcessing(false)
     }
-  }, [selectedFile, transactions, existingAccountIds, addTransaction, updateTransaction, onImportSuccess, accounts])
+  }, [
+    selectedFile,
+    transactions,
+    addTransaction,
+    deleteMultiple,
+    deleteSnapshot,
+    updateTransaction,
+    onImportSuccess,
+    accounts,
+  ])
 
   const handleReset = () => {
     setSelectedFile(null)

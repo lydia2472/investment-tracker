@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { Card , Button } from 'animal-island-ui'
 
 import {
@@ -9,21 +10,28 @@ import {
 import { FixedDepositService } from '@/lib/services/fixed-deposit-service'
 import { MaturityReminderService } from '@/lib/services/maturity-reminder-service'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
+import { useTransactionStore } from '@/lib/stores/transaction-store'
+import { calculateCurrentDisplayBalance } from '@/lib/utils/snapshot-balance-helpers'
 import { cn } from '@/lib/utils/cn'
 import { iconClasses, cardClasses, buttonClasses } from '@/lib/utils/design-classes'
 import { formatCurrency } from '@/lib/utils/formatters'
+import { calculateGoldAccountSummary, isGoldAccount } from '@/lib/utils/gold-profit-helpers'
 
 import { AccountTypeBadge } from './account-type-badge'
 import { MaturityBadge } from './maturity-badge'
 import { RiskLevelBadge } from './risk-level-badge'
 import { TransferDialog } from './transfer-dialog'
+import { SellGoldDialog } from './sell-gold-dialog'
 
+import { AccountType } from '@/types'
 import type { Account } from '@/types'
 
 interface AccountCardProps {
   account: Account
   onDelete: (id: string, name: string) => void
   onEdit?: (account: Account) => void
+  /** 切换归档状态（归档/取消归档） */
+  onToggleArchive?: (id: string) => void
   // 新增 props
   isSelected?: boolean
   onToggleSelection?: () => void
@@ -34,6 +42,7 @@ export function AccountCard({
   account,
   onDelete,
   onEdit,
+  onToggleArchive,
   isSelected = false,
   onToggleSelection,
   isBulkSelectionMode = false,
@@ -43,8 +52,25 @@ export function AccountCard({
     state.getLatestSnapshot(account.id)
   )
 
-  // 当前余额显示逻辑：优先显示最新快照金额，如果没有快照则显示账户余额
-  const currentBalance = latestSnapshot?.balance ?? account.balance
+  // 订阅稳定的全量数据用于计算当前余额（避免 selector 返回新数组的无限渲染问题）
+  const allTransactions = useTransactionStore((state) => state.transactions)
+  const allSnapshotsForBalance = useSnapshotStore((state) => state.snapshots)
+
+  // 当前余额 = 最新快照余额 + 快照之后的交易变动（快照后转出/转入必须反映）
+  const currentBalance = calculateCurrentDisplayBalance(
+    account,
+    allTransactions,
+    allSnapshotsForBalance
+  )
+
+  // 黄金账户：计算累计总收益、平均持仓成本等专属指标
+  // 注意：不能把 getSnapshotsByAccount 直接作为 selector，因为它每次都返回新数组引用，
+  // 会触发 Zustand 的无限渲染告警。改为订阅稳定的 snapshots 数组，在组件内过滤。
+  const isGold = account.type === AccountType.GOLD
+  const allSnapshots = useSnapshotStore((state) => state.snapshots)
+  const goldSummary = isGold
+    ? calculateGoldAccountSummary(allSnapshots.filter((s) => s.accountId === account.id))
+    : null
 
   // 添加渲染日志
   const formattedInitialBalance = formatCurrency(account.initialBalance)
@@ -86,10 +112,7 @@ export function AccountCard({
             checked={isSelected}
             onChange={() => onToggleSelection?.()}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleSelection?.()
-            }}
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
@@ -138,7 +161,14 @@ export function AccountCard({
               )}
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{account.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-lg">{account.name}</h3>
+                {account.fundCode && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted border text-muted-foreground">
+                    {account.fundCode}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{account.description || '无描述'}</p>
             </div>
           </div>
@@ -153,6 +183,53 @@ export function AccountCard({
               {formatCurrency(currentBalance)}
             </p>
           </div>
+
+          {/* 黄金账户专属指标：累计克数、平均成本、累计收益 */}
+          {isGold && goldSummary?.hasData && (
+            <div className="p-4 rounded-2xl bg-[#FFD700]/10 border border-[#FFD700]/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">黄金持仓</p>
+                <SellGoldDialog account={account} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">累计克数</p>
+                  <p className="text-sm font-bold">{goldSummary.totalGrams.toFixed(4)} 克</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">最新均价</p>
+                  <p className="text-sm font-bold">{formatCurrency(goldSummary.latestMarketPrice)}/克</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">平均成本</p>
+                  <p className="text-sm font-bold">{formatCurrency(goldSummary.averageCostPerGram)}/克</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">累计投入</p>
+                  <p className="text-sm font-bold">{formatCurrency(goldSummary.totalInvested)}</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-[#FFD700]/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">累计总收益</span>
+                  <span
+                    className={cn(
+                      'text-sm font-bold',
+                      goldSummary.totalProfit >= 0
+                        ? 'text-[var(--color-profit)]'
+                        : 'text-[var(--color-loss)]'
+                    )}
+                  >
+                    {goldSummary.totalProfit >= 0 ? '+' : ''}
+                    {formatCurrency(goldSummary.totalProfit)}
+                    <span className="text-xs ml-1">
+                      ({(goldSummary.totalProfitRate * 100).toFixed(2)}%)
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Account info */}
           <div className="flex gap-2 flex-wrap">
@@ -205,8 +282,13 @@ export function AccountCard({
             </span>
           </div>
 
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>初始日期</span>
+            <span className="font-medium">{format(new Date(account.createdAt), 'yyyy-MM-dd')}</span>
+          </div>
+
           {/* Action buttons */}
-          <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className="grid grid-cols-4 gap-2 pt-2">
             {onEdit && (
               <Button
                 type="default"
@@ -219,6 +301,16 @@ export function AccountCard({
               </Button>
             )}
             <TransferDialog fromAccountId={account.id} />
+            {onToggleArchive && (
+              <Button
+                type="default"
+                size="small"
+                onClick={() => onToggleArchive(account.id)}
+                title={account.archived ? '取消归档' : '归档（折叠隐藏）'}
+              >
+                {account.archived ? '取消归档' : '归档'}
+              </Button>
+            )}
             <Button
               type="primary"
               size="small"

@@ -22,16 +22,13 @@ export class TransactionService {
   static calculateIncomeExpense(transactions: Transaction[]): IncomeExpenseResult {
     const income = transactions
       .filter(
-        (t) =>
-          t.type === TransactionType.INCOME ||
-          t.type === TransactionType.DEPOSIT ||
-          t.type === TransactionType.TRANSFER_IN
+        (t) => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 
     const expense = transactions
       .filter(
-        (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.TRANSFER_OUT
+        (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.LOAN
       )
       .reduce((sum, t) => sum + (t.amount || 0), 0)
 

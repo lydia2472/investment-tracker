@@ -1,8 +1,7 @@
-import { differenceInMonths, endOfMonth, startOfMonth, differenceInDays } from 'date-fns'
-
 import { useAccountStore } from '@/lib/stores/account-store'
 import { useTransactionStore } from '@/lib/stores/transaction-store'
-import { AccountType, TransactionType } from '@/types'
+import { debugLog, debugWarn } from '@/lib/utils/debug-log'
+import { Account, AccountType, Transaction, TransactionType } from '@/types'
 
 import { FixedDepositService } from './fixed-deposit-service'
 
@@ -14,72 +13,86 @@ export class InterestSyncService {
   /**
    * 同步所有定期存款账户的利息
    */
-  static syncAllInterest(): void {
-    console.log(
-      `%c[InterestSync] ========== 开始同步利息 ==========`,
-      'color: #ff00ff; font-size: 14px; font-weight: bold;'
-    )
-
+  static syncAllInterest(): boolean {
     const accounts = useAccountStore
       .getState()
       .accounts.filter((acc) => acc.type === AccountType.FIXED_DEPOSIT && acc.fixedDepositConfig)
 
-    const { transactions, addTransaction } = useTransactionStore.getState()
-
-    console.log(
-      `%c[InterestSync] 检查 ${accounts.length} 个定期存款账户`,
-      'color: #00ff00; font-weight: bold;'
-    )
+    const transactionStore = useTransactionStore.getState()
+    const { transactions } = transactionStore
 
     if (accounts.length === 0) {
-      console.warn(`[InterestSync] ⚠️ 没有找到定期存款账户`)
+      debugWarn('[InterestSync] 没有找到定期存款账户')
+      return false
     }
 
-    // 列出所有定期存款账户及其到期日
-    accounts.forEach((account) => {
-      const maturityDate = new Date(account.fixedDepositConfig!.maturityDate)
-      const today = new Date()
-      const isMatured = today >= maturityDate
-      console.log(
-        `  - ${account.name}: 到期日 ${maturityDate.toLocaleDateString('zh-CN')} ${isMatured ? '✅(已到期)' : '(未到期)'}`
-      )
-    })
+    debugLog('[InterestSync] 开始同步利息，账户数:', accounts.length)
+
+    let workingTransactions = [...transactions]
+    const deleteIds: string[] = []
+    const create: Array<Omit<Transaction, 'id' | 'updatedAt'>> = []
 
     accounts.forEach((account) => {
-      this.syncAccountInterest(account, transactions, addTransaction)
+      const plan = this.createAccountSyncPlan(account, workingTransactions)
+      if (plan.deleteIds.length === 0 && plan.create.length === 0) {
+        return
+      }
+
+      workingTransactions = plan.workingTransactions
+      deleteIds.push(...plan.deleteIds)
+      create.push(...plan.create)
     })
 
-    console.log(
-      `%c[InterestSync] ========== 同步完成 ==========`,
-      'color: #ff00ff; font-size: 14px; font-weight: bold;'
-    )
+    if (deleteIds.length === 0 && create.length === 0) {
+      debugLog('[InterestSync] 没有需要同步的利息交易')
+      return false
+    }
+
+    transactionStore.applyBulkChanges({
+      create,
+      deleteIds,
+    })
+
+    debugLog('[InterestSync] 同步完成', {
+      deleted: deleteIds.length,
+      created: create.length,
+    })
+
+    return true
   }
 
   /**
    * 同步单个账户的利息
    */
-  private static syncAccountInterest(
-    account: any,
-    transactions: any[],
-    addTransaction: (txn: any) => void
-  ): void {
-    if (!account.fixedDepositConfig) return
+  private static createAccountSyncPlan(
+    account: Account,
+    transactions: Transaction[]
+  ): {
+    deleteIds: string[]
+    create: Array<Omit<Transaction, 'id' | 'updatedAt'>>
+    workingTransactions: Transaction[]
+  } {
+    if (!account.fixedDepositConfig) {
+      return {
+        deleteIds: [],
+        create: [],
+        workingTransactions: transactions,
+      }
+    }
 
     const config = account.fixedDepositConfig
     const today = new Date()
-    const { deleteTransaction } = useTransactionStore.getState()
 
     // 将 maturityDate 转换为 Date 对象（处理 localStorage 序列化）
     const maturityDate = new Date(config.maturityDate)
     const startDate = new Date(config.startDate)
 
-    console.log(`\n[InterestSync] 检查账户 ${account.name}:`)
-    console.log(`  - 起息日: ${startDate.toLocaleDateString('zh-CN')}`)
-    console.log(`  - 到期日: ${maturityDate.toLocaleDateString('zh-CN')}`)
-    console.log(`  - 今天: ${today.toLocaleDateString('zh-CN')}`)
-    console.log(`  - 本金: ${config.principal}元`)
-    console.log(`  - 年利率: ${config.interestRate}%`)
-    console.log(`  - 付息频率: ${config.interestPaymentFrequency}`)
+    debugLog(`[InterestSync] 检查账户 ${account.name}`, {
+      startDate: startDate.toLocaleDateString('zh-CN'),
+      maturityDate: maturityDate.toLocaleDateString('zh-CN'),
+      interestRate: config.interestRate,
+      paymentFrequency: config.interestPaymentFrequency,
+    })
 
     // 清理旧的利息收入交易（INCOME类型且带有"利息"标签）
     const oldInterestTxns = transactions.filter(
@@ -89,14 +102,10 @@ export class InterestSyncService {
         txn.tags?.includes('利息')
     )
 
-    if (oldInterestTxns.length > 0) {
-      console.log(`  [清理] 找到 ${oldInterestTxns.length} 笔旧利息收入交易，准备删除...`)
-      oldInterestTxns.forEach((txn) => {
-        console.log(`    - 删除: ${txn.description} (${txn.amount}元)`)
-        deleteTransaction(txn.id)
-      })
-      console.log(`  [清理] 已删除 ${oldInterestTxns.length} 笔旧利息交易`)
-    }
+    const refreshedTransactions =
+      oldInterestTxns.length > 0
+        ? transactions.filter((txn) => !oldInterestTxns.some((oldTxn) => oldTxn.id === txn.id))
+        : transactions
 
     // 生成所有缺失的月度快照
     // 注意：即使账户已到期，也要生成到期前的历史快照
@@ -106,49 +115,31 @@ export class InterestSyncService {
     const monthlyPayments = FixedDepositService.generateMonthlyInterestPayments(
       account,
       effectiveEndDate,
-      transactions
+      refreshedTransactions
     )
 
-    console.log(
-      `  - 有效截止日期: ${effectiveEndDate.toLocaleDateString('zh-CN')} ${today > maturityDate ? '(使用到期日)' : '(使用今天)'}`
-    )
-
-    console.log(`  - 生成月度快照数量: ${monthlyPayments.length} 笔`)
-
-    // 批量添加月度快照交易
-    monthlyPayments.forEach((payment) => {
-      addTransaction(payment)
-      const paymentDate =
-        payment.createdAt instanceof Date ? payment.createdAt : new Date(payment.createdAt)
-
-      const startDate =
-        payment.interestPeriod?.startDate instanceof Date
-          ? payment.interestPeriod.startDate
-          : payment.interestPeriod?.startDate
-            ? new Date(payment.interestPeriod.startDate)
-            : null
-
-      const endDate =
-        payment.interestPeriod?.endDate instanceof Date
-          ? payment.interestPeriod.endDate
-          : payment.interestPeriod?.endDate
-            ? new Date(payment.interestPeriod.endDate)
-            : null
-
-      console.log(`[InterestSync] 生成月度快照 ${account.name}:`)
-      console.log(`  - 余额: ${payment.balance}元`)
-      console.log(`  - 描述: ${payment.description}`)
-      console.log(
-        `  - 日期: ${paymentDate.toLocaleDateString('zh-CN')} ${paymentDate.toLocaleTimeString('zh-CN')}`
-      )
-      console.log(`  - 标签: ${payment.tags?.join(', ')}`)
-      console.log(
-        `  - 计息期间: ${startDate?.toLocaleDateString('zh-CN') || 'N/A'} - ${endDate?.toLocaleDateString('zh-CN') || 'N/A'}`
-      )
+    debugLog(`[InterestSync] ${account.name} 同步结果`, {
+      deletedInterestTransactions: oldInterestTxns.length,
+      generatedPayments: monthlyPayments.length,
+      effectiveEndDate: effectiveEndDate.toLocaleDateString('zh-CN'),
     })
 
-    if (monthlyPayments.length > 0) {
-      console.log(`[InterestSync] ${account.name} 共生成 ${monthlyPayments.length} 笔月度快照`)
+    const create = monthlyPayments.map(({ updatedAt: _updatedAt, ...payment }) => ({
+      ...payment,
+      createdAt: payment.createdAt instanceof Date ? payment.createdAt : new Date(payment.createdAt),
+    }))
+
+    const workingCreatedTransactions: Transaction[] = monthlyPayments.map((payment, index) => ({
+      ...payment,
+      id: `interest-sync-${account.id}-${new Date(payment.createdAt).getTime()}-${index}`,
+      createdAt: payment.createdAt instanceof Date ? payment.createdAt : new Date(payment.createdAt),
+      updatedAt: payment.updatedAt instanceof Date ? payment.updatedAt : new Date(payment.updatedAt),
+    }))
+
+    return {
+      deleteIds: oldInterestTxns.map((txn) => txn.id),
+      create,
+      workingTransactions: [...refreshedTransactions, ...workingCreatedTransactions],
     }
   }
 }

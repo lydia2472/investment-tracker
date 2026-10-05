@@ -34,11 +34,13 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
         name: data.name,
         type: data.type,
         initialBalance: data.initialBalance,
+        createdAt: data.startDate,
         currency: data.currency,
         icon: data.icon,
         riskLevel: data.riskLevel,
         description: data.description,
         fixedDepositConfig: data.fixedDepositConfig,
+        fundCode: data.fundCode || undefined,
       })
 
       toast.success('账户更新成功')
@@ -62,10 +64,12 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
     name: account.name,
     type: account.type,
     initialBalance: account.initialBalance,
+    startDate: new Date(account.createdAt),
     currency: account.currency,
     riskLevel: account.riskLevel,
     icon: account.icon,
     description: account.description,
+    fundCode: account.fundCode || '',
     fixedDepositConfig: account.fixedDepositConfig
       ? {
           ...account.fixedDepositConfig,
@@ -87,6 +91,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
           mode="edit"
           defaultValues={defaultValues}
           currentBalance={account.balance}
+          currentAccountId={account.id}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isSubmitting={isSubmitting}

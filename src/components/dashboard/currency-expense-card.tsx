@@ -3,6 +3,7 @@
 import { Card } from 'animal-island-ui'
 import { useState, memo } from 'react'
 
+import { CardLogicHint } from '@/components/dashboard/card-logic-hint'
 import { ChevronDownIcon, ChevronUpIcon, TrendingDownIcon } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils/cn'
 import {
@@ -19,6 +20,12 @@ interface CurrencyExpenseCardProps {
   data: MultiCurrencySummary
   dateRange?: DateRange
 }
+
+const EXPENSE_LOGIC_LINES = [
+  '支出只包含 CONSUMPTION + LOAN 两类交易。',
+  '不包含 TRANSFER_IN / TRANSFER_OUT，也不包含 INVESTMENT_PROFIT / INVESTMENT_LOSS。',
+  '净收支 = 收入（INCOME + DEPOSIT）- 支出（CONSUMPTION + LOAN）。',
+]
 
 export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({
   data,
@@ -50,8 +57,11 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({
       <Card color="app-red" className="group">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">各货币支出</h3>
-          <div className={cn(iconClasses.container, 'bg-white/20')}>
-            <TrendingDownIcon className="h-full w-full text-white" />
+          <div className="flex items-center gap-2">
+            <CardLogicHint title="各货币支出" lines={EXPENSE_LOGIC_LINES} />
+            <div className={cn(iconClasses.container, 'bg-white/20')}>
+              <TrendingDownIcon className="h-full w-full text-white" />
+            </div>
           </div>
         </div>
         <div className="p-6 pt-0">
@@ -74,8 +84,11 @@ export const CurrencyExpenseCard = memo(function CurrencyExpenseCard({
       <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">各货币支出</h3>
-          <div className={cn(iconClasses.container, 'bg-white/20')}>
-            <TrendingDownIcon className="h-full w-full text-white" />
+          <div className="flex items-center gap-2">
+            <CardLogicHint title="各货币支出" lines={EXPENSE_LOGIC_LINES} />
+            <div className={cn(iconClasses.container, 'bg-white/20')}>
+              <TrendingDownIcon className="h-full w-full text-white" />
+            </div>
           </div>
         </div>
 
@@ -138,8 +151,11 @@ const SingleExpenseView = memo(function SingleExpenseView({
     <Card color="app-red" className="group">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
         <h3 className="text-sm font-semibold text-white">总支出</h3>
-        <div className={cn(iconClasses.container, 'bg-white/20')}>
-          <TrendingDownIcon className="h-full w-full text-white" />
+        <div className="flex items-center gap-2">
+          <CardLogicHint title="总支出" lines={EXPENSE_LOGIC_LINES} />
+          <div className={cn(iconClasses.container, 'bg-white/20')}>
+            <TrendingDownIcon className="h-full w-full text-white" />
+          </div>
         </div>
       </div>
       <div className="p-6 pt-0 space-y-3">
@@ -149,6 +165,19 @@ const SingleExpenseView = memo(function SingleExpenseView({
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
           <p className="text-xs text-white/70 mt-1">总支出</p>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-white/70">投资净收益</span>
+          <span
+            className={cn(
+              'font-bold',
+              currency.investmentNetProfit < 0 ? 'text-red-700' : 'text-green-700'
+            )}
+          >
+            {currency.investmentNetProfit < 0 ? '-' : '+'}
+            {currency.symbol} {formatCurrencyCompact(Math.abs(currency.investmentNetProfit))}
+          </span>
         </div>
 
         {/* 账户数量 */}
@@ -176,12 +205,12 @@ const ExpenseDetailItem = memo(function ExpenseDetailItem({
           <div className="text-xl font-bold text-red-700">
             -{currency.symbol} {formatCurrencyCompact(currency.totalExpense)}
           </div>
-          <div className="text-xs text-white/70 mt-1">总支出</div>
+          <div className="text-xs text-white/70 mt-1">支出合计</div>
         </div>
       </div>
 
       {/* 收支对比 */}
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
         <div className="bg-white/5 rounded-lg p-2">
           <div className="text-xs text-white/70">收入</div>
           <div className="text-sm font-semibold text-green-700">
@@ -189,7 +218,7 @@ const ExpenseDetailItem = memo(function ExpenseDetailItem({
           </div>
         </div>
         <div className="bg-white/5 rounded-lg p-2">
-          <div className="text-xs text-white/70">净支出</div>
+          <div className="text-xs text-white/70">净收支</div>
           <div
             className={cn(
               'text-sm font-semibold',
@@ -198,6 +227,18 @@ const ExpenseDetailItem = memo(function ExpenseDetailItem({
           >
             {currency.netIncome < 0 ? '-' : '+'}
             {currency.symbol} {formatCurrencyCompact(Math.abs(currency.netIncome))}
+          </div>
+        </div>
+        <div className="bg-white/5 rounded-lg p-2">
+          <div className="text-xs text-white/70">投资净收益</div>
+          <div
+            className={cn(
+              'text-sm font-semibold',
+              currency.investmentNetProfit < 0 ? 'text-red-700' : 'text-green-700'
+            )}
+          >
+            {currency.investmentNetProfit < 0 ? '-' : '+'}
+            {currency.symbol} {formatCurrencyCompact(Math.abs(currency.investmentNetProfit))}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { AccountType } from '@/types'
 
 const accountTypeLabels: Record<AccountType, string> = {
-  [AccountType.SECURITIES]: '证券',
+  [AccountType.SECURITIES]: '债券',
   [AccountType.BANK]: '银行',
   [AccountType.CASH]: '现金',
   [AccountType.FIXED_DEPOSIT]: '定期',

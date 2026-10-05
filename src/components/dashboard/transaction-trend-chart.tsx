@@ -1,6 +1,5 @@
 'use client'
 
-import { format, startOfMonth, eachMonthOfInterval } from 'date-fns'
 import { useMemo } from 'react'
 import {
   LineChart,
@@ -13,6 +12,8 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
+import { buildMonthlyCashflowTrend } from '@/lib/utils/cashflow-helpers'
+
 import type { Transaction } from '@/types'
 
 interface TransactionTrendChartProps {
@@ -20,44 +21,7 @@ interface TransactionTrendChartProps {
 }
 
 export function TransactionTrendChart({ transactions }: TransactionTrendChartProps) {
-  const data = useMemo(() => {
-    if (transactions.length === 0) return []
-
-    // 获取日期范围
-    const dates = transactions.map((t) =>
-      t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-    )
-    const minDate = startOfMonth(new Date(Math.min(...dates.map((d) => d.getTime()))))
-    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())))
-
-    // 生成月份区间
-    const months = eachMonthOfInterval({ start: minDate, end: maxDate })
-
-    // 按月统计收支
-    return months.map((month) => {
-      const monthTxns = transactions.filter((t) => {
-        const txnDate = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-        return (
-          txnDate.getMonth() === month.getMonth() && txnDate.getFullYear() === month.getFullYear()
-        )
-      })
-
-      const income = monthTxns
-        .filter((t) => t.type === 'income' || t.type === 'deposit' || t.type === 'transfer_in')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-      const expense = monthTxns
-        .filter((t) => t.type === 'consumption' || t.type === 'loan' || t.type === 'transfer_out')
-        .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-      return {
-        date: format(month, 'yyyy-MM'),
-        month: format(month, 'MM月'),
-        income,
-        expense,
-      }
-    })
-  }, [transactions])
+  const data = useMemo(() => buildMonthlyCashflowTrend(transactions), [transactions])
 
   if (data.length === 0) {
     return (

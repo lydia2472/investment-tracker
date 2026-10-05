@@ -29,16 +29,10 @@ export function useTransactionStats(): TransactionStats {
 
     // 按类型统计数量
     const incomeCount = transactions.filter(
-      (t) =>
-        t.type === TransactionType.INCOME ||
-        t.type === TransactionType.DEPOSIT ||
-        t.type === TransactionType.TRANSFER_IN
+      (t) => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT
     ).length
     const expenseCount = transactions.filter(
-      (t) =>
-        t.type === TransactionType.CONSUMPTION ||
-        t.type === TransactionType.TRANSFER_OUT ||
-        t.type === TransactionType.LOAN
+      (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.LOAN
     ).length
     const transferCount = transactions.filter(
       (t) =>
@@ -48,18 +42,12 @@ export function useTransactionStats(): TransactionStats {
     ).length
     const snapshotCount = transactions.filter((t) => t.type === TransactionType.SNAPSHOT).length
 
-    // 总收入和总支出
+    // 总收入和总支出只统计日常现金流
     const incomeTransactions = transactions.filter(
-      (t) =>
-        t.type === TransactionType.INCOME ||
-        t.type === TransactionType.DEPOSIT ||
-        t.type === TransactionType.TRANSFER_IN
+      (t) => t.type === TransactionType.INCOME || t.type === TransactionType.DEPOSIT
     )
     const expenseTransactions = transactions.filter(
-      (t) =>
-        t.type === TransactionType.CONSUMPTION ||
-        t.type === TransactionType.TRANSFER_OUT ||
-        t.type === TransactionType.LOAN
+      (t) => t.type === TransactionType.CONSUMPTION || t.type === TransactionType.LOAN
     )
 
     const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0)

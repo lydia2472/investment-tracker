@@ -1,7 +1,7 @@
 'use client'
 
 import { Divider , Button } from 'animal-island-ui'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 
 import { AccountGrid } from '@/components/accounts/account-grid'
@@ -10,51 +10,81 @@ import { BatchDeleteDialog } from '@/components/accounts/batch-delete-dialog'
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog'
 import { ExportDialog } from '@/components/accounts/export-dialog'
 import { ImportDialog } from '@/components/accounts/import-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAccountActions } from '@/hooks/use-account-actions'
-import { PlusIcon } from '@/lib/components/icon-adapter'
-import { useAccountStore } from '@/lib/stores'
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@/lib/components/icon-adapter'
+import { cn } from '@/lib/utils/cn'
+import { getAccountTypeLabel } from '@/lib/utils/account-helpers'
+import { formatCurrency } from '@/lib/utils/formatters'
+import { getRiskLevelLabel } from '@/lib/utils/risk-level-helpers'
+import { useAccountStore, useSnapshotStore, useTransactionStore } from '@/lib/stores'
+import { calculateCurrentDisplayBalance } from '@/lib/utils/snapshot-balance-helpers'
+import { AccountType, RiskLevel } from '@/types'
 
 import type { Account } from '@/types'
 
 export default function AccountsPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const version = useAccountStore((state) => state.version)
-  const deleteAccount = useAccountStore((state) => state.deleteAccount)
+  const moveAccount = useAccountStore((state) => state.moveAccount)
+  const toggleArchive = useAccountStore((state) => state.toggleArchive)
 
-  // 自动清理重复账户
-  useEffect(() => {
-    const accountNames = accounts.map((a) => a.name)
-    const duplicates = accountNames.filter((name, index) => accountNames.indexOf(name) !== index)
-    const uniqueDuplicates = [...new Set(duplicates)]
+  // 已归档账户区域是否展开（默认折叠）
+  const [isArchivedExpanded, setIsArchivedExpanded] = useState(false)
 
-    if (uniqueDuplicates.length > 0) {
-      console.log(`[AccountsPage] 发现重复账户，开始清理...`)
+  // 筛选状态：账户类型 + 风险等级（'all' 表示不过滤）
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterRisk, setFilterRisk] = useState<string>('all')
 
-      uniqueDuplicates.forEach((name) => {
-        const duplicateAccounts = accounts.filter((a) => a.name === name)
-        if (duplicateAccounts.length > 1) {
-          // 保留最新的（updatedAt最新的），删除其他的
-          const sorted = [...duplicateAccounts].sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
+  const matchesFilters = useCallback(
+    (a: Account) => {
+      if (filterType !== 'all' && a.type !== filterType) return false
+      if (filterRisk !== 'all' && a.riskLevel !== filterRisk) return false
+      return true
+    },
+    [filterType, filterRisk]
+  )
 
-          const toKeep = sorted[0]
-          const toDelete = sorted.slice(1)
+  const hasActiveFilter = filterType !== 'all' || filterRisk !== 'all'
 
-          console.log(
-            `[账户清理] "${name}": 保留 ${toKeep.id} (initialBalance: ${toKeep.initialBalance})`
-          )
+  // 按归档状态分组（并应用筛选）
+  const { activeAccounts, archivedAccounts } = useMemo(() => {
+    const activeAccounts = accounts.filter((a) => !a.archived && matchesFilters(a))
+    const archivedAccounts = accounts.filter((a) => a.archived && matchesFilters(a))
+    return { activeAccounts, archivedAccounts }
+  }, [accounts, matchesFilters])
 
-          toDelete.forEach((acc) => {
-            console.log(`[账户清理] 删除重复账户 ${acc.id} (initialBalance: ${acc.initialBalance})`)
-            deleteAccount(acc.id)
-          })
-        }
-      })
-
-      toast.success(`已清理 ${uniqueDuplicates.length} 个重复账户`)
+  // 筛选选项：只显示实际存在的类型/风险（按当前数据动态生成）
+  const { typeOptions, riskOptions } = useMemo(() => {
+    const types = new Set(accounts.map((a) => a.type))
+    const risks = new Set(accounts.filter((a) => a.riskLevel).map((a) => a.riskLevel as RiskLevel))
+    return {
+      typeOptions: Array.from(types).map((t) => ({ value: t, label: getAccountTypeLabel(t) })),
+      riskOptions: Array.from(risks).map((r) => ({ value: r, label: getRiskLevelLabel(r) })),
     }
-  }, [accounts, deleteAccount])
+  }, [accounts])
+
+  // 筛选后账户的余额加总（按币种分组，避免跨币种直接相加）
+  // 口径与账户卡片一致：最新快照余额 + 快照后交易变动
+  const snapshots = useSnapshotStore((state) => state.snapshots)
+  const transactions = useTransactionStore((state) => state.transactions)
+  const filteredTotalsByCurrency = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const acc of [...activeAccounts, ...archivedAccounts]) {
+      const balance = calculateCurrentDisplayBalance(acc, transactions, snapshots)
+      totals.set(acc.currency, (totals.get(acc.currency) ?? 0) + balance)
+    }
+    return Array.from(totals.entries())
+  }, [activeAccounts, archivedAccounts, snapshots, transactions])
+
+  const handleToggleArchive = useCallback(
+    (id: string) => {
+      const acc = accounts.find((a) => a.id === id)
+      toggleArchive(id)
+      toast.success(acc?.archived ? `已取消归档「${acc?.name ?? ''}」` : `已归档「${acc?.name ?? ''}」`)
+    },
+    [accounts, toggleArchive]
+  )
 
   // 添加渲染日志和重复账户检测
   console.log(`[AccountsPage] 渲染页面, version: ${version}, accounts数量: ${accounts.length}`)
@@ -160,7 +190,9 @@ export default function AccountsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">账户管理</h2>
-          <p className="text-muted-foreground">管理您的所有投资账户</p>
+          <p className="text-muted-foreground">
+            管理您的所有投资账户，可直接拖动卡片调整排序，交易和快照里的账户选择会沿用这个顺序
+          </p>
         </div>
         <div className="flex gap-2">
           <ExportDialog accounts={accounts} />
@@ -229,17 +261,122 @@ export default function AccountsPage() {
         </div>
       )}
 
+      {/* 筛选栏：账户类型 + 风险等级 */}
+      {(typeOptions.length > 1 || riskOptions.length > 1) && (
+        <div className="flex gap-4 items-center bg-muted/50 p-4 rounded-xl">
+          <span className="text-sm font-medium text-muted-foreground shrink-0">筛选</span>
+
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="账户类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部类型</SelectItem>
+              {typeOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterRisk} onValueChange={setFilterRisk}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="风险等级" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部风险</SelectItem>
+              {riskOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilter && (
+            <Button
+              type="default"
+              size="small"
+              onClick={() => {
+                setFilterType('all')
+                setFilterRisk('all')
+              }}
+            >
+              清除筛选
+            </Button>
+          )}
+
+          <div className="flex flex-col items-end gap-1 ml-auto">
+            <span className="text-xs text-muted-foreground">
+              {hasActiveFilter
+                ? `筛选出 ${activeAccounts.length + archivedAccounts.length} / ${accounts.length} 个账户`
+                : `共 ${accounts.length} 个账户`}
+            </span>
+            <div className="flex flex-wrap gap-3 justify-end">
+              {filteredTotalsByCurrency.map(([currency, total]) => (
+                <span key={currency} className="text-sm font-semibold">
+                  <span className="text-muted-foreground font-normal mr-1">{currency}</span>
+                  {formatCurrency(total)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
+      {/* 活跃账户 */}
       <AccountGrid
-        key={version}
-        accounts={accounts}
+        key={`active-${version}`}
+        accounts={activeAccounts}
         onDelete={handleDelete}
         onEdit={handleEditAccount}
+        onToggleArchive={handleToggleArchive}
+        onReorder={moveAccount}
         selectedAccountIds={selectedAccountIds}
         onToggleSelection={toggleAccountSelection}
         isBulkSelectionMode={isBulkSelectionMode}
       />
+
+      {/* 已归档账户（可折叠） */}
+      {archivedAccounts.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setIsArchivedExpanded((v) => !v)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 mb-3 rounded-lg',
+              'text-sm font-medium text-muted-foreground',
+              'hover:bg-muted/50 transition'
+            )}
+          >
+            {isArchivedExpanded ? (
+              <ChevronDownIcon className="h-4 w-4" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4" />
+            )}
+            <span>已归档账户（{archivedAccounts.length}）</span>
+          </button>
+
+          {isArchivedExpanded && (
+            <div className="opacity-70">
+              <AccountGrid
+                key={`archived-${version}`}
+                accounts={archivedAccounts}
+                onDelete={handleDelete}
+                onEdit={handleEditAccount}
+                onToggleArchive={handleToggleArchive}
+                selectedAccountIds={selectedAccountIds}
+                onToggleSelection={toggleAccountSelection}
+                isBulkSelectionMode={isBulkSelectionMode}
+                emptyMessage="暂无已归档账户"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 编辑对话框 */}
       {editingAccount && (

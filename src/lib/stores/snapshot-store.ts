@@ -2,6 +2,15 @@ import { v4 as uuidv4 } from 'uuid'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { calculateAccountBalanceFromTransactions } from '@/lib/utils/account-balance-helpers'
+import { isGoldAccount } from '@/lib/utils/gold-profit-helpers'
+
+import { AccountType } from '@/types'
+
+import { useAccountStore } from './account-store'
+import { persistStorage } from './persist-storage'
+import { useTransactionStore } from './transaction-store'
+
 /**
  * 快照接口
  */
@@ -11,9 +20,42 @@ export interface Snapshot {
   balance: number // 快照金额
   snapshotDate: Date // 快照日期
   investmentAmount?: number // 投资金额（可选）
+  goldMarketPrice?: number // 黄金账户：当月市场均价（元/克）
+  goldGrams?: number // 黄金账户：当月累计克数
   note?: string // 备注
   createdAt: Date
   updatedAt: Date
+}
+
+function syncAccountBalanceFromSnapshots(accountId: string, snapshots: Snapshot[]) {
+  const accountStore = useAccountStore.getState()
+  const account = accountStore.getAccount(accountId)
+
+  if (!account) {
+    return
+  }
+
+  const latestSnapshot = snapshots
+    .filter((snapshot) => snapshot.accountId === accountId)
+    .sort((a, b) => new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime())[0]
+
+  if (latestSnapshot) {
+    accountStore.updateBalance(accountId, latestSnapshot.balance)
+    return
+  }
+
+  // 没有快照时的兜底：用交易记录重算余额。
+  // 但黄金账户的余额语义是"当前市值（均价×克数）"，与交易记录（收益/亏损）无关，
+  // 用交易重算会把"累计收益"误算成余额。因此黄金账户无快照时保持当前余额不变，
+  // 绝不用 calculateAccountBalanceFromTransactions 重算，也不用 initialBalance 覆盖。
+  if (account.type === AccountType.GOLD) {
+    // 黄金账户无快照时保持当前 balance 不变，不做任何更新
+    return
+  }
+
+  const transactions = useTransactionStore.getState().transactions
+  const recalculatedBalance = calculateAccountBalanceFromTransactions(account, transactions)
+  accountStore.updateBalance(accountId, recalculatedBalance)
 }
 
 /**
@@ -28,6 +70,8 @@ interface SnapshotStore {
   getLatestSnapshot: (accountId: string, beforeDate?: Date) => Snapshot | null
   getPreviousMonthSnapshot: (accountId: string, currentDate: Date) => Snapshot | null
   deleteSnapshot: (id: string) => void
+  deleteSnapshotsForAccountMonth: (accountId: string, monthDate: Date) => number
+  deleteSnapshotsByAccountIds: (accountIds: string[]) => void
   updateSnapshot: (id: string, updates: Partial<Omit<Snapshot, 'id' | 'createdAt'>>) => void
 }
 
@@ -56,7 +100,9 @@ export const useSnapshotStore = create<SnapshotStore>()(
             const lastDayOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0)
             lastDayOfPrevMonth.setHours(23, 59, 59, 999)
             adjustedSnapshotDate = lastDayOfPrevMonth
-            console.log(`[SnapshotStore] 自动转换日期: ${date.toLocaleDateString('zh-CN')} → ${lastDayOfPrevMonth.toLocaleDateString('zh-CN')}`)
+            console.log(
+              `[SnapshotStore] 自动转换日期: ${date.toLocaleDateString('zh-CN')} → ${lastDayOfPrevMonth.toLocaleDateString('zh-CN')}`
+            )
           }
         } else {
           const date = new Date(snapshotData.snapshotDate)
@@ -65,7 +111,9 @@ export const useSnapshotStore = create<SnapshotStore>()(
             const lastDayOfPrevMonth = new Date(date.getFullYear(), date.getMonth(), 0)
             lastDayOfPrevMonth.setHours(23, 59, 59, 999)
             adjustedSnapshotDate = lastDayOfPrevMonth
-            console.log(`[SnapshotStore] 自动转换日期: ${date.toLocaleDateString('zh-CN')} → ${lastDayOfPrevMonth.toLocaleDateString('zh-CN')}`)
+            console.log(
+              `[SnapshotStore] 自动转换日期: ${date.toLocaleDateString('zh-CN')} → ${lastDayOfPrevMonth.toLocaleDateString('zh-CN')}`
+            )
           }
         }
 
@@ -77,11 +125,12 @@ export const useSnapshotStore = create<SnapshotStore>()(
           snapshotDate: adjustedSnapshotDate,
         }
 
-        set((state) => ({
-          snapshots: [...state.snapshots, newSnapshot].sort(
-            (a, b) => new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime()
-          ),
-        }))
+        const nextSnapshots = [...get().snapshots, newSnapshot].sort(
+          (a, b) => new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime()
+        )
+
+        set({ snapshots: nextSnapshots })
+        syncAccountBalanceFromSnapshots(newSnapshot.accountId, nextSnapshots)
 
         console.log(`[SnapshotStore] 添加快照:`, {
           accountId: newSnapshot.accountId,
@@ -150,28 +199,102 @@ export const useSnapshotStore = create<SnapshotStore>()(
        * 删除快照
        */
       deleteSnapshot: (id) => {
-        set((state) => ({
-          snapshots: state.snapshots.filter((s) => s.id !== id),
-        }))
+        const currentSnapshot = get().snapshots.find((snapshot) => snapshot.id === id)
+        const nextSnapshots = get().snapshots.filter((snapshot) => snapshot.id !== id)
+
+        set({ snapshots: nextSnapshots })
+
+        if (currentSnapshot) {
+          syncAccountBalanceFromSnapshots(currentSnapshot.accountId, nextSnapshots)
+        }
 
         console.log(`[SnapshotStore] 删除快照: ${id}`)
+      },
+
+      deleteSnapshotsForAccountMonth: (accountId, monthDate) => {
+        const targetYear = monthDate.getFullYear()
+        const targetMonth = monthDate.getMonth()
+        const snapshotsToDelete = get().snapshots.filter((snapshot) => {
+          if (snapshot.accountId !== accountId) {
+            return false
+          }
+
+          const snapshotDate =
+            snapshot.snapshotDate instanceof Date
+              ? snapshot.snapshotDate
+              : new Date(snapshot.snapshotDate)
+
+          return (
+            snapshotDate.getFullYear() === targetYear && snapshotDate.getMonth() === targetMonth
+          )
+        })
+
+        if (snapshotsToDelete.length === 0) {
+          return 0
+        }
+
+        const snapshotIdSet = new Set(snapshotsToDelete.map((snapshot) => snapshot.id))
+        const nextSnapshots = get().snapshots.filter((snapshot) => !snapshotIdSet.has(snapshot.id))
+
+        set({ snapshots: nextSnapshots })
+        syncAccountBalanceFromSnapshots(accountId, nextSnapshots)
+
+        console.log(
+          `[SnapshotStore] 删除账户 ${accountId} 在 ${targetYear}-${String(targetMonth + 1).padStart(2, '0')} 的 ${snapshotsToDelete.length} 条快照`
+        )
+
+        return snapshotsToDelete.length
+      },
+
+      deleteSnapshotsByAccountIds: (accountIds) => {
+        if (accountIds.length === 0) {
+          return
+        }
+
+        const accountIdSet = new Set(accountIds)
+        const nextSnapshots = get().snapshots.filter(
+          (snapshot) => !accountIdSet.has(snapshot.accountId)
+        )
+
+        set({ snapshots: nextSnapshots })
+
+        accountIds.forEach((accountId) => {
+          syncAccountBalanceFromSnapshots(accountId, nextSnapshots)
+        })
       },
 
       /**
        * 更新快照
        */
       updateSnapshot: (id, updates) => {
-        set((state) => ({
-          snapshots: state.snapshots.map((s) =>
-            s.id === id ? { ...s, ...updates, updatedAt: new Date() } : s
-          ),
-        }))
+        const currentSnapshot = get().snapshots.find((snapshot) => snapshot.id === id)
+        if (!currentSnapshot) {
+          return
+        }
+
+        const updatedSnapshot = {
+          ...currentSnapshot,
+          ...updates,
+          updatedAt: new Date(),
+        }
+
+        const nextSnapshots = get().snapshots.map((snapshot) =>
+          snapshot.id === id ? updatedSnapshot : snapshot
+        )
+
+        set({ snapshots: nextSnapshots })
+
+        syncAccountBalanceFromSnapshots(currentSnapshot.accountId, nextSnapshots)
+        if (updatedSnapshot.accountId !== currentSnapshot.accountId) {
+          syncAccountBalanceFromSnapshots(updatedSnapshot.accountId, nextSnapshots)
+        }
 
         console.log(`[SnapshotStore] 更新快照: ${id}`, updates)
       },
     }),
     {
       name: 'snapshot-storage',
+      storage: persistStorage,
       // 序列化和反序列化 Date 对象
       partialize: (state) => ({
         snapshots: state.snapshots.map((s) => ({

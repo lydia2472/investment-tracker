@@ -4,6 +4,12 @@ import { v4 as uuidv4 } from 'uuid'
 import { useAccountStore } from '@/lib/stores/account-store'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { useTransactionStore } from '@/lib/stores/transaction-store'
+import {
+  calculateGoldSnapshotValue,
+  getGoldSnapshotValue,
+  isGoldAccount,
+} from '@/lib/utils/gold-profit-helpers'
+import { SNAPSHOT_PROFIT_SYNC_TAG } from '@/lib/utils/snapshot-profit-sync'
 import { TransactionType, type Transaction } from '@/types'
 
 import type { Snapshot } from '@/lib/stores/snapshot-store'
@@ -14,9 +20,20 @@ import type { Snapshot } from '@/lib/stores/snapshot-store'
 export interface MonthlyDataResult {
   snapshot: Snapshot
   profitTransaction?: Transaction
-  investmentTransaction?: Transaction
   hasPreviousSnapshot: boolean
   calculatedProfit?: number
+}
+
+export interface MonthlyInvestmentSource {
+  accountId: string | null
+  accountName: string
+  amount: number
+  transactionCount: number
+}
+
+export interface MonthlyInvestmentSummary {
+  totalAmount: number
+  sources: MonthlyInvestmentSource[]
 }
 
 /**
@@ -35,17 +52,39 @@ export class MonthlyDataService {
   static processMonthlyData(data: {
     accountId: string
     snapshotAmount: number
-    investmentAmount?: number
     snapshotDate: Date
     note?: string
+    goldMarketPrice?: number
+    goldGrams?: number
+    goldPurchaseAmount?: number
   }): MonthlyDataResult {
-    const { accountId, snapshotAmount, investmentAmount, snapshotDate, note } = data
+    const { accountId, snapshotDate, note } = data
+    const account = useAccountStore.getState().getAccount(accountId)
+    const isGold = isGoldAccount(account)
+    const hasGoldInputs =
+      isGold &&
+      typeof data.goldMarketPrice === 'number' &&
+      data.goldMarketPrice > 0 &&
+      typeof data.goldGrams === 'number' &&
+      data.goldGrams >= 0
+    const snapshotAmount = hasGoldInputs
+      ? calculateGoldSnapshotValue(data.goldMarketPrice!, data.goldGrams!)
+      : data.snapshotAmount
+    const investmentSummary = this.getInvestmentSummary(accountId, snapshotDate)
+    const investmentAmount =
+      isGold && typeof data.goldPurchaseAmount === 'number'
+        ? data.goldPurchaseAmount
+        : investmentSummary.totalAmount
 
     console.log(`\n[MonthlyDataService] ========== 处理月末数据 ==========`)
     console.log(`  账户ID: ${accountId}`)
     console.log(`  快照金额: ${snapshotAmount}`)
-    console.log(`  投资金额: ${investmentAmount || 0}`)
+    console.log(`  投资金额${isGold ? '(黄金购买金额)' : '(自动识别)'}: ${investmentAmount}`)
     console.log(`  快照日期: ${snapshotDate.toLocaleDateString('zh-CN')}`)
+    if (isGold && hasGoldInputs) {
+      console.log(`  黄金均价: ${data.goldMarketPrice}`)
+      console.log(`  黄金克数: ${data.goldGrams}`)
+    }
 
     // 注意：不再强制验证快照日期必须是月末
     // 用户可以在任何日期创建快照记录
@@ -67,31 +106,25 @@ export class MonthlyDataService {
       `  上月快照: ${hasPreviousSnapshot ? previousSnapshot!.balance.toLocaleString() + '元' : '无'}`
     )
     console.log(`  是否首月: ${isFirstMonth ? '是' : '否'}`)
+    console.log(`  投资来源数: ${investmentSummary.sources.length}`)
 
     // 3. 计算收益
     let calculatedProfit: number | undefined
     if (isFirstMonth) {
-      // 首月收益计算
-      const account = useAccountStore.getState().getAccount(accountId)
-      if (account) {
-        calculatedProfit = this.calculateFirstMonthProfit(
-          snapshotAmount,
-          account.initialBalance,
-          investmentAmount || 0
-        )
-        console.log(
-          `  首月收益: ${snapshotAmount} - ${account.initialBalance} - ${investmentAmount || 0} = ${calculatedProfit}`
-        )
-      }
+      // 首月（账户第一条快照所在月份）不计算收益。
+      // 原因：首月没有"上月快照"作为对比基数，用 initialBalance 当基数算出的
+      // 收益不合理（会把"初始余额与首月快照的差"误算成收益）。
+      // 收益从第二个月起才开始计算。首月只创建快照，不生成收益交易。
+      calculatedProfit = undefined
+      console.log('  首月：跳过收益计算（无上月基数）')
     } else if (hasPreviousSnapshot && previousSnapshot) {
       // 非首月收益计算
-      calculatedProfit = this.calculateProfit(
-        snapshotAmount,
-        previousSnapshot.balance,
-        investmentAmount || 0
-      )
+      const previousValue = isGold
+        ? getGoldSnapshotValue(previousSnapshot)
+        : previousSnapshot.balance
+      calculatedProfit = this.calculateProfit(snapshotAmount, previousValue, investmentAmount || 0)
       console.log(
-        `  计算收益: ${snapshotAmount} - ${previousSnapshot.balance} - ${investmentAmount || 0} = ${calculatedProfit}`
+        `  计算收益: ${snapshotAmount} - ${previousValue} - ${investmentAmount || 0} = ${calculatedProfit}`
       )
     }
 
@@ -100,7 +133,9 @@ export class MonthlyDataService {
       accountId,
       balance: snapshotAmount,
       snapshotDate,
-      investmentAmount,
+      investmentAmount: investmentAmount > 0 ? investmentAmount : undefined,
+      goldMarketPrice: isGold && hasGoldInputs ? data.goldMarketPrice : undefined,
+      goldGrams: isGold && hasGoldInputs ? data.goldGrams : undefined,
       note,
     }
 
@@ -116,6 +151,8 @@ export class MonthlyDataService {
       calculatedProfit,
     }
 
+    const effectiveSnapshotDate = createdSnapshot?.snapshotDate || snapshotDate
+
     // 5. 如果收益不为0，创建收益/亏损交易
     if (calculatedProfit !== undefined && calculatedProfit !== 0) {
       // 获取用于描述的日期（首月使用账户创建日期，非首月使用上月快照日期）
@@ -126,7 +163,7 @@ export class MonthlyDataService {
       const profitTransaction = this.createProfitTransaction(
         accountId,
         calculatedProfit,
-        snapshotDate,
+        effectiveSnapshotDate,
         previousSnapshotDate
       )
       useTransactionStore.getState().addTransaction(profitTransaction)
@@ -136,21 +173,80 @@ export class MonthlyDataService {
       )
     }
 
-    // 6. 如果有投资金额，创建投资交易
-    if (investmentAmount && investmentAmount > 0) {
-      const investmentTransaction = this.createInvestmentTransaction(
-        accountId,
-        investmentAmount,
-        snapshotDate
-      )
-      useTransactionStore.getState().addTransaction(investmentTransaction)
-      result.investmentTransaction = investmentTransaction
-      console.log(`  ✓ 创建投资交易: ${investmentAmount}元`)
-    }
-
     console.log(`[MonthlyDataService] ========== 处理完成 ==========\n`)
 
     return result
+  }
+
+  /**
+   * 统计指定账户在快照月份内、快照日期之前的真实转入金额。
+   * 只统计带有来源账户或转账配对 ID 的 TRANSFER_IN，避免把旧的孤立转入误算成投资来源。
+   */
+  static getInvestmentSummary(accountId: string, snapshotDate: Date): MonthlyInvestmentSummary {
+    const monthStart = startOfMonth(snapshotDate)
+    const snapshotEnd = new Date(snapshotDate)
+    snapshotEnd.setHours(23, 59, 59, 999)
+
+    const accountMap = new Map(
+      useAccountStore.getState().accounts.map((account) => [account.id, account.name])
+    )
+
+    const sourceSummaryMap = new Map<string, MonthlyInvestmentSource>()
+
+    useTransactionStore
+      .getState()
+      .transactions.filter((transaction) => {
+        if (transaction.accountId !== accountId) {
+          return false
+        }
+
+        if (transaction.type !== TransactionType.TRANSFER_IN) {
+          return false
+        }
+
+        if (!transaction.transferFromAccountId && !transaction.transferPairId) {
+          return false
+        }
+
+        const transactionDate =
+          transaction.createdAt instanceof Date
+            ? transaction.createdAt
+            : new Date(transaction.createdAt)
+
+        return transactionDate >= monthStart && transactionDate <= snapshotEnd
+      })
+      .forEach((transaction) => {
+        const sourceAccountId = transaction.transferFromAccountId ?? null
+        const sourceKey = sourceAccountId ?? '__unknown__'
+        const sourceName = sourceAccountId
+          ? accountMap.get(sourceAccountId) || sourceAccountId
+          : '未标记来源账户'
+        const amount = Math.abs(transaction.amount || 0)
+        const existing = sourceSummaryMap.get(sourceKey)
+
+        if (existing) {
+          existing.amount += amount
+          existing.transactionCount += 1
+          return
+        }
+
+        sourceSummaryMap.set(sourceKey, {
+          accountId: sourceAccountId,
+          accountName: sourceName,
+          amount,
+          transactionCount: 1,
+        })
+      })
+
+    const sources = Array.from(sourceSummaryMap.values()).sort(
+      (left, right) => right.amount - left.amount
+    )
+    const totalAmount = sources.reduce((sum, source) => sum + source.amount, 0)
+
+    return {
+      totalAmount,
+      sources,
+    }
   }
 
   /**
@@ -196,38 +292,21 @@ export class MonthlyDataService {
     previousSnapshotDate: Date
   ): Transaction {
     const isProfit = profit > 0
-    const description = isProfit ? '月末收益' : '月末亏损'
-    const tags = isProfit ? ['收益', '月末'] : ['亏损', '月末']
+    const snapshotMonth = snapshotDate.getMonth() + 1
+    const snapshotYear = snapshotDate.getFullYear()
 
     return {
       id: uuidv4(),
       accountId,
       type: isProfit ? TransactionType.INVESTMENT_PROFIT : TransactionType.INVESTMENT_LOSS,
-      amount: isProfit ? profit : -Math.abs(profit), // 盈利为正，亏损为负
-      description: `${description} (${previousSnapshotDate.toLocaleDateString('zh-CN')} - ${snapshotDate.toLocaleDateString('zh-CN')})`,
-      tags,
-      note: `上月快照: ${previousSnapshotDate.toLocaleDateString('zh-CN')}\n本月快照: ${snapshotDate.toLocaleDateString('zh-CN')}\n${description}: ${Math.abs(profit).toFixed(2)}元`,
-      createdAt: snapshotDate,
-      updatedAt: snapshotDate,
-    }
-  }
-
-  /**
-   * 创建投资交易
-   */
-  private static createInvestmentTransaction(
-    accountId: string,
-    investmentAmount: number,
-    snapshotDate: Date
-  ): Transaction {
-    return {
-      id: uuidv4(),
-      accountId,
-      type: TransactionType.TRANSFER_IN,
-      amount: investmentAmount,
-      description: '本月新增投资',
-      tags: ['投资', '月末'],
-      note: `快照日期: ${snapshotDate.toLocaleDateString('zh-CN')}\n投资金额: ${investmentAmount.toFixed(2)}元`,
+      amount: Math.abs(profit),
+      description: `${snapshotYear}年${snapshotMonth}月投资${isProfit ? '收益' : '亏损'}（快照自动同步）`,
+      tags: ['投资收益', '快照生成', SNAPSHOT_PROFIT_SYNC_TAG],
+      note:
+        `同步来源: 月末快照\n` +
+        `上月基数: ${previousSnapshotDate.toLocaleDateString('zh-CN')}\n` +
+        `本月快照: ${snapshotDate.toLocaleDateString('zh-CN')}\n` +
+        `自动收益: ${profit.toFixed(2)}元`,
       createdAt: snapshotDate,
       updatedAt: snapshotDate,
     }

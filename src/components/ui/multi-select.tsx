@@ -4,6 +4,7 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { Check, ChevronDown } from 'lucide-react'
 import * as React from 'react'
 
+import { forceScrollableWheel } from '@/lib/utils/force-wheel-scroll'
 import { cn } from '@/lib/utils'
 
 const MultiSelectRoot = PopoverPrimitive.Root
@@ -36,11 +37,30 @@ const MultiSelectContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        'relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        'relative z-50 max-h-[300px] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 multi-select-scrollable',
         className
       )}
+      style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'hsl(var(--border)) transparent',
+      }}
       {...props}
     >
+      <style>{`
+        .multi-select-scrollable::-webkit-scrollbar {
+          width: 8px;
+        }
+        .multi-select-scrollable::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .multi-select-scrollable::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--border));
+          border-radius: 9999px;
+        }
+        .multi-select-scrollable::-webkit-scrollbar-thumb:hover {
+          background-color: hsl(var(--muted-foreground));
+        }
+      `}</style>
       <div className="p-1">{props.children}</div>
     </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>
@@ -70,6 +90,7 @@ export function MultiSelect({
   specialOption,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
 
   // 标准化选项为 MultiSelectOption 数组
   const normalizedOptions = React.useMemo(() => {
@@ -111,7 +132,19 @@ export function MultiSelect({
           {value.length > 0 ? `已选${value.length}项` : placeholder}
         </span>
       </MultiSelectTrigger>
-      <MultiSelectContent>
+      <MultiSelectContent
+        ref={contentRef}
+        onWheelCapture={(event) => {
+          const content = contentRef.current
+          if (!content) {
+            return
+          }
+
+          if (forceScrollableWheel(content, event.deltaY, event.deltaX)) {
+            event.stopPropagation()
+          }
+        }}
+      >
         {/* 特殊选项 - 如果存在 */}
         {specialOption && (
           <>

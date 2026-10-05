@@ -3,10 +3,10 @@
 /* ========== animal-island-ui 官方设计令牌 ========== */
 
 :root {
-  /* === 字体（通过 Next.js Font Optimization 加载）=== */
+  /* === 字体（使用系统自带字体，避免打包时依赖在线字体）=== */
   --animal-font:
-    var(--font-nunito), var(--font-noto-sans-sc), var(--font-zen-maru-gothic), -apple-system,
-    'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Helvetica Neue',
+    Helvetica, Arial, sans-serif;
 
   /* === 官方调色板 === */
 

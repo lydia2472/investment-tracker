@@ -1,5 +1,6 @@
 'use client'
 
+import { format } from 'date-fns'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Input , Button } from 'animal-island-ui'
 import { useForm } from 'react-hook-form'
@@ -25,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
+import { useAccountStore } from '@/lib/stores/account-store'
 import {
   AccountType,
   RiskLevel,
@@ -39,10 +41,12 @@ const accountFormSchema = z
     name: z.string().min(1, '账户名称必填'),
     type: z.nativeEnum(AccountType),
     initialBalance: z.number().min(0, '初始余额不能为负'),
+    startDate: z.date(),
     currency: z.string().min(1, '货币必填'),
     riskLevel: z.nativeEnum(RiskLevel),
     icon: z.string().optional(),
     description: z.string().optional(),
+    fundCode: z.string().optional(),
     // 定期存款配置（可选，当 type 为 FIXED_DEPOSIT 时使用）
     fixedDepositConfig: z
       .object({
@@ -72,8 +76,24 @@ const accountFormSchema = z
 
 export type AccountFormData = z.infer<typeof accountFormSchema>
 
+function formatDateInputValue(date: Date | undefined): string {
+  if (!date) {
+    return ''
+  }
+
+  return format(date, 'yyyy-MM-dd')
+}
+
+function parseDateInputValue(value: string): Date | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  return new Date(`${value}T00:00:00`)
+}
+
 const accountTypeOptions = [
-  { value: AccountType.SECURITIES, label: '证券账户' },
+  { value: AccountType.SECURITIES, label: '债券账户' },
   { value: AccountType.BANK, label: '银行账户' },
   { value: AccountType.CASH, label: '现金账户' },
   { value: AccountType.FIXED_DEPOSIT, label: '定期存款' },
@@ -104,6 +124,8 @@ interface AccountFormProps {
   mode?: 'create' | 'edit'
   defaultValues?: Partial<AccountFormData>
   currentBalance?: number // 仅在编辑模式下使用
+  /** 编辑模式下的当前账户ID（基金代码唯一性校验时排除自身） */
+  currentAccountId?: string
 }
 
 export function AccountForm({
@@ -113,26 +135,49 @@ export function AccountForm({
   mode = 'create',
   defaultValues,
   currentBalance,
+  currentAccountId,
 }: AccountFormProps) {
+  const accounts = useAccountStore((state) => state.accounts)
+
   const form = useForm<AccountFormData>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: defaultValues || {
       name: '',
       type: AccountType.BANK,
       initialBalance: 0,
+      startDate: new Date(),
       currency: 'CNY',
       riskLevel: getDefaultRiskLevel(),
       icon: undefined,
       description: '',
+      fundCode: '',
     },
   })
+
+  // 提交前校验基金代码唯一性（填写了才校验；编辑模式排除自身）
+  const handleSubmitWithFundCodeCheck = (data: AccountFormData) => {
+    const code = data.fundCode?.trim()
+    if (code) {
+      const duplicate = accounts.find(
+        (acc) => acc.fundCode === code && acc.id !== currentAccountId
+      )
+      if (duplicate) {
+        form.setError('fundCode', {
+          type: 'manual',
+          message: `基金代码已被「${duplicate.name}」使用`,
+        })
+        return
+      }
+    }
+    onSubmit({ ...data, fundCode: code || undefined })
+  }
 
   const selectedCurrency = form.watch('currency')
   const selectedAccountType = form.watch('type')
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmitWithFundCodeCheck)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -142,6 +187,24 @@ export function AccountForm({
               <FormControl>
                 <Input placeholder="输入账户名称" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* 基金代码（唯一识别，可选） */}
+        <FormField
+          control={form.control}
+          name="fundCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>基金代码（唯一识别）</FormLabel>
+              <FormControl>
+                <Input placeholder="例如 000217、510300" {...field} value={field.value ?? ''} />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                填写后不可与其他账户重复；可用于精确识别同名基金。
+              </p>
               <FormMessage />
             </FormItem>
           )}
@@ -193,6 +256,27 @@ export function AccountForm({
                   />
                 </div>
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="startDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>初始余额日期</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  value={formatDateInputValue(field.value)}
+                  onChange={(e) => field.onChange(parseDateInputValue(e.target.value))}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                用来表示这笔初始余额对应的实际日期，不一定是你今天录入账户的日期。
+              </p>
               <FormMessage />
             </FormItem>
           )}

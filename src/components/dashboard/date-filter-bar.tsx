@@ -14,9 +14,14 @@ export interface DateRange {
 interface DateFilterBarProps {
   value: DateRange | undefined
   onChange: (range: DateRange | undefined) => void
+  /**
+   * 「本月」按钮使用的范围。若提供，则「本月」=最新快照所在月（而非日历当月），
+   * 这样在没有日历当月数据时，仍能展示最近一期数据。
+   */
+  latestMonthRange?: DateRange
 }
 
-export function DateFilterBar({ value, onChange }: DateFilterBarProps) {
+export function DateFilterBar({ value, onChange, latestMonthRange }: DateFilterBarProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // 自定义日期范围状态
@@ -33,8 +38,20 @@ export function DateFilterBar({ value, onChange }: DateFilterBarProps) {
     const currentMonthStart = startOfMonth(now)
     const currentMonthEnd = endOfMonth(now)
 
-    // 本月
+    // 本月：匹配 latestMonthRange（最新快照月）或日历当月
+    const currentRange = latestMonthRange ?? {
+      startDate: currentMonthStart,
+      endDate: currentMonthEnd,
+    }
     if (
+      value.startDate?.getTime() === currentRange.startDate?.getTime() &&
+      value.endDate?.getTime() === currentRange.endDate?.getTime()
+    ) {
+      return 'current'
+    }
+    // 兜底：也匹配日历当月（latestMonthRange 与日历当月不同时）
+    if (
+      latestMonthRange &&
       value.startDate?.getTime() === currentMonthStart.getTime() &&
       value.endDate?.getTime() === currentMonthEnd.getTime()
     ) {
@@ -72,9 +89,10 @@ export function DateFilterBar({ value, onChange }: DateFilterBarProps) {
   }, [value])
 
   // 预设按钮配置
+  // 「本月」优先使用最新快照所在月（latestMonthRange），如果没有快照则回退到日历当月。
   const presets = [
     { label: '全部', value: undefined, key: 'all' },
-    { label: '本月', value: getCurrentMonthRange(), key: 'current' },
+    { label: '本月', value: latestMonthRange ?? getCurrentMonthRange(), key: 'current' },
     { label: '最近3个月', value: getLastNMonthsRange(3), key: '3months' },
     { label: '最近6个月', value: getLastNMonthsRange(6), key: '6months' },
     { label: '最近1年', value: getLastNMonthsRange(12), key: '12months' },

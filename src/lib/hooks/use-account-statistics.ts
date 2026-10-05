@@ -18,7 +18,7 @@ export function useAccountStatistics(): AccountStatistics {
     }
 
     transactions.forEach((txn) => {
-      // 收入类型：INCOME, DEPOSIT, TRANSFER_IN
+      // 收入类型：只统计日常现金流
       if (txn.type === TransactionType.INCOME && txn.amount) {
         stats.totalIncome += txn.amount
       }
@@ -28,17 +28,13 @@ export function useAccountStatistics(): AccountStatistics {
         stats.depositCount++
       }
 
-      if (txn.type === TransactionType.TRANSFER_IN && txn.amount) {
-        stats.totalIncome += txn.amount
-      }
-
-      // 支出类型：CONSUMPTION, TRANSFER_OUT
+      // 支出类型：只统计日常现金流
       if (txn.type === TransactionType.CONSUMPTION && txn.amount) {
         stats.totalExpense += txn.amount
         stats.consumptionCount++
       }
 
-      if (txn.type === TransactionType.TRANSFER_OUT && txn.amount) {
+      if (txn.type === TransactionType.LOAN && txn.amount) {
         stats.totalExpense += txn.amount
       }
     })

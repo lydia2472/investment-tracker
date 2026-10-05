@@ -5,7 +5,7 @@ import { AccountType } from '@/types'
  */
 export function getAccountTypeLabel(type: AccountType): string {
   const labels: Record<AccountType, string> = {
-    [AccountType.SECURITIES]: '证券',
+    [AccountType.SECURITIES]: '债券',
     [AccountType.BANK]: '银行',
     [AccountType.CASH]: '现金',
     [AccountType.FIXED_DEPOSIT]: '定期',

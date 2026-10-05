@@ -1,7 +1,7 @@
 'use client'
 
 import { isValid } from 'date-fns'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -11,12 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useTransactionStore, useAccountStore } from '@/lib/stores'
-import { TransactionType } from '@/types'
+import { useTransactionStore } from '@/lib/stores'
 
 import { TransactionForm, TransactionFormData } from './transaction-form'
-
-import type { Transaction } from '@/types'
 
 interface EditTransactionDialogProps {
   transactionId: string | null
@@ -31,82 +28,15 @@ export function EditTransactionDialog({
 }: EditTransactionDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const updateTransaction = useTransactionStore((state) => state.updateTransaction)
-  const updateAccountBalance = useAccountStore((state) => state.updateBalance)
-  const getAccount = useAccountStore((state) => state.getAccount)
-  const accounts = useAccountStore((state) => state.accounts)
   const getTransaction = useTransactionStore((state) => state.getTransaction)
 
   const transaction = transactionId ? getTransaction(transactionId) : null
-
-  // 回退原交易的余额影响
-  const revertBalance = (txn: Transaction) => {
-    const account = getAccount(txn.accountId)
-    if (!account) return
-
-    let newBalance = account.balance
-
-    // 收入类型：减少余额
-    if (
-      txn.type === TransactionType.INCOME ||
-      txn.type === TransactionType.DEPOSIT ||
-      txn.type === TransactionType.TRANSFER_IN
-    ) {
-      newBalance -= txn.amount || 0
-    }
-    // 支出类型：增加余额
-    else if (
-      txn.type === TransactionType.CONSUMPTION ||
-      txn.type === TransactionType.TRANSFER_OUT ||
-      txn.type === TransactionType.LOAN
-    ) {
-      newBalance += txn.amount || 0
-    }
-    // 快照不回退（历史数据）
-
-    updateAccountBalance(txn.accountId, newBalance)
-  }
-
-  // 应用新交易的余额影响
-  const applyNewBalance = (data: TransactionFormData) => {
-    const account = getAccount(data.accountId!)
-    if (!account) return
-
-    let newBalance = account.balance
-
-    // 收入类型：增加余额
-    if (
-      data.type === TransactionType.INCOME ||
-      data.type === TransactionType.DEPOSIT ||
-      data.type === TransactionType.TRANSFER_IN
-    ) {
-      newBalance += data.amount || 0
-    }
-    // 支出类型：减少余额
-    else if (
-      data.type === TransactionType.CONSUMPTION ||
-      data.type === TransactionType.TRANSFER_OUT ||
-      data.type === TransactionType.LOAN
-    ) {
-      newBalance -= data.amount || 0
-    } else if (data.type === TransactionType.SNAPSHOT) {
-      newBalance = data.balance || 0
-    }
-
-    updateAccountBalance(data.accountId!, newBalance)
-  }
 
   const handleSubmit = async (data: TransactionFormData) => {
     if (!transaction) return
 
     setIsSubmitting(true)
     try {
-      // 回退原交易的余额影响
-      revertBalance(transaction)
-
-      // 应用新交易的余额影响
-      applyNewBalance(data)
-
-      // 更新交易记录
       updateTransaction(transaction.id, {
         accountId: data.accountId!,
         type: data.type,

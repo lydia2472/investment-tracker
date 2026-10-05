@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
 
+  // 持久化存储
+  storage: {
+    getItem: (key: string) => ipcRenderer.invoke('storage-get', key) as Promise<string | null>,
+    setItem: (key: string, value: string) =>
+      ipcRenderer.invoke('storage-set', key, value) as Promise<boolean>,
+    removeItem: (key: string) => ipcRenderer.invoke('storage-remove', key) as Promise<boolean>,
+  },
+
   // 平台信息
   platform: process.platform,
 
@@ -28,6 +36,11 @@ declare global {
       minimize: () => void;
       maximize: () => void;
       close: () => void;
+      storage: {
+        getItem: (key: string) => Promise<string | null>;
+        setItem: (key: string, value: string) => Promise<boolean>;
+        removeItem: (key: string) => Promise<boolean>;
+      };
       platform: string;
       versions: NodeJS.ProcessVersions;
       isDev: boolean;

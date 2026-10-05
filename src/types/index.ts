@@ -77,6 +77,10 @@ export interface Account {
   icon?: string
   riskLevel?: RiskLevel
   fixedDepositConfig?: FixedDepositConfig // 定期存款专用字段（可选）
+  /** 是否已归档（折叠隐藏）。归档账户不在主列表显示，但仍保留数据。 */
+  archived?: boolean
+  /** 基金代码（唯一识别）。如 000217、510300。非基金账户可不填。 */
+  fundCode?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -144,13 +148,12 @@ export interface MonthlyIncomeExpense {
   // 收入分类
   income: number // 收入（INCOME）
   deposit: number // 存款（DEPOSIT）
-  investmentProfit: number // 投资收益（INVESTMENT_PROFIT）
+  investmentProfit: number // 投资净收益 = INVESTMENT_PROFIT - INVESTMENT_LOSS
   totalIncome: number // 总收入
 
   // 支出分类
   consumption: number // 消费（CONSUMPTION）
   loan: number // 放贷（LOAN）
-  investmentLoss: number // 投资亏损（INVESTMENT_LOSS）
   totalExpense: number // 总支出
 
   // 汇总
@@ -205,10 +208,17 @@ export interface CurrencyStatistics {
   currency: string // 货币代码 (CNY, USD, EUR, HKD, JPY)
   symbol: string // 货币符号 (¥, $, €, HK$, ¥)
   totalAssets: number // 该货币总资产
-  totalIncome: number // 该货币总收入（只包含 SALARY 类型）
-  totalExpense: number // 该货币总支出（默认排除 TRANSFER_OUT）
+  totalIncome: number // 该货币总收入（只包含 INCOME, DEPOSIT）
+  totalExpense: number // 该货币总支出（只包含 CONSUMPTION, LOAN）
   accountCount: number // 该货币账户数量
-  netIncome: number // 净收入 = totalIncome - totalExpense
+  netIncome: number // 净收支 = totalIncome - totalExpense
+  investmentNetProfit: number // 投资净收益 = INVESTMENT_PROFIT - INVESTMENT_LOSS
+  accountBalances: Record<string, number> // 该货币下每个账户在筛选日期的余额
+}
+
+export interface MonthReference {
+  year: number
+  month: number
 }
 
 // 多币种汇总接口
@@ -216,6 +226,7 @@ export interface MultiCurrencySummary {
   currencies: CurrencyStatistics[] // 各货币统计数组
   currencyCount: number // 货币种类数量
   hasMultipleCurrencies: boolean // 是否为多币种
+  referenceMonth: MonthReference | null // 未筛选时使用的最新快照月份
 }
 
 // 导入交易数据接口（用于导入，id 为可选）
@@ -247,6 +258,7 @@ export interface AccountImport {
   color?: string
   icon?: string
   riskLevel?: RiskLevel
+  fundCode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -263,7 +275,7 @@ export interface ImportResult {
   success: number
   updated: number // 新增：更新的数量
   failed: number
-  errors: Array<{ index: number; row: any; error: string }>
+  errors: Array<{ index: number; row: unknown; error: string }>
   updates: number[] // 新增：需要更新的记录索引
   // 新增字段：删除统计
   deleted: number // 删除的交易数量

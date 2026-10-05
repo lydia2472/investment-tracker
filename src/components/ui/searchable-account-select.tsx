@@ -5,6 +5,7 @@ import { Input , Button } from 'animal-island-ui'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 import * as React from 'react'
 
+import { forceScrollableWheel } from '@/lib/utils/force-wheel-scroll'
 import { cn } from '@/lib/utils'
 
 const PopoverRoot = PopoverPrimitive.Root
@@ -38,6 +39,7 @@ export function SearchableAccountSelect({
 }: SearchableAccountSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
+  const listRef = React.useRef<HTMLDivElement | null>(null)
 
   // 获取当前选中的账户名称
   const selectedAccount = accounts.find((acc) => acc.id === value)
@@ -115,7 +117,7 @@ export function SearchableAccountSelect({
           align="start"
           sideOffset={4}
           className={cn(
-            'relative z-50 w-[--radix-popover-trigger-width] max-w-md max-h-[400px] overflow-y-auto [overscroll-behavior:auto] [-webkit-overflow-scrolling:touch] rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 p-0'
+            'relative z-50 w-[--radix-popover-trigger-width] max-w-md overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 p-0'
           )}
         >
           {/* 搜索框 */}
@@ -138,7 +140,23 @@ export function SearchableAccountSelect({
           </div>
 
           {/* 账户列表 */}
-          <div className="max-h-[340px] overflow-y-auto [overscroll-behavior:auto] [-webkit-overflow-scrolling:touch]">
+          <div
+            ref={listRef}
+            onWheelCapture={(event) => {
+              const list = listRef.current
+              if (!list) {
+                return
+              }
+
+              if (forceScrollableWheel(list, event.deltaY, event.deltaX)) {
+                // 注意：不调用 event.preventDefault() —— wheel 在 Chrome 中是 passive 事件，
+                // 调用 preventDefault 会触发 "Unable to preventDefault inside passive event
+                // listener" 警告。forceScrollableWheel 已经手动设置了 scrollTop，无需阻止默认行为。
+                event.stopPropagation()
+              }
+            }}
+            className="max-h-[340px] overflow-y-auto [overscroll-behavior:auto] [-webkit-overflow-scrolling:touch]"
+          >
             {filteredAccounts.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">未找到匹配的账户</div>
             ) : (

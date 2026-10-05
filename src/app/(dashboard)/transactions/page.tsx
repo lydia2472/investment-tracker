@@ -1,7 +1,7 @@
 'use client'
 
 import { Divider , Button } from 'animal-island-ui'
-import { useState } from 'react'
+import { startTransition, useDeferredValue, useMemo, useState } from 'react'
 
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
@@ -15,6 +15,7 @@ import { TransactionTable } from '@/components/transactions/transaction-table'
 import { useTransactionActions } from '@/hooks/use-transaction-actions'
 import { PlusIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
+import { filterTransactions } from '@/lib/utils/transaction-filtering'
 import { TransactionType } from '@/types'
 
 export default function TransactionsPage() {
@@ -28,44 +29,18 @@ export default function TransactionsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [filters, setFilters] = useState<TransactionFiltersType>({})
+  const deferredFilters = useDeferredValue(filters)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // 根据筛选条件过滤交易
-  const getFilteredTransactions = () => {
-    return transactions.filter((txn) => {
-      // 账户过滤 - 支持单个或多个账户
-      if (filters.accountId) {
-        const accountIds = Array.isArray(filters.accountId)
-          ? filters.accountId
-          : [filters.accountId]
+  const filteredTransactions = useMemo(
+    () => filterTransactions(transactions, accounts, deferredFilters),
+    [transactions, accounts, deferredFilters]
+  )
 
-        if (!accountIds.includes(txn.accountId)) return false
-      }
-
-      // 支持多个类型筛选
-      if (filters.types && filters.types.length > 0) {
-        if (!filters.types.includes(txn.type)) return false
-      }
-
-      if (filters.tags && filters.tags.length > 0) {
-        if (!txn.tags || txn.tags.length === 0) return false
-        const hasAllTags = filters.tags.every((tag) => txn.tags?.includes(tag))
-        if (!hasAllTags) return false
-      }
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        const account = accounts.find((a) => a.id === txn.accountId)
-        const accountName = account?.name.toLowerCase() || ''
-        const description = (txn.description || '').toLowerCase()
-        if (!accountName.includes(searchLower) && !description.includes(searchLower)) {
-          return false
-        }
-      }
-      return true
-    })
-  }
-
-  const filteredTransactions = getFilteredTransactions()
+  const visibleSelectedIds = useMemo(() => {
+    const visibleIds = new Set(filteredTransactions.map((transaction) => transaction.id))
+    return new Set(Array.from(selectedIds).filter((transactionId) => visibleIds.has(transactionId)))
+  }, [filteredTransactions, selectedIds])
 
   const handleEdit = (id: string) => {
     setEditingTransactionId(id)
@@ -73,14 +48,14 @@ export default function TransactionsPage() {
   }
 
   const handleBatchDelete = () => {
-    if (selectedIds.size === 0) return
+    if (visibleSelectedIds.size === 0) return
 
     const confirmed = window.confirm(
-      `确定要删除选中的 ${selectedIds.size} 条交易吗？此操作不可撤销。`
+      `确定要删除选中的 ${visibleSelectedIds.size} 条交易吗？此操作不可撤销。`
     )
 
     if (confirmed) {
-      deleteMultiple(Array.from(selectedIds))
+      deleteMultiple(Array.from(visibleSelectedIds))
       setSelectedIds(new Set())
     }
   }
@@ -118,11 +93,11 @@ export default function TransactionsPage() {
       </div>
 
       {/* 批量操作栏 */}
-      {selectedIds.size > 0 && (
+      {visibleSelectedIds.size > 0 && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg flex items-center justify-between">
           <div className="text-sm font-medium">
-            已选择 <span className="text-blue-600 dark:text-blue-300">{selectedIds.size}</span>{' '}
-            条交易
+            已选择 <span className="text-blue-600 dark:text-blue-300">{visibleSelectedIds.size}</span>{' '}
+            条当前可见交易
           </div>
           <div className="flex gap-2">
             <Button type="primary" danger onClick={handleBatchDelete}>
@@ -135,17 +110,25 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <TransactionFilters filters={filters} onFiltersChange={setFilters} />
+      <TransactionFilters
+        filters={filters}
+        onFiltersChange={(nextFilters) => {
+          startTransition(() => {
+            setFilters(nextFilters)
+          })
+        }}
+      />
 
       <Divider type="line-brown" style={{ margin: '16px 0' }} />
 
       <TransactionTable
         transactions={transactions}
         accounts={accounts}
+        filteredTransactions={filteredTransactions}
         filters={filters}
         onDelete={handleDelete}
         onEdit={handleEdit}
-        selectedIds={selectedIds}
+        selectedIds={visibleSelectedIds}
         onSelectionChange={setSelectedIds}
       />
 

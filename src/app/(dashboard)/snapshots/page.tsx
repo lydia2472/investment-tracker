@@ -1,11 +1,13 @@
 'use client'
 
 import { Button } from 'animal-island-ui'
-import { format, endOfMonth, startOfMonth, differenceInMonths } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
-import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { SnapshotExportDialog } from '@/components/snapshots/export-dialog'
+import { LegacyMonthlyDataRepairDialog } from '@/components/snapshots/legacy-monthly-data-repair-dialog'
+import { SnapshotImportDialog } from '@/components/snapshots/snapshot-import-dialog'
 import {
   Select,
   SelectContent,
@@ -13,17 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { TrashIcon, CalendarIcon } from '@/lib/components/icon-adapter'
-import { MonthlyDataService } from '@/lib/services/monthly-data-service'
+import { CalendarIcon, DownloadIcon, TrashIcon, UploadIcon } from '@/lib/components/icon-adapter'
 import { useAccountStore } from '@/lib/stores'
-import { useSnapshotStore } from '@/lib/stores/snapshot-store'
+import { useTransactionStore } from '@/lib/stores/transaction-store'
+import { useSnapshotStore, type Snapshot } from '@/lib/stores/snapshot-store'
 import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/formatters'
-import { SnapshotImportDialog } from '@/components/snapshots/snapshot-import-dialog'
 
 export default function SnapshotsPage() {
   const accounts = useAccountStore((state) => state.accounts)
-  const { snapshots, deleteSnapshot } = useSnapshotStore()
+  const transactions = useTransactionStore((state) => state.transactions)
+  const { snapshots, deleteSnapshotsForAccountMonth } = useSnapshotStore()
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
@@ -58,7 +60,7 @@ export default function SnapshotsPage() {
     .filter((group) => group.snapshots.length > 0)
 
   // 计算相比上月的收益变化
-  const calculateChange = (snapshot: any, index: number, accountSnapshots: any[]) => {
+  const calculateChange = (snapshot: Snapshot, index: number, accountSnapshots: Snapshot[]) => {
     if (index < accountSnapshots.length - 1) {
       const nextSnapshot = accountSnapshots[index + 1]
       const change = snapshot.balance - nextSnapshot.balance
@@ -76,27 +78,74 @@ export default function SnapshotsPage() {
     return Array.from(months).sort().reverse()
   }
 
-  const handleDeleteSnapshot = (snapshotId: string, accountName: string) => {
-    if (confirm(`确定要删除 ${accountName} 的这个快照吗？`)) {
-      deleteSnapshot(snapshotId)
-      toast.success('快照已删除')
+  const handleDeleteSnapshot = (snapshot: Snapshot, accountName: string) => {
+    const snapshotDate = new Date(snapshot.snapshotDate)
+    const sameMonthCount = snapshots.filter((item) => {
+      if (item.accountId !== snapshot.accountId) {
+        return false
+      }
+
+      const itemDate = new Date(item.snapshotDate)
+      return (
+        itemDate.getFullYear() === snapshotDate.getFullYear() &&
+        itemDate.getMonth() === snapshotDate.getMonth()
+      )
+    }).length
+
+    const monthLabel = format(snapshotDate, 'yyyy年MM月')
+    const message =
+      sameMonthCount > 1
+        ? `检测到 ${accountName} 在 ${monthLabel} 有 ${sameMonthCount} 条快照，确定要整月删除吗？`
+        : `确定要删除 ${accountName} 在 ${monthLabel} 的快照吗？`
+
+    if (confirm(message)) {
+      const deletedCount = deleteSnapshotsForAccountMonth(snapshot.accountId, snapshotDate)
+      toast.success(
+        deletedCount > 1 ? `已删除 ${monthLabel} 的 ${deletedCount} 条快照` : '快照已删除'
+      )
     }
   }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">月末快照</h1>
           <p className="text-muted-foreground mt-1">查看和管理所有账户的月末快照记录</p>
         </div>
-        <SnapshotImportDialog
-          onImportSuccess={() => {
-            // 刷新页面或重新加载数据
-            window.location.reload()
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <SnapshotExportDialog
+            snapshots={snapshots}
+            filteredSnapshots={filteredSnapshots}
+            accounts={accounts}
+            trigger={
+              <Button
+                type="primary"
+                className="bg-[#2563eb] hover:bg-[#1d4ed8]"
+                icon={<DownloadIcon className="h-4 w-4" />}
+              >
+                导出快照金额
+              </Button>
+            }
+          />
+          <SnapshotImportDialog
+            trigger={
+              <Button
+                type="default"
+                className="border border-[#16a34a] text-[#166534]"
+                icon={<UploadIcon className="h-4 w-4" />}
+              >
+                导入快照
+              </Button>
+            }
+          />
+          <LegacyMonthlyDataRepairDialog
+            accounts={accounts}
+            snapshots={snapshots}
+            transactions={transactions}
+          />
+        </div>
       </div>
 
       {/* 筛选器 */}
@@ -246,7 +295,7 @@ export default function SnapshotsPage() {
                             <Button
                               type="default"
                               size="small"
-                              onClick={() => handleDeleteSnapshot(snapshot.id, account.name)}
+                              onClick={() => handleDeleteSnapshot(snapshot, account.name)}
                               icon={<TrashIcon className="h-4 w-4" />}
                             >
                               删除

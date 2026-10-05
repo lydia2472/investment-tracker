@@ -4,6 +4,7 @@ import { Button } from 'animal-island-ui'
 
 import { AlertIcon, TrashIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore } from '@/lib/stores'
+import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { formatCurrency } from '@/lib/utils/formatters'
 
 import type { Account } from '@/types'
@@ -24,10 +25,14 @@ export function BatchDeleteDialog({
   isDeleting = false,
 }: BatchDeleteDialogProps) {
   const getTransactionsByAccount = useTransactionStore((state) => state.getTransactionsByAccount)
+  const getSnapshotsByAccount = useSnapshotStore((state) => state.getSnapshotsByAccount)
 
   // 计算总交易数
   const totalTransactions = accounts.reduce((sum, account) => {
     return sum + getTransactionsByAccount(account.id).length
+  }, 0)
+  const totalSnapshots = accounts.reduce((sum, account) => {
+    return sum + getSnapshotsByAccount(account.id).length
   }, 0)
 
   return (
@@ -62,10 +67,10 @@ export function BatchDeleteDialog({
               <AlertIcon className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm">
                 <p className="font-semibold text-red-900 dark:text-red-100 mb-1">
-                  警告：这将删除 {accounts.length} 个账户及其所有交易记录
+                  警告：这将删除 {accounts.length} 个账户及其所有关联数据
                 </p>
                 <p className="text-red-700 dark:text-red-300">
-                  共计 {totalTransactions} 条交易记录将被删除
+                  共计 {totalTransactions} 条交易记录和 {totalSnapshots} 条快照将被删除
                 </p>
               </div>
             </div>
@@ -95,7 +100,9 @@ export function BatchDeleteDialog({
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-red-600 font-medium">{transactionCount} 条交易</div>
+                  <div className="text-xs text-red-600 font-medium">
+                    {transactionCount} 条交易 / {getSnapshotsByAccount(account.id).length} 条快照
+                  </div>
                 </div>
               )
             })}

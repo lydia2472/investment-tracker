@@ -2,19 +2,26 @@
   "name": "investment-tracker-temp",
   "version": "0.1.0",
   "private": true,
-  "main": "dist-electron/main.js",
+  "main": "build-electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:electron": "npx esbuild electron/main.ts --bundle --platform=node --outfile=build-electron/main.js --external:electron && npx esbuild electron/preload.ts --bundle --platform=node --outfile=build-electron/preload.js --external:electron",
+    "build:desktop": "npm run build && npm run build:electron",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint:fix": "eslint --fix .",
     "check": "npm run lint && npm run format:check",
+    "test:cashflow-regression": "node scripts/run-cashflow-regression.mjs",
+    "test:fixed-deposit-maturity": "node scripts/run-fixed-deposit-maturity-regression.mjs",
+    "test:snapshot-export-regression": "node scripts/run-snapshot-export-regression.mjs",
+    "test:roundtrip": "node scripts/run-roundtrip-regression.mjs",
+    "test:logic": "node scripts/run-logic-test.mjs",
     "electron:dev": "cross-env NODE_ENV=development ts-node electron/main.ts",
-    "electron:build": "npm run build && electron-builder",
-    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build": "npm run build:desktop && electron-builder",
+    "electron:build:mac": "npm run build:desktop && electron-builder --mac --arm64",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\""
   },
   "dependencies": {
@@ -73,34 +80,26 @@
   },
   "build": {
     "appId": "com.investment.tracker",
-    "productName": "投资账户管理系统",
+    "productName": "InvestmentTracker",
     "directories": {
-      "output": "dist-electron"
+      "output": "release",
+      "buildResources": "assets"
     },
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
     "files": [
-      "electron/**/*",
+      "build-electron/**/*",
       "out/**/*",
-      "package.json"
+      "assets/**/*"
     ],
     "extraMetadata": {
-      "main": "electron/main.js"
+      "main": "build-electron/main.js",
+      "name": "investment-tracker",
+      "version": "0.1.0"
     },
     "mac": {
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "dmg"
       ],
       "category": "public.app-category.finance",
       "icon": "assets/icon.icns"

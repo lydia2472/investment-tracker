@@ -3,4 +3,5 @@ export { useTransactionStore, selectDisplayableTransactions, useDisplayableTrans
 export { useTagStore } from './tag-store'
 export { useExchangeRateStore } from './exchange-rate-store'
 export { useSnapshotStore } from './snapshot-store'
+export { useHoldingStore } from './holding-store'
 export type { SupportedCurrency } from './exchange-rate-store'

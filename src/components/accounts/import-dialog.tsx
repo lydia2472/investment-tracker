@@ -1,10 +1,9 @@
 'use client'
 
 import { Button } from 'animal-island-ui'
+import { endOfMonth } from 'date-fns'
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { v4 as uuidv4 } from 'uuid'
-import { endOfDay, endOfMonth, parse } from 'date-fns'
 
 import {
   Dialog,
@@ -15,17 +14,18 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { UploadIcon } from '@/lib/components/icon-adapter'
-import { useAccountStore, useTransactionStore } from '@/lib/stores'
+import { useAccountStore } from '@/lib/stores'
+import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import {
-  parseImportedAccountJSON,
-  parseImportedAccountCSV,
-  importAccounts,
   convertImportedToAccount,
   convertImportedToAccountUpdate,
+  importAccounts,
+  parseImportedAccountCSV,
+  parseImportedAccountJSON,
 } from '@/lib/utils/account-import'
 
+import { AccountType } from '@/types'
 import type { Account, AccountImportResult } from '@/types'
-import { TransactionType } from '@/types'
 
 interface ImportDialogProps {
   trigger?: React.ReactNode
@@ -40,7 +40,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
 
   const addAccount = useAccountStore((state) => state.addAccount)
   const updateAccount = useAccountStore((state) => state.updateAccount)
-  const addTransaction = useTransactionStore((state) => state.addTransaction)
+  const addSnapshot = useSnapshotStore((state) => state.addSnapshot)
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -73,18 +73,6 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
         throw new Error('不支持的文件格式，请使用 JSON 或 CSV 文件')
       }
 
-      // 检查是否需要清理旧数据（version < 1 说明是旧格式）
-      const currentStore = useAccountStore.getState()
-      console.log('[导入] 当前store version:', currentStore.version)
-
-      if (currentStore.version === 0) {
-        console.log('[导入] 检测到旧版本数据，清理localStorage')
-        localStorage.removeItem('account-storage')
-        toast.info('已清理旧数据缓存')
-        // 等待清理完成
-        await new Promise((resolve) => setTimeout(resolve, 100))
-      }
-
       // 使用 get() 获取最新的 accounts
       const currentAccounts = useAccountStore.getState().accounts
 
@@ -111,82 +99,35 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
             const existingAccount = existingAccountsByName.get(data.name.toLowerCase())
 
             if (existingAccount) {
-              // 更新现有账户
-              console.log(`[导入] 更新账户: ${data.name}`)
-              console.log(`[导入] CSV中的initialBalance: ${data.initialBalance}`)
-              console.log(`[导入] 现有账户的initialBalance: ${existingAccount.initialBalance}`)
-
               const update = convertImportedToAccountUpdate(data)
-              console.log(`[导入] 更新对象:`, update)
-
               updateAccount(existingAccount.id, update)
-
-              // 等待store更新完成，然后检查并刷新页面
-              setTimeout(() => {
-                const store = useAccountStore.getState()
-                const updatedAccount = store.accounts.find((a) => a.id === existingAccount.id)
-                console.log(
-                  `[导入] ✅ 更新后store中的值:`,
-                  updatedAccount
-                    ? {
-                        name: updatedAccount.name,
-                        balance: updatedAccount.balance,
-                        initialBalance: updatedAccount.initialBalance,
-                        version: store.version,
-                      }
-                    : '未找到账户'
-                )
-
-                // 检查localStorage的值
-                const localStorageData = localStorage.getItem('account-storage')
-                if (localStorageData) {
-                  const parsed = JSON.parse(localStorageData)
-                  const storedAccount = parsed.state.accounts.find(
-                    (a: any) => a.id === existingAccount.id
-                  )
-                  console.log(
-                    `[导入] 📦 localStorage中的值:`,
-                    storedAccount
-                      ? {
-                          name: storedAccount.name,
-                          balance: storedAccount.balance,
-                          initialBalance: storedAccount.initialBalance,
-                        }
-                      : '未找到账户'
-                  )
-                }
-
-                // 强制刷新页面以确保显示最新数据
-                console.log(`[导入] ✅ 准备刷新页面...`)
-                setTimeout(() => {
-                  window.location.reload()
-                }, 500)
-              }, 50)
-
               updatedCount++
             } else {
               // 添加新账户
               const account = convertImportedToAccount(data)
-              addAccount(account)
+              const createdAccount = addAccount(account)
+              existingAccountsByName.set(createdAccount.name.toLowerCase(), createdAccount)
 
               // 自动创建初始快照，以便计算收益
-              // 使用账户的 createdAt 日期的月末作为快照日期
-              const accountDate = account.createdAt instanceof Date
-                ? account.createdAt
-                : new Date(account.createdAt)
+              // 注意：现金账户通常只作为资金中转，无需按月快照，跳过自动生成
+              if (createdAccount.type !== AccountType.CASH) {
+                // 使用账户的 createdAt 日期的月末作为快照日期
+                const accountDate =
+                  createdAccount.createdAt instanceof Date
+                    ? createdAccount.createdAt
+                    : new Date(createdAccount.createdAt)
 
-              const snapshotDate = endOfMonth(accountDate)
-              // 设置为月末的最后时刻
-              snapshotDate.setHours(23, 59, 59, 999)
+                const snapshotDate = endOfMonth(accountDate)
+                // 设置为月末的最后时刻
+                snapshotDate.setHours(23, 59, 59, 999)
 
-              addTransaction({
-                accountId: account.id,
-                type: TransactionType.SNAPSHOT,
-                balance: account.balance,
-                description: '初始快照（导入时自动创建）',
-                tags: ['month-end', '月末', '初始'],
-                createdAt: snapshotDate,
-              })
+                addSnapshot({
+                  accountId: createdAccount.id,
+                  balance: createdAccount.balance,
+                  snapshotDate,
+                  note: '初始快照（导入时自动创建）',
+                })
+              }
 
               addedCount++
             }
@@ -225,7 +166,7 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
     } finally {
       setIsProcessing(false)
     }
-  }, [selectedFile, addAccount, updateAccount, onImportSuccess])
+  }, [selectedFile, addAccount, addSnapshot, updateAccount, onImportSuccess])
 
   const handleReset = () => {
     setSelectedFile(null)

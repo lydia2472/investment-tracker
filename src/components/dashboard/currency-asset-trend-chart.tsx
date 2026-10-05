@@ -16,7 +16,8 @@ import {
 import { calculateAssetTrend, getCurrencyColor } from '@/lib/utils/asset-trend-helpers'
 
 import type { DateRange } from '@/components/dashboard/date-filter-bar'
-import type { MonthlyProfit , Account } from '@/types'
+import type { Snapshot } from '@/lib/stores/snapshot-store'
+import type { MonthlyProfit, Account, Transaction } from '@/types'
 
 // 货币配置
 const CURRENCY_CONFIG = {
@@ -30,18 +31,62 @@ const CURRENCY_CONFIG = {
 interface CurrencyAssetTrendChartProps {
   monthlyProfits: MonthlyProfit[]
   accounts: Account[]
+  transactions: Transaction[]
   dateRange?: DateRange
+  snapshots?: Snapshot[]
+}
+
+interface ChartTooltipEntry {
+  color?: string
+  dataKey?: string
+  name?: string
+  value?: number
+  payload?: {
+    date: string
+  }
+}
+
+interface ChartTooltipProps {
+  active?: boolean
+  payload?: ChartTooltipEntry[]
+}
+
+function formatMonthKey(monthKey: string): string {
+  const [year, month] = monthKey.split('-')
+  return `${year}年${month}月`
+}
+
+function AssetTrendTooltip({ active, payload }: ChartTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm">
+      <p className="mb-2 text-sm font-semibold text-gray-900">{payload[0]?.payload?.date}</p>
+      {payload.map((entry, index) => (
+        <div key={`${entry.dataKey}-${index}`} className="flex items-center gap-2 text-sm">
+          <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+          <span className="text-gray-700">
+            {entry.dataKey}: {entry.value?.toLocaleString()} {entry.name}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function CurrencyAssetTrendChart({
   monthlyProfits,
   accounts,
+  transactions,
   dateRange,
+  snapshots,
 }: CurrencyAssetTrendChartProps) {
   // 计算趋势数据
   const trendData = useMemo(() => {
-    return calculateAssetTrend(monthlyProfits, accounts, dateRange)
-  }, [monthlyProfits, accounts, dateRange])
+    return calculateAssetTrend(monthlyProfits, accounts, transactions, dateRange, snapshots)
+  }, [monthlyProfits, accounts, transactions, dateRange, snapshots])
 
   // 获取所有货币
   const currencies = useMemo(() => {
@@ -56,6 +101,15 @@ export function CurrencyAssetTrendChart({
     })
     return Array.from(currencySet).sort()
   }, [trendData])
+  const hasActiveDateRange = Boolean(dateRange?.startDate && dateRange?.endDate)
+  const latestTrendMonthLabel = useMemo(() => {
+    if (hasActiveDateRange || trendData.length === 0) {
+      return null
+    }
+
+    const latestMonthKey = trendData[trendData.length - 1]?.dateKey
+    return typeof latestMonthKey === 'string' ? formatMonthKey(latestMonthKey) : null
+  }, [hasActiveDateRange, trendData])
 
   // 空状态处理
   if (trendData.length === 0) {
@@ -66,32 +120,17 @@ export function CurrencyAssetTrendChart({
     )
   }
 
-  // 自定义 Tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 border border-gray-200">
-          <p className="text-sm font-semibold text-gray-900 mb-2">{payload[0].payload.date}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-              <span className="text-gray-700">
-                {entry.dataKey}: {entry.value?.toLocaleString()} {entry.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
   return (
     <Card color="app-yellow">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-white">各币种资产趋势</h3>
-          {dateRange && <span className="text-xs text-white/70">{trendData.length} 个月数据</span>}
+          {hasActiveDateRange && (
+            <span className="text-xs text-white/70">{trendData.length} 个月数据</span>
+          )}
+          {!hasActiveDateRange && latestTrendMonthLabel && (
+            <span className="text-xs text-white/70">数据截至 {latestTrendMonthLabel}</span>
+          )}
         </div>
 
         {/* 面积图 */}
@@ -109,7 +148,7 @@ export function CurrencyAssetTrendChart({
                 stroke="rgba(255,255,255,0.3)"
                 tickFormatter={(value) => `¥${(value / 1000).toFixed(0)}k`}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<AssetTrendTooltip />} />
               <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.8)' }} iconType="circle" />
 
               {currencies.map((currency) => (

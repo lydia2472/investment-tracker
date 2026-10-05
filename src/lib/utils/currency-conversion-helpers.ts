@@ -21,6 +21,10 @@ export function convertAccountBalanceToCNY(account: Account): number {
   return convertToCNY(account.balance, account.currency as SupportedCurrency)
 }
 
+export function convertBalanceToCNY(balance: number, currency: string): number {
+  return convertToCNY(balance, currency as SupportedCurrency)
+}
+
 /**
  * 将所有账户余额转换为人民币并求和
  * @param accounts 账户数组

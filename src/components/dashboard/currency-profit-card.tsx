@@ -13,6 +13,7 @@ import {
   Cell,
 } from 'recharts'
 
+import { CardLogicHint } from '@/components/dashboard/card-logic-hint'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   ChevronDownIcon,
@@ -21,6 +22,7 @@ import {
   TurnipIcon,
 } from '@/lib/components/icon-adapter'
 import { cn } from '@/lib/utils/cn'
+import { getProfitReferenceMonth } from '@/lib/utils/currency-profit-helpers'
 import { iconClasses } from '@/lib/utils/design-classes'
 import { formatCurrencyCompact } from '@/lib/utils/formatters'
 
@@ -177,6 +179,35 @@ interface CurrencyChartProps {
   symbol: string
 }
 
+interface ProfitTooltipProps {
+  active?: boolean
+  payload?: Array<{
+    value?: number
+    payload?: {
+      month?: string
+    }
+  }>
+  symbol: string
+}
+
+function ProfitChartTooltip({ active, payload, symbol }: ProfitTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null
+  }
+
+  const profit = payload[0]?.value ?? 0
+  const month = payload[0]?.payload?.month ?? ''
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm">
+      <p className="text-sm font-semibold text-gray-900">{month}</p>
+      <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+        {formatCurrency(profit, symbol)}
+      </p>
+    </div>
+  )
+}
+
 function CurrencyMonthlyChart({ currency, months, data, symbol }: CurrencyChartProps) {
   // 转换数据为 recharts 格式
   const chartData = months.map((month, index) => ({
@@ -187,22 +218,6 @@ function CurrencyMonthlyChart({ currency, months, data, symbol }: CurrencyChartP
   // 判断每个柱子的颜色
   const getBarColor = (profit: number) => {
     return profit >= 0 ? '#16a34a' : '#dc2626' // green-700 : red-700
-  }
-
-  // 自定义 tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const profit = payload[0].value as number
-      return (
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 border border-gray-200">
-          <p className="text-sm font-semibold text-gray-900">{payload[0].payload.month}</p>
-          <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-            {formatCurrency(profit, symbol)}
-          </p>
-        </div>
-      )
-    }
-    return null
   }
 
   // 计算总计
@@ -247,7 +262,7 @@ function CurrencyMonthlyChart({ currency, months, data, symbol }: CurrencyChartP
               stroke="rgba(255,255,255,0.3)"
               tickFormatter={(value) => `${symbol}${(value / 1000).toFixed(0)}k`}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<ProfitChartTooltip symbol={symbol} />} />
             <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={getBarColor(entry.profit)} />
@@ -268,6 +283,13 @@ interface CurrencyProfitCardProps {
   accounts: Account[]
 }
 
+const PROFIT_LOGIC_LINES = [
+  '各货币收益只包含 INVESTMENT_PROFIT、INVESTMENT_LOSS，以及带“利息”标签的 INCOME。',
+  '系统先按账户逐月汇总收益，再按账户所属货币加总。',
+  '未选择日期范围时，默认显示最新可用快照月份的收益，不使用系统当前月份。',
+  '收益率 = 以各账户月初余额为权重计算的加权平均收益率。',
+]
+
 export const CurrencyProfitCard = memo(function CurrencyProfitCard({
   profitData,
   currencyData,
@@ -277,6 +299,13 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
 }: CurrencyProfitCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedCurrencies, setExpandedCurrencies] = useState<Set<string>>(new Set())
+  const referenceMonth = useMemo(
+    () =>
+      dateRange?.startDate || dateRange?.endDate
+        ? null
+        : currencyData.referenceMonth || getProfitReferenceMonth(monthlyProfits, accounts, dateRange),
+    [monthlyProfits, accounts, dateRange, currencyData.referenceMonth]
+  )
 
   // 切换货币展开状态
   const toggleCurrency = (currency: string) => {
@@ -290,7 +319,7 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
   }
 
   // 过滤并转换月度数据
-  const { currencies, months, matrix } = useMemo(() => {
+  const { months, matrix } = useMemo(() => {
     const filtered = filterMonthlyProfitsByDateRange(monthlyProfits, dateRange)
     return transformToMatrix(filtered, accounts)
   }, [monthlyProfits, accounts, dateRange])
@@ -309,6 +338,9 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
   }
 
   const rangeLabel = formatRangeLabel()
+  const latestMonthLabel = referenceMonth
+    ? `${referenceMonth.year}年${String(referenceMonth.month).padStart(2, '0')}月`
+    : undefined
 
   // 过滤出有收益数据的货币
   const currenciesWithProfit = Object.values(profitData).filter((p) => p.hasData)
@@ -319,13 +351,16 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
       <Card color="app-yellow" className="group w-full">
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">各货币收益</h3>
-          <div className={cn(iconClasses.container, 'bg-white/20')}>
-            <TurnipIcon className="h-full w-full text-white" />
+          <div className="flex items-center gap-2">
+            <CardLogicHint title="各货币收益" lines={PROFIT_LOGIC_LINES} />
+            <div className={cn(iconClasses.container, 'bg-white/20')}>
+              <TurnipIcon className="h-full w-full text-white" />
+            </div>
           </div>
         </div>
         <div className="p-6 pt-0">
           <p className="text-sm text-white/80">暂无收益数据</p>
-          <p className="text-xs text-white/60 mt-2">需要月末快照数据才能计算收益</p>
+          <p className="text-xs text-white/60 mt-2">需要投资收益/亏损交易或利息收入交易才能计算收益</p>
         </div>
       </Card>
     )
@@ -335,7 +370,14 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
   if (!currencyData.hasMultipleCurrencies) {
     const singleProfit = currenciesWithProfit[0]
     const singleCurrency = currencyData.currencies[0]
-    return <SingleProfitView profit={singleProfit} currency={singleCurrency} />
+    return (
+      <SingleProfitView
+        profit={singleProfit}
+        currency={singleCurrency}
+        referenceMonthLabel={latestMonthLabel}
+        isRangeView={!!rangeLabel}
+      />
+    )
   }
 
   // 多币种时显示可折叠卡片
@@ -345,8 +387,11 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
       <div className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-row items-center justify-between p-6 pb-2">
           <h3 className="text-sm font-semibold text-white">各货币收益</h3>
-          <div className={cn(iconClasses.container, 'bg-white/20')}>
-            <TurnipIcon className="h-full w-full text-white" />
+          <div className="flex items-center gap-2">
+            <CardLogicHint title="各货币收益" lines={PROFIT_LOGIC_LINES} />
+            <div className={cn(iconClasses.container, 'bg-white/20')}>
+              <TurnipIcon className="h-full w-full text-white" />
+            </div>
           </div>
         </div>
 
@@ -355,9 +400,11 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
             {formatProfitCurrencyDisplay(profitData, currenciesWithProfit)}
           </div>
           <p className="text-xs opacity-80 mt-2">
-            {currenciesWithProfit.length > 1
-              ? `点击查看全部 ${currenciesWithProfit.length} 种货币`
-              : '期间收益'}
+            {rangeLabel
+              ? currenciesWithProfit.length > 1
+                ? `点击查看全部 ${currenciesWithProfit.length} 种货币`
+                : '期间收益'
+              : '全部收益（所有月份加总）'}
           </p>
 
           {/* 展开/折叠指示器 */}
@@ -380,6 +427,14 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/70">筛选范围</span>
                 <span className="text-sm font-semibold text-white">{rangeLabel}</span>
+              </div>
+            </div>
+          )}
+          {!rangeLabel && latestMonthLabel && (
+            <div className="mb-4 pb-3 border-b border-white/10 px-6">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/70">收益月份</span>
+                <span className="text-sm font-semibold text-white">{latestMonthLabel}</span>
               </div>
             </div>
           )}
@@ -417,9 +472,13 @@ export const CurrencyProfitCard = memo(function CurrencyProfitCard({
 const SingleProfitView = memo(function SingleProfitView({
   profit,
   currency,
+  referenceMonthLabel,
+  isRangeView,
 }: {
   profit: CurrencyProfitStatistics
   currency?: { currency: string; symbol: string }
+  referenceMonthLabel?: string
+  isRangeView?: boolean
 }) {
   const symbol = currency?.symbol || profit.symbol
   const isProfit = profit.totalProfit >= 0
@@ -427,9 +486,17 @@ const SingleProfitView = memo(function SingleProfitView({
   return (
     <Card color="app-yellow" className="group w-full">
       <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <h3 className="text-sm font-semibold text-white">期间收益</h3>
-        <div className={cn(iconClasses.container, 'bg-white/20')}>
-          <TurnipIcon className="h-full w-full text-white" />
+        <h3 className="text-sm font-semibold text-white">
+          {isRangeView ? '期间收益' : '最新月份收益'}
+        </h3>
+        <div className="flex items-center gap-2">
+          <CardLogicHint
+            title={isRangeView ? '期间收益' : '最新月份收益'}
+            lines={PROFIT_LOGIC_LINES}
+          />
+          <div className={cn(iconClasses.container, 'bg-white/20')}>
+            <TurnipIcon className="h-full w-full text-white" />
+          </div>
         </div>
       </div>
       <div className="p-6 pt-0">
@@ -449,6 +516,9 @@ const SingleProfitView = memo(function SingleProfitView({
             {profit.profitRate.toFixed(2)}%
           </span>
         </div>
+        {referenceMonthLabel && !isRangeView && (
+          <p className="text-xs text-white/70 mt-3">收益月份：{referenceMonthLabel}</p>
+        )}
       </div>
     </Card>
   )

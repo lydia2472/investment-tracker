@@ -27,7 +27,6 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAccountStore } from '@/lib/stores'
-import { cn } from '@/lib/utils/cn'
 import { TransactionType } from '@/types'
 
 // 基础 schema - 所有字段都标记为可选
@@ -45,23 +44,26 @@ const baseTransactionSchema = z.object({
 })
 
 // 根据交易类型进行条件验证
-const transactionFormSchema = baseTransactionSchema.refine(
-  (data) => {
-    // 转账类型：必须有 fromAccountId, toAccountId, amount
-    if (data.type === TransactionType.TRANSFER) {
-      return data.fromAccountId && data.toAccountId && data.amount !== undefined && data.amount > 0
+const transactionFormSchema = baseTransactionSchema.superRefine((data, ctx) => {
+  if (data.type === TransactionType.TRANSFER) {
+    if (!data.fromAccountId || !data.toAccountId || data.amount === undefined || data.amount <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '请填写完整的转账信息',
+        path: ['fromAccountId'],
+      })
     }
-    // 非快照类型：必须有 accountId
-    if (data.type !== TransactionType.SNAPSHOT) {
-      return !!data.accountId
-    }
-    return true
-  },
-  {
-    message: '请填写完整的转账信息',
-    path: ['fromAccountId'],
+    return
   }
-)
+
+  if (!data.accountId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '请选择账户',
+      path: ['accountId'],
+    })
+  }
+})
 
 export type TransactionFormData = z.infer<typeof transactionFormSchema>
 
@@ -152,7 +154,7 @@ export function TransactionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {/* 账户选择（快照类型时不显示） */}
+        {/* 账户选择 */}
         {selectedType === TransactionType.TRANSFER ? (
           <>
             {/* 转出账户 */}
@@ -192,24 +194,22 @@ export function TransactionForm({
             />
           </>
         ) : (
-          selectedType !== TransactionType.SNAPSHOT && (
-            <FormField
-              control={form.control}
-              name="accountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>账户</FormLabel>
-                  <SearchableAccountSelect
-                    value={field.value}
-                    onChange={field.onChange}
-                    accounts={accounts}
-                    placeholder="选择账户"
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )
+          <FormField
+            control={form.control}
+            name="accountId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>账户</FormLabel>
+                <SearchableAccountSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  accounts={accounts}
+                  placeholder="选择账户"
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
         {/* 交易类型 */}
@@ -357,7 +357,7 @@ export function TransactionForm({
                 标签（可选）
                 {selectedType === TransactionType.SNAPSHOT && (
                   <span className="ml-2 text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                    💡 快照建议添加 "month-end" 标签
+                    💡 快照建议添加 &quot;month-end&quot; 标签
                   </span>
                 )}
               </FormLabel>
@@ -376,6 +376,14 @@ export function TransactionForm({
 
         {/* 按钮 */}
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+          <Button
+            type="default"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="mt-2 w-full sm:mt-0 sm:w-auto"
+          >
+            取消
+          </Button>
           <Button
             htmlType="submit"
             type="primary"

@@ -116,7 +116,7 @@ export function AddTransactionDialog({ trigger }: AddTransactionDialogProps) {
           <DialogDescription>
             {mode === 'transaction'
               ? '记录一笔新的交易或转账'
-              : '记录月末快照和投资金额，自动计算收益'}
+              : '记录月末快照，并按当月真实转入自动统计投资金额和收益'}
           </DialogDescription>
         </DialogHeader>
 

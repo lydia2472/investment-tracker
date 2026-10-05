@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { persistStorage } from './persist-storage'
+
 // 支持的货币类型
 export type SupportedCurrency = 'CNY' | 'USD' | 'EUR' | 'HKD' | 'JPY'
 
@@ -121,6 +123,7 @@ export const useExchangeRateStore = create<ExchangeRateState>()(
     }),
     {
       name: 'exchange-rate-storage',
+      storage: persistStorage,
       version: 1,
     }
   )

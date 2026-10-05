@@ -3,11 +3,86 @@ import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { TransactionType } from '@/types'
+import { calculateAccountBalanceFromTransactions, getTransactionBalanceDelta } from '@/lib/utils/account-balance-helpers'
+import { AccountType, TransactionType } from '@/types'
 
 import { useAccountStore } from './account-store'
+import { persistStorage } from './persist-storage'
+import { getGoldSnapshotValue } from '@/lib/utils/gold-profit-helpers'
 
 import type { Transaction } from '@/types'
+
+function recalculateAccountBalances(
+  accountIds: string[],
+  transactions: Transaction[]
+) {
+  const uniqueAccountIds = Array.from(new Set(accountIds))
+  const accountStore = useAccountStore.getState()
+  const balanceUpdates = new Map<string, number>()
+
+  uniqueAccountIds.forEach((accountId) => {
+    const account = accountStore.getAccount(accountId)
+    if (!account) {
+      return
+    }
+
+    // 黄金账户的余额 = 最新快照市值（均价×克数）+ 非收益类交易变动（放贷、消费等）。
+    // 不能完全用交易重算（投资收益/亏损是派生数据，会高估），
+    // 也不能完全跳过（放贷等交易必须影响余额）。
+    // 折中方案：以快照市值为基准，再叠加"会影响持仓的非收益类交易"。
+    if (account.type === AccountType.GOLD) {
+      // 懒加载 snapshot-store 避免循环依赖
+      const { useSnapshotStore } = require('./snapshot-store')
+      const snapshots = useSnapshotStore.getState().snapshots
+      const latestSnap = snapshots
+        .filter((s: any) => s.accountId === accountId)
+        .sort((a: any, b: any) => new Date(b.snapshotDate).getTime() - new Date(a.snapshotDate).getTime())[0]
+
+      if (!latestSnap) {
+        // 无快照时不重算（避免清零）
+        return
+      }
+
+      // 基准 = 快照市值
+      let goldBalance = getGoldSnapshotValue(latestSnap)
+
+      // 叠加该账户的非收益类交易变动（放贷、消费、转账等），排除投资收益/亏损
+      const accountTxns = transactions.filter(
+        (t) => t.accountId === accountId &&
+        t.type !== TransactionType.INVESTMENT_PROFIT &&
+        t.type !== TransactionType.INVESTMENT_LOSS &&
+        t.type !== TransactionType.SNAPSHOT
+      )
+      for (const txn of accountTxns) {
+        const delta = getTransactionBalanceDelta(txn)
+        if (delta !== null) {
+          goldBalance += delta
+        }
+      }
+
+      if (Math.abs(goldBalance - account.balance) > 0.01) {
+        balanceUpdates.set(accountId, goldBalance)
+      }
+      return
+    }
+
+    const nextBalance = calculateAccountBalanceFromTransactions(account, transactions)
+    if (nextBalance !== account.balance) {
+      balanceUpdates.set(accountId, nextBalance)
+    }
+  })
+
+  accountStore.updateBalances(balanceUpdates)
+}
+
+interface TransactionBulkChanges {
+  create?: Array<Omit<Transaction, 'id' | 'updatedAt'> & { createdAt?: Date }>
+  update?: Array<{
+    id: string
+    updates: Partial<Transaction>
+  }>
+  deleteIds?: string[]
+}
 
 interface TransactionState {
   transactions: Transaction[]
@@ -16,9 +91,13 @@ interface TransactionState {
   addTransaction: (
     transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Date }
   ) => void
+  addTransactions: (
+    transactions: Array<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Date }>
+  ) => void
   updateTransaction: (id: string, updates: Partial<Transaction>) => void
   deleteTransaction: (id: string) => void
   deleteMultiple: (ids: string[]) => void
+  applyBulkChanges: (changes: TransactionBulkChanges) => void
   getTransaction: (id: string) => Transaction | undefined
   getTransactionsByAccount: (accountId: string) => Transaction[]
   deleteTransactionsByAccountIds: (accountIds: string[]) => void
@@ -27,7 +106,11 @@ interface TransactionState {
     toAccountId: string,
     amount: number,
     description?: string,
-    date?: Date
+    date?: Date,
+    options?: {
+      transferOutTags?: string[]
+      transferInTags?: string[]
+    }
   ) => void
   migrateTransactions: () => void
   simplifyTransactionTypes: () => void // 新增：简化交易类型
@@ -48,43 +131,32 @@ export const useTransactionStore = create<TransactionState>()(
           updatedAt: new Date(),
         }
 
-        set((state) => ({
-          transactions: [...state.transactions, newTransaction],
+        const nextTransactions = [...get().transactions, newTransaction]
+
+        set({ transactions: nextTransactions })
+        recalculateAccountBalances([newTransaction.accountId], nextTransactions)
+      },
+
+      addTransactions: (transactionsData) => {
+        if (transactionsData.length === 0) {
+          return
+        }
+
+        const now = new Date()
+        const createdTransactions: Transaction[] = transactionsData.map((transactionData) => ({
+          ...transactionData,
+          id: uuidv4(),
+          createdAt: transactionData.createdAt || now,
+          updatedAt: now,
         }))
 
-        // 更新账户余额
-        const updateBalance = useAccountStore.getState().updateBalance
-        const getAccount = useAccountStore.getState().getAccount
-        const account = getAccount(transactionData.accountId)
+        const nextTransactions = [...get().transactions, ...createdTransactions]
 
-        if (account) {
-          let newBalance = account.balance
-
-          // 收入类型：增加余额
-          if (
-            transactionData.type === TransactionType.INCOME ||
-            transactionData.type === TransactionType.DEPOSIT ||
-            transactionData.type === TransactionType.TRANSFER_IN ||
-            transactionData.type === TransactionType.INVESTMENT_PROFIT
-          ) {
-            newBalance += Math.abs(transactionData.amount || 0)
-          }
-          // 支出类型：减少余额
-          else if (
-            transactionData.type === TransactionType.CONSUMPTION ||
-            transactionData.type === TransactionType.TRANSFER_OUT ||
-            transactionData.type === TransactionType.LOAN ||
-            transactionData.type === TransactionType.INVESTMENT_LOSS
-          ) {
-            newBalance -= Math.abs(transactionData.amount || 0)
-          }
-          // 快照：设置绝对余额（包括月末快照）
-          else if (transactionData.type === TransactionType.SNAPSHOT) {
-            newBalance = transactionData.balance || newBalance
-          }
-
-          updateBalance(transactionData.accountId, newBalance)
-        }
+        set({ transactions: nextTransactions })
+        recalculateAccountBalances(
+          createdTransactions.map((transaction) => transaction.accountId),
+          nextTransactions
+        )
       },
 
       updateTransaction: (id, updates) => {
@@ -92,72 +164,21 @@ export const useTransactionStore = create<TransactionState>()(
 
         if (!oldTransaction) return
 
-        // 更新交易
-        set((state) => ({
-          transactions: state.transactions.map((txn) =>
-            txn.id === id ? { ...txn, ...updates, updatedAt: new Date() } : txn
-          ),
-        }))
-
-        // 如果金额或类型发生变化，需要调整账户余额
-        const updateBalance = useAccountStore.getState().updateBalance
-        const getAccount = useAccountStore.getState().getAccount
-        const account = getAccount(oldTransaction.accountId)
-
-        if (account) {
-          let balanceAdjustment = 0
-
-          // 计算旧交易对余额的影响
-          if (
-            oldTransaction.type === TransactionType.INCOME ||
-            oldTransaction.type === TransactionType.DEPOSIT ||
-            oldTransaction.type === TransactionType.TRANSFER_IN ||
-            oldTransaction.type === TransactionType.INVESTMENT_PROFIT
-          ) {
-            balanceAdjustment -= Math.abs(oldTransaction.amount || 0)
-          } else if (
-            oldTransaction.type === TransactionType.CONSUMPTION ||
-            oldTransaction.type === TransactionType.TRANSFER_OUT ||
-            oldTransaction.type === TransactionType.LOAN ||
-            oldTransaction.type === TransactionType.INVESTMENT_LOSS
-          ) {
-            balanceAdjustment += Math.abs(oldTransaction.amount || 0)
-          }
-          // SNAPSHOT 不计入，因为快照是设置绝对值
-
-          // 计算新交易对余额的影响
-          const newType = updates.type ?? oldTransaction.type
-          const newAmount = updates.amount ?? oldTransaction.amount
-
-          if (
-            newType === TransactionType.INCOME ||
-            newType === TransactionType.DEPOSIT ||
-            newType === TransactionType.TRANSFER_IN ||
-            newType === TransactionType.INVESTMENT_PROFIT
-          ) {
-            balanceAdjustment += Math.abs(newAmount || 0)
-          } else if (
-            newType === TransactionType.CONSUMPTION ||
-            newType === TransactionType.TRANSFER_OUT ||
-            newType === TransactionType.LOAN ||
-            newType === TransactionType.INVESTMENT_LOSS
-          ) {
-            balanceAdjustment -= Math.abs(newAmount || 0)
-          }
-          // SNAPSHOT 不计入
-
-          // 只有非快照类型才自动更新余额
-          if (
-            oldTransaction.type !== TransactionType.SNAPSHOT &&
-            newType !== TransactionType.SNAPSHOT
-          ) {
-            const newBalance = account.balance + balanceAdjustment
-            updateBalance(oldTransaction.accountId, newBalance)
-          } else if (newType === TransactionType.SNAPSHOT && updates.balance !== undefined) {
-            // 如果更新为快照类型或有新的balance值，直接设置余额
-            updateBalance(oldTransaction.accountId, updates.balance)
-          }
+        const newTransaction: Transaction = {
+          ...oldTransaction,
+          ...updates,
+          updatedAt: new Date(),
         }
+
+        const nextTransactions = get().transactions.map((txn) =>
+          txn.id === id ? newTransaction : txn
+        )
+
+        set({ transactions: nextTransactions })
+        recalculateAccountBalances(
+          [oldTransaction.accountId, newTransaction.accountId],
+          nextTransactions
+        )
       },
 
       deleteTransaction: (id) => {
@@ -165,108 +186,107 @@ export const useTransactionStore = create<TransactionState>()(
 
         if (!transaction) return
 
-        // 先删除交易
-        set((state) => ({
-          transactions: state.transactions.filter((txn) => txn.id !== id),
-        }))
-
-        // 回退账户余额
-        const updateBalance = useAccountStore.getState().updateBalance
-        const getAccount = useAccountStore.getState().getAccount
-        const account = getAccount(transaction.accountId)
-
-        if (account) {
-          let newBalance = account.balance
-
-          // 反向操作：回退交易对余额的影响
-          if (
-            transaction.type === TransactionType.INCOME ||
-            transaction.type === TransactionType.DEPOSIT ||
-            transaction.type === TransactionType.TRANSFER_IN ||
-            transaction.type === TransactionType.INVESTMENT_PROFIT
-          ) {
-            // 删除收入：余额减少
-            newBalance -= Math.abs(transaction.amount || 0)
-          } else if (
-            transaction.type === TransactionType.CONSUMPTION ||
-            transaction.type === TransactionType.TRANSFER_OUT ||
-            transaction.type === TransactionType.LOAN ||
-            transaction.type === TransactionType.INVESTMENT_LOSS
-          ) {
-            // 删除支出：余额增加
-            newBalance += Math.abs(transaction.amount || 0)
-          } else if (transaction.type === TransactionType.SNAPSHOT) {
-            // 删除快照：需要特殊处理
-            // 选项1：找到上一个快照，恢复到那个余额
-            // 选项2：不允许删除快照（提示用户）
-            // 这里我们实现选项2：不更新余额，保持当前余额
-            console.warn('删除快照不会自动调整余额，请手动记录新的快照')
-          }
-
-          // 只有非快照类型才自动更新余额
-          if (transaction.type !== TransactionType.SNAPSHOT) {
-            updateBalance(transaction.accountId, newBalance)
-          }
+        // 成对转账保护：删除单条转账时，连带删除其配对交易，避免产生孤儿。
+        // transfer_out 的配对是同 pairId 的 transfer_in，反之亦然。
+        const idsToRemove = new Set<string>([id])
+        if (transaction.transferPairId) {
+          get()
+            .transactions.filter(
+              (txn) =>
+                txn.transferPairId === transaction.transferPairId && txn.id !== id
+            )
+            .forEach((txn) => idsToRemove.add(txn.id))
         }
+
+        const nextTransactions = get().transactions.filter(
+          (txn) => !idsToRemove.has(txn.id)
+        )
+        const affectedAccountIds = [...new Set(nextTransactions.map((t) => t.accountId))]
+        void affectedAccountIds // 仅用于语义占位，实际重算依赖原 accountId
+
+        set({ transactions: nextTransactions })
+        // 重算所有受影响账户（包括被删交易及其配对涉及的账户）
+        const allAffected = new Set<string>()
+        allAffected.add(transaction.accountId)
+        get()
+          .transactions.filter((t) => idsToRemove.has(t.id))
+          .forEach((t) => allAffected.add(t.accountId))
+        recalculateAccountBalances([...allAffected], nextTransactions)
       },
 
       deleteMultiple: (ids) => {
-        const updateBalance = useAccountStore.getState().updateBalance
-        const getAccount = useAccountStore.getState().getAccount
-
-        // 先收集所有要删除的交易
         const transactionsToDelete = ids
           .map((id) => get().transactions.find((txn) => txn.id === id))
           .filter((txn) => txn !== undefined) as Transaction[]
 
         if (transactionsToDelete.length === 0) return
 
-        // 批量删除交易
-        set((state) => ({
-          transactions: state.transactions.filter((txn) => !ids.includes(txn.id)),
-        }))
+        // 成对转账保护：如果删除的 ids 里有 transfer_in 但没有配对的 transfer_out，
+        // 不要自动连带（避免删除范围意外扩大）。
+        // 这里只确保"已经决定删除"的交易一起处理，不主动扩展删除范围。
+        const idsSet = new Set(ids)
 
-        // 按账户分组，更新每个账户的余额
-        const accountBalanceChanges = new Map<string, number>()
+        const nextTransactions = get().transactions.filter((txn) => !idsSet.has(txn.id))
+        const affectedAccountIds = transactionsToDelete.map((transaction) => transaction.accountId)
 
-        transactionsToDelete.forEach((transaction) => {
-          const currentChange = accountBalanceChanges.get(transaction.accountId) || 0
+        set({ transactions: nextTransactions })
+        recalculateAccountBalances(affectedAccountIds, nextTransactions)
+      },
 
-          if (
-            transaction.type === TransactionType.INCOME ||
-            transaction.type === TransactionType.DEPOSIT ||
-            transaction.type === TransactionType.TRANSFER_IN ||
-            transaction.type === TransactionType.INVESTMENT_PROFIT
-          ) {
-            // 删除收入：余额减少
-            accountBalanceChanges.set(
-              transaction.accountId,
-              currentChange - Math.abs(transaction.amount || 0)
-            )
-          } else if (
-            transaction.type === TransactionType.CONSUMPTION ||
-            transaction.type === TransactionType.TRANSFER_OUT ||
-            transaction.type === TransactionType.LOAN ||
-            transaction.type === TransactionType.INVESTMENT_LOSS
-          ) {
-            // 删除支出：余额增加
-            accountBalanceChanges.set(
-              transaction.accountId,
-              currentChange + Math.abs(transaction.amount || 0)
-            )
-          } else if (transaction.type === TransactionType.SNAPSHOT) {
-            // 删除快照：不自动调整余额
-            console.warn(`删除快照 ${transaction.id} 不会自动调整余额`)
+      applyBulkChanges: ({ create = [], update = [], deleteIds = [] }) => {
+        if (create.length === 0 && update.length === 0 && deleteIds.length === 0) {
+          return
+        }
+
+        const currentTransactions = get().transactions
+        const deleteIdSet = new Set(deleteIds)
+        const updateMap = new Map(update.map((item) => [item.id, item.updates]))
+        const affectedAccountIds = new Set<string>()
+        const now = new Date()
+
+        const nextTransactions = currentTransactions
+          .filter((transaction) => {
+            if (!deleteIdSet.has(transaction.id)) {
+              return true
+            }
+
+            affectedAccountIds.add(transaction.accountId)
+            return false
+          })
+          .map((transaction) => {
+            const updates = updateMap.get(transaction.id)
+            if (!updates) {
+              return transaction
+            }
+
+            affectedAccountIds.add(transaction.accountId)
+            if (updates.accountId && updates.accountId !== transaction.accountId) {
+              affectedAccountIds.add(updates.accountId)
+            }
+
+            return {
+              ...transaction,
+              ...updates,
+              updatedAt: now,
+            }
+          })
+
+        const createdTransactions: Transaction[] = create.map((transactionData) => {
+          const createdAt = transactionData.createdAt || now
+          affectedAccountIds.add(transactionData.accountId)
+
+          return {
+            ...transactionData,
+            id: uuidv4(),
+            createdAt,
+            updatedAt: now,
           }
         })
 
-        // 应用余额变更
-        accountBalanceChanges.forEach((balanceChange, accountId) => {
-          const account = getAccount(accountId)
-          if (account) {
-            updateBalance(accountId, account.balance + balanceChange)
-          }
-        })
+        const mergedTransactions = [...nextTransactions, ...createdTransactions]
+
+        set({ transactions: mergedTransactions })
+        recalculateAccountBalances(Array.from(affectedAccountIds), mergedTransactions)
       },
 
       getTransaction: (id) => {
@@ -291,7 +311,7 @@ export const useTransactionStore = create<TransactionState>()(
         }
       },
 
-      transfer: (fromAccountId, toAccountId, amount, description, date) => {
+      transfer: (fromAccountId, toAccountId, amount, description, date, options) => {
         const { addTransaction } = get()
         const transactionDate = date || new Date()
         const transferId = uuidv4() // 生成共享ID用于链接
@@ -312,6 +332,7 @@ export const useTransactionStore = create<TransactionState>()(
           transferToAccountId: toAccountId,
           transferPairId: transferId,
           description: description || `转账至 ${toAccountName}`,
+          tags: options?.transferOutTags,
           createdAt: transactionDate,
         })
 
@@ -323,6 +344,7 @@ export const useTransactionStore = create<TransactionState>()(
           transferFromAccountId: fromAccountId,
           transferPairId: transferId,
           description: description || `从 ${fromAccountName} 转入`,
+          tags: options?.transferInTags,
           createdAt: transactionDate,
         })
       },
@@ -487,6 +509,7 @@ export const useTransactionStore = create<TransactionState>()(
     }),
     {
       name: 'transaction-storage',
+      storage: persistStorage,
       version: 2,
       migrate: (persistedState: any, version: number) => {
         const oldState = persistedState as TransactionState
