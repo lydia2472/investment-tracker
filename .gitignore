@@ -60,3 +60,6 @@ invests/
 # Test files
 TEST_REPORT.md
 electron-test.js
+
+# Data backups (contains real financial data)
+data-backup*/

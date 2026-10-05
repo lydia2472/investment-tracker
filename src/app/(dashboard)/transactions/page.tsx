@@ -3,6 +3,7 @@
 import { Divider , Button } from 'animal-island-ui'
 import { startTransition, useDeferredValue, useMemo, useState } from 'react'
 
+import { StatementImportDialog } from '@/components/snapshots/statement-import-dialog'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
 import { ExportDialog } from '@/components/transactions/export-dialog'
@@ -78,6 +79,7 @@ export default function TransactionsPage() {
             accounts={accounts}
           />
           <ImportDialog />
+          <StatementImportDialog />
           <AddTransactionDialog
             trigger={
               <Button

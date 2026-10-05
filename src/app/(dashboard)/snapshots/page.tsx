@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { SnapshotExportDialog } from '@/components/snapshots/export-dialog'
 import { LegacyMonthlyDataRepairDialog } from '@/components/snapshots/legacy-monthly-data-repair-dialog'
 import { SnapshotImportDialog } from '@/components/snapshots/snapshot-import-dialog'
+import { StatementImportDialog } from '@/components/snapshots/statement-import-dialog'
 import {
   Select,
   SelectContent,
@@ -140,6 +141,7 @@ export default function SnapshotsPage() {
               </Button>
             }
           />
+          <StatementImportDialog />
           <LegacyMonthlyDataRepairDialog
             accounts={accounts}
             snapshots={snapshots}
