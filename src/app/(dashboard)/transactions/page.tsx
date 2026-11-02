@@ -6,6 +6,7 @@ import { startTransition, useDeferredValue, useMemo, useState } from 'react'
 import { StatementImportDialog } from '@/components/snapshots/statement-import-dialog'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
+import { ExchangeDialog } from '@/components/transactions/exchange-dialog'
 import { ExportDialog } from '@/components/transactions/export-dialog'
 import { ImportDialog } from '@/components/transactions/import-dialog'
 import {
@@ -13,6 +14,7 @@ import {
   type TransactionFilters as TransactionFiltersType,
 } from '@/components/transactions/transaction-filters'
 import { TransactionTable } from '@/components/transactions/transaction-table'
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import { useTransactionActions } from '@/hooks/use-transaction-actions'
 import { PlusIcon } from '@/lib/components/icon-adapter'
 import { useTransactionStore, useAccountStore } from '@/lib/stores'
@@ -48,12 +50,15 @@ export default function TransactionsPage() {
     setEditDialogOpen(true)
   }
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (visibleSelectedIds.size === 0) return
 
-    const confirmed = window.confirm(
-      `确定要删除选中的 ${visibleSelectedIds.size} 条交易吗？此操作不可撤销。`
-    )
+    const confirmed = await confirmAsync({
+      title: `确定要删除选中的 ${visibleSelectedIds.size} 条交易吗？`,
+      description: '此操作不可撤销。',
+      confirmText: '删除',
+      danger: true,
+    })
 
     if (confirmed) {
       deleteMultiple(Array.from(visibleSelectedIds))
@@ -80,6 +85,7 @@ export default function TransactionsPage() {
           />
           <ImportDialog />
           <StatementImportDialog />
+          <ExchangeDialog />
           <AddTransactionDialog
             trigger={
               <Button

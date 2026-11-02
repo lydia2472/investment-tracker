@@ -243,8 +243,9 @@ export function parseAntFundStatement(
     }
   }
 
-  // ---- 输出标准化：账户名称/基金代码/确认金额/日期（当月最后一天）/交易类型 ----
-  // 确认日期（T+1 确认日）统一归到当月最后一天，交易类型统一为 transfer_in（转入）。
+  // ---- 输出标准化：账户名称/基金代码/确认金额/日期（当月最后一天）/交易类型/转账目标账户名称 ----
+  // 确认金额按（基金代码, 月份）加总：每月每基金一条汇总记录。
+  // 定投资金来自现金账户，每条汇总转入前配一条「现金账户」转出行（金额为负、同日期）。
   const pad = (n: number) => String(n).padStart(2, '0')
   const dateToMonthEnd = (raw: string): string => {
     const m = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/.exec(raw)
@@ -254,16 +255,29 @@ export function parseAntFundStatement(
     const lastDay = new Date(y, mo, 0).getDate() // Date 的 month 为 0 基
     return `${y}/${pad(mo)}/${pad(lastDay)}`
   }
-  const outRows = rawRows.map((row) => [
-    row[fundNameIndex] ?? '',
-    row[codeIndex] ?? '',
-    row[confirmAmountIndex] ?? '',
-    confirmDateIndex >= 0 ? dateToMonthEnd(row[confirmDateIndex] ?? '') : '',
-    'transfer_in',
-  ])
+  // 按 (基金代码, 月末日期) 聚合，组序 = 首次出现顺序
+  const groups = new Map<string, { name: string; code: string; total: number; monthEnd: string }>()
+  for (const row of rawRows) {
+    const name = row[fundNameIndex] ?? ''
+    const code = row[codeIndex] ?? ''
+    const amountNum = parseFloat((row[confirmAmountIndex] ?? '').replace(/,/g, ''))
+    const monthEnd = confirmDateIndex >= 0 ? dateToMonthEnd(row[confirmDateIndex] ?? '') : ''
+    const key = `${code}|${monthEnd}`
+    if (!groups.has(key)) {
+      groups.set(key, { name, code, total: 0, monthEnd })
+    }
+    if (!isNaN(amountNum)) groups.get(key)!.total += amountNum
+  }
+  const outRows: string[][] = []
+  for (const g of groups.values()) {
+    // 转出行：现金账户 → 基金账户（金额为负）
+    outRows.push(['现金账户', '', (-g.total).toFixed(2), g.monthEnd, 'transfer_out', g.name])
+    // 转入行：基金账户收到资金（该月定投总额）
+    outRows.push([g.name, g.code, g.total.toFixed(2), g.monthEnd, 'transfer_in', ''])
+  }
 
   return {
-    headers: ['账户名称', '基金代码', '确认金额', '日期', '交易类型'],
+    headers: ['账户名称', '基金代码', '确认金额', '日期', '交易类型', '转账目标账户名称'],
     rows: maxRows > 0 ? outRows.slice(0, maxRows) : outRows,
     skippedLineCount: 0,
     source: 'pdf',

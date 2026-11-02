@@ -5,8 +5,9 @@ import { Input , Button } from 'animal-island-ui'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 import * as React from 'react'
 
-import { forceScrollableWheel } from '@/lib/utils/force-wheel-scroll'
+import { UNGROUPED, compareInstitutions } from '@/lib/constants/institutions'
 import { cn } from '@/lib/utils'
+import { forceScrollableWheel } from '@/lib/utils/force-wheel-scroll'
 
 const PopoverRoot = PopoverPrimitive.Root
 const PopoverTrigger = PopoverPrimitive.Trigger
@@ -16,6 +17,10 @@ const PopoverPortal = PopoverPrimitive.Portal
 interface Account {
   id: string
   name: string
+  /** 所属渠道：提供时下拉列表按渠道分组展示 */
+  institution?: string
+  /** 币种：提供时在选项后显示币种徽章 */
+  currency?: string
 }
 
 interface SearchableAccountSelectProps {
@@ -164,28 +169,64 @@ export function SearchableAccountSelect({
                 <div className="px-3 py-1.5 text-xs text-muted-foreground border-b">
                   找到 {filteredAccounts.length} 个账户
                 </div>
-                {filteredAccounts.map((account) => {
-                  const isSelected = account.id === value
-                  return (
-                    <div
-                      key={account.id}
-                      className="relative flex cursor-default select-none items-center rounded-sm px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                      onClick={() => selectAccount(account.id)}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            'h-4 w-4 border rounded-sm flex items-center justify-center',
-                            isSelected ? 'bg-primary border-primary' : 'border-muted'
+                {(() => {
+                  const renderOption = (account: Account) => {
+                    const isSelected = account.id === value
+                    return (
+                      <div
+                        key={account.id}
+                        className="relative flex cursor-default select-none items-center rounded-sm px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        onClick={() => selectAccount(account.id)}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'h-4 w-4 border rounded-sm flex items-center justify-center',
+                              isSelected ? 'bg-primary border-primary' : 'border-muted'
+                            )}
+                          >
+                            {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </span>
+                          {account.name}
+                          {account.currency && account.currency !== 'CNY' && (
+                            <span className="text-[10px] font-mono px-1 rounded bg-muted border text-muted-foreground">
+                              {account.currency}
+                            </span>
                           )}
-                        >
-                          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                         </span>
-                        {account.name}
-                      </span>
-                    </div>
-                  )
-                })}
+                      </div>
+                    )
+                  }
+                  // 搜索时扁平展示；否则按渠道分组（保留账户数组顺序）
+                  if (searchQuery) {
+                    return filteredAccounts.map(renderOption)
+                  }
+                  const hasInstitution = filteredAccounts.some((a) => a.institution?.trim())
+                  if (!hasInstitution) {
+                    return filteredAccounts.map(renderOption)
+                  }
+                  const groups = new Map<string, Account[]>()
+                  for (const acc of filteredAccounts) {
+                    const key = acc.institution?.trim() || UNGROUPED
+                    if (!groups.has(key)) groups.set(key, [])
+                    groups.get(key)!.push(acc)
+                  }
+                  return Array.from(groups.entries())
+                    .sort(([a], [b]) =>
+                      compareInstitutions(
+                        a === UNGROUPED ? undefined : a,
+                        b === UNGROUPED ? undefined : b
+                      )
+                    )
+                    .map(([group, groupAccounts]) => (
+                      <div key={group}>
+                        <div className="px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground bg-muted/40 border-b border-t first:border-t-0">
+                          {group}
+                        </div>
+                        {groupAccounts.map(renderOption)}
+                      </div>
+                    ))
+                })()}
               </>
             )}
           </div>

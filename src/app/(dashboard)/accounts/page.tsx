@@ -13,11 +13,12 @@ import { ImportDialog } from '@/components/accounts/import-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAccountActions } from '@/hooks/use-account-actions'
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@/lib/components/icon-adapter'
-import { cn } from '@/lib/utils/cn'
+import { UNGROUPED, compareInstitutions } from '@/lib/constants/institutions'
+import { useAccountStore, useSnapshotStore, useTransactionStore } from '@/lib/stores'
 import { getAccountTypeLabel } from '@/lib/utils/account-helpers'
+import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { getRiskLevelLabel } from '@/lib/utils/risk-level-helpers'
-import { useAccountStore, useSnapshotStore, useTransactionStore } from '@/lib/stores'
 import { calculateCurrentDisplayBalance } from '@/lib/utils/snapshot-balance-helpers'
 import { AccountType, RiskLevel } from '@/types'
 
@@ -27,10 +28,22 @@ export default function AccountsPage() {
   const accounts = useAccountStore((state) => state.accounts)
   const version = useAccountStore((state) => state.version)
   const moveAccount = useAccountStore((state) => state.moveAccount)
+  const updateAccount = useAccountStore((state) => state.updateAccount)
   const toggleArchive = useAccountStore((state) => state.toggleArchive)
 
   // 已归档账户区域是否展开（默认折叠）
   const [isArchivedExpanded, setIsArchivedExpanded] = useState(false)
+
+  // 渠道分组折叠状态（默认全部展开）
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const toggleGroupCollapse = useCallback((group: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }, [])
 
   // 筛选状态：账户类型 + 风险等级（'all' 表示不过滤）
   const [filterType, setFilterType] = useState<string>('all')
@@ -53,6 +66,33 @@ export default function AccountsPage() {
     const archivedAccounts = accounts.filter((a) => a.archived && matchesFilters(a))
     return { activeAccounts, archivedAccounts }
   }, [accounts, matchesFilters])
+
+  // 活跃账户按渠道分组（组序：预设渠道 → 自定义 → 未分组；组内沿用账户数组顺序）
+  const institutionGroups = useMemo(() => {
+    const groups = new Map<string, Account[]>()
+    for (const a of activeAccounts) {
+      const key = a.institution?.trim() || UNGROUPED
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(a)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) =>
+      compareInstitutions(a === UNGROUPED ? undefined : a, b === UNGROUPED ? undefined : b)
+    )
+  }, [activeAccounts])
+
+  // 拖拽排序：同组内重排；跨组拖拽自动把账户移入目标渠道
+  const handleReorder = useCallback(
+    (draggedId: string, targetId: string) => {
+      const dragged = accounts.find((a) => a.id === draggedId)
+      const target = accounts.find((a) => a.id === targetId)
+      moveAccount(draggedId, targetId)
+      if (dragged && target && (dragged.institution || '') !== (target.institution || '')) {
+        updateAccount(draggedId, { institution: target.institution })
+        toast.success(`已将「${dragged.name}」移入 ${target.institution || UNGROUPED}`)
+      }
+    },
+    [accounts, moveAccount, updateAccount]
+  )
 
   // 筛选选项：只显示实际存在的类型/风险（按当前数据动态生成）
   const { typeOptions, riskOptions } = useMemo(() => {
@@ -191,7 +231,7 @@ export default function AccountsPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">账户管理</h2>
           <p className="text-muted-foreground">
-            管理您的所有投资账户，可直接拖动卡片调整排序，交易和快照里的账户选择会沿用这个顺序
+            按渠道分组管理您的账户；组内可拖动排序，跨组拖动自动改归属，交易和快照里的账户选择沿用这个顺序
           </p>
         </div>
         <div className="flex gap-2">
@@ -327,18 +367,66 @@ export default function AccountsPage() {
 
       <Divider type="line-yellow" style={{ margin: '24px 0' }} />
 
-      {/* 活跃账户 */}
-      <AccountGrid
-        key={`active-${version}`}
-        accounts={activeAccounts}
-        onDelete={handleDelete}
-        onEdit={handleEditAccount}
-        onToggleArchive={handleToggleArchive}
-        onReorder={moveAccount}
-        selectedAccountIds={selectedAccountIds}
-        onToggleSelection={toggleAccountSelection}
-        isBulkSelectionMode={isBulkSelectionMode}
-      />
+      {/* 活跃账户：按渠道分组 */}
+      <div className="space-y-6">
+        {institutionGroups.map(([group, groupAccounts]) => {
+          // 组内余额小计（按币种，口径与卡片一致）
+          const totals = new Map<string, number>()
+          for (const acc of groupAccounts) {
+            const balance = calculateCurrentDisplayBalance(acc, transactions, snapshots)
+            totals.set(acc.currency, (totals.get(acc.currency) ?? 0) + balance)
+          }
+          const isCollapsed = collapsedGroups.has(group)
+          return (
+            <section key={group}>
+              <div className="flex items-center gap-3 mb-3">
+                <button
+                  type="button"
+                  onClick={() => toggleGroupCollapse(group)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 rounded-lg',
+                    'text-sm font-semibold',
+                    'hover:bg-muted/50 transition'
+                  )}
+                >
+                  {isCollapsed ? (
+                    <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span>{group}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {groupAccounts.length} 个账户
+                  </span>
+                </button>
+                <div className="h-px flex-1 bg-border" />
+                <div className="flex flex-wrap gap-3 justify-end">
+                  {Array.from(totals.entries()).map(([currency, total]) => (
+                    <span key={currency} className="text-sm font-semibold">
+                      <span className="text-muted-foreground font-normal mr-1">{currency}</span>
+                      {formatCurrency(total)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {!isCollapsed && (
+                <AccountGrid
+                  key={`grp-${group}-${version}`}
+                  accounts={groupAccounts}
+                  onDelete={handleDelete}
+                  onEdit={handleEditAccount}
+                  onToggleArchive={handleToggleArchive}
+                  onReorder={handleReorder}
+                  selectedAccountIds={selectedAccountIds}
+                  onToggleSelection={toggleAccountSelection}
+                  isBulkSelectionMode={isBulkSelectionMode}
+                />
+              )}
+            </section>
+          )
+        })}
+      </div>
 
       {/* 已归档账户（可折叠） */}
       {archivedAccounts.length > 0 && (

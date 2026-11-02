@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
 import { Button } from 'animal-island-ui'
 import { RefreshCwIcon } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
+
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { findDuplicateProfitTransactions, getDuplicateProfitIdsToDelete } from '@/lib/utils/cleanup-duplicate-profits'
 
@@ -16,6 +18,12 @@ export default function DebugPage() {
 
   const accounts = useAccountStore((state) => state.accounts)
   const deleteMultiple = useTransactionStore((state) => state.deleteMultiple)
+
+  // 重算全部账户余额(修复余额错乱)
+  const handleRecalcBalances = useCallback(() => {
+    useTransactionStore.getState().recalculateAllBalances()
+    toast.success('已重算全部账户余额')
+  }, [])
 
   // 强制刷新localStorage数据
   const handleForceRefresh = useCallback(() => {
@@ -109,7 +117,7 @@ export default function DebugPage() {
   }, [accounts]) // 当账户变化时重新计算
 
   // 清理未知账户交易
-  const handleCleanupUnknownAccounts = () => {
+  const handleCleanupUnknownAccounts = async () => {
     try {
       if (unknownAccountTxns.length === 0) {
         toast.success('没有发现未知账户的交易')
@@ -118,7 +126,13 @@ export default function DebugPage() {
 
       const idsToDelete = unknownAccountTxns.map((t) => t.id)
 
-      if (confirm(`发现 ${unknownAccountTxns.length} 条未知账户的交易，确定要删除吗？`)) {
+      if (
+        await confirmAsync({
+          title: `发现 ${unknownAccountTxns.length} 条未知账户的交易，确定要删除吗？`,
+          confirmText: '删除',
+          danger: true,
+        })
+      ) {
         // 使用强制清理：直接操作localStorage
         const transactionsStorage = localStorage.getItem('transaction-storage')
         if (!transactionsStorage) {
@@ -160,7 +174,7 @@ export default function DebugPage() {
   }
 
   // 清理重复交易
-  const handleCleanupDuplicates = () => {
+  const handleCleanupDuplicates = async () => {
     try {
       const transactionsStorage = localStorage.getItem('transaction-storage')
       if (!transactionsStorage) {
@@ -180,7 +194,13 @@ export default function DebugPage() {
         return
       }
 
-      if (confirm(`发现 ${idsToDelete.length} 条重复交易，确定要删除吗？`)) {
+      if (
+        await confirmAsync({
+          title: `发现 ${idsToDelete.length} 条重复交易，确定要删除吗？`,
+          confirmText: '删除',
+          danger: true,
+        })
+      ) {
         deleteMultiple(idsToDelete)
         toast.success(`已删除 ${idsToDelete.length} 条重复交易`)
 
@@ -242,6 +262,9 @@ export default function DebugPage() {
           >
             <RefreshCwIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             强制刷新
+          </Button>
+          <Button type="default" className="ml-2" onClick={handleRecalcBalances}>
+            重算全部余额
           </Button>
         </div>
         <div className="grid grid-cols-2 gap-4">

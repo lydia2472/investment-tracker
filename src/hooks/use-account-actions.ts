@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import { useAccountStore, useTransactionStore } from '@/lib/stores'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 
@@ -13,8 +14,14 @@ export function useAccountActions() {
   const getSnapshotsByAccount = useSnapshotStore((state) => state.getSnapshotsByAccount)
 
   const handleDelete = useCallback(
-    (id: string, name: string) => {
-      if (confirm(`确定要删除账户"${name}"吗？这将同时删除该账户的所有交易记录。`)) {
+    async (id: string, name: string) => {
+      if (
+        await confirmAsync({
+          title: `确定要删除账户"${name}"吗？`,
+          description: '这将同时删除该账户的所有交易记录。',
+          danger: true,
+        })
+      ) {
         deleteAccount(id)
       }
     },
@@ -22,9 +29,13 @@ export function useAccountActions() {
   )
 
   const handleDeleteWithWarning = useCallback(
-    (id: string, name: string) => {
-      const warning = `警告：删除账户"${name}"将同时删除该账户的所有交易记录，且无法恢复！\n\n确定要继续吗？`
-      if (confirm(warning)) {
+    async (id: string, name: string) => {
+      const ok = await confirmAsync({
+        title: `删除账户"${name}"`,
+        description: '警告：将同时删除该账户的所有交易记录，且无法恢复！\n\n确定要继续吗？',
+        danger: true,
+      })
+      if (ok) {
         deleteAccount(id)
       }
     },

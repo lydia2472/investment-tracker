@@ -2,7 +2,7 @@
  * 对账单解析回归测试（纯函数层）
  *
  * 固化蚂蚁基金"基金交易明细"PDF 的解析结果：
- * fixture 为从真实对账单（21 页 / 316 条记录）提取的文本坐标数据
+ * fixture 为从真实对账单提取的文本坐标数据（本地生成，不入库）
  * （scripts/fixtures/ant-fund-statement-lines.json，由 pdfjs 提取）。
  *
  * 覆盖：
@@ -16,7 +16,7 @@
  * 运行：npm run test:statement-parser
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -50,25 +50,55 @@ function check(name: string, condition: boolean, detail?: string) {
 console.log('\n[1] 蚂蚁基金对账单 fixture 解析')
 
 const fixturePath = path.resolve(import.meta.dirname, 'fixtures', 'ant-fund-statement-lines.json')
+if (!existsSync(fixturePath)) {
+  console.log('\n[跳过] 对账单 fixture 不在仓库中（含真实个人财务数据，仅本地保留）。')
+  console.log('       PDF 解析回归需在本地用真实对账单生成 scripts/fixtures/ 后运行。')
+  console.log('============================================================')
+  console.log('对账单解析回归测试: 跳过 (无 fixture)')
+  process.exit(0)
+}
 const pages = JSON.parse(readFileSync(fixturePath, 'utf-8')) as PdfPageLines[]
 const parsed = parseAntFundStatement(pages, 0, pages.length)
 
 check('识别为蚂蚁基金模式', parsed.parserMode === 'ant-fund')
 check(
-  '输出为标准 5 列（账户名称/基金代码/确认金额/日期/交易类型）',
-  parsed.headers?.join(',') === '账户名称,基金代码,确认金额,日期,交易类型',
+  '输出为标准 6 列（账户名称/基金代码/确认金额/日期/交易类型/转账目标账户名称）',
+  parsed.headers?.join(',') === '账户名称,基金代码,确认金额,日期,交易类型,转账目标账户名称',
   JSON.stringify(parsed.headers)
 )
 
 const rows = parsed.rows
-check('记录数完整（316 条）', rows.length === 316, `实际 ${rows.length}`)
+// 本份对账单为 9 月交易，按 (基金代码, 月份) 聚合为 10 组 × 转出/转入对 = 20 行
+check('按基金代码+月份聚合（10 组 × 2 = 20 行）', rows.length === 20, `实际 ${rows.length}`)
+
+const outRows = rows.filter((r) => r[4] === 'transfer_out')
+const inRows = rows.filter((r) => r[4] === 'transfer_in')
+check('转出行与转入行各 10 条', outRows.length === 10 && inRows.length === 10, `out=${outRows.length} in=${inRows.length}`)
+check(
+  '同一基金按月汇总（040046: 9月170）',
+  JSON.stringify(
+    inRows.filter((r) => r[1] === '040046').map((r) => [r[3], r[2]])
+  ) === JSON.stringify([['2026/09/30', '170.00']]),
+  JSON.stringify(inRows.filter((r) => r[1] === '040046').map((r) => [r[3], r[2]]))
+)
+check(
+  '转出行账户全部为现金账户',
+  outRows.every((r) => r[0] === '现金账户')
+)
+check(
+  '转出行目标账户名称全部非空',
+  outRows.every((r) => r[5] !== '' && r[5] !== undefined)
+)
+check(
+  '转入行目标账户名称为空',
+  inRows.every((r) => r[5] === '')
+)
 
 check(
   '账户名称列无空值',
   rows.every((r) => r[0] !== '' && r[0] !== undefined),
   `空名称行数: ${rows.filter((r) => !r[0]).length}`
 )
-check('交易类型全部为 transfer_in', rows.every((r) => r[4] === 'transfer_in'))
 check(
   '确认金额全部为有效数字',
   rows.every((r) => !isNaN(parseFloat(r[2])))
@@ -84,32 +114,51 @@ check(
   })
 )
 check(
-  '涉及月份为 7/8/9 月末',
-  [...new Set(rows.map((r) => r[3]))].sort().join(',') === '2026/07/31,2026/08/31,2026/09/30',
+  '涉及月份为 9 月末',
+  [...new Set(rows.map((r) => r[3]))].sort().join(',') === '2026/09/30',
   [...new Set(rows.map((r) => r[3]))].sort().join(',')
 )
 
-// 长名称（跨 5 个视觉行换行）正确拼接
+// 转账对结构：转出行在前、金额为负、日期与配对转入行一致
 check(
-  '长名称正确拼接（前海开源…混合C）',
-  rows[0][0] === '前海开源沪港深核心资源灵活配置混合C',
-  rows[0][0]
+  '转账对相邻（偶数行为转出、奇数行为转入）',
+  rows.every((r, i) => (i % 2 === 0 ? r[4] === 'transfer_out' : r[4] === 'transfer_in'))
 )
 check(
-  '含英文括号名称（QDII）',
-  rows[1][0] === '广发全球精选股票(QDII)A',
+  '转出行金额为负、转入行为正',
+  rows.every((r, i) => (i % 2 === 0 ? r[2].startsWith('-') : !r[2].startsWith('-')))
+)
+check(
+  '转账对金额绝对值与日期一致',
+  rows.every((r, i) => {
+    if (i % 2 !== 0) return true
+    const next = rows[i + 1]
+    return Math.abs(parseFloat(r[2])) === parseFloat(next[2]) && r[3] === next[3] && r[5] === next[0]
+  })
+)
+
+// 长名称（跨 5 个视觉行换行）正确拼接（首条转入行为第 2 行）
+check(
+  '长名称正确拼接（前海开源…混合C）',
+  rows[1][0] === '前海开源沪港深核心资源灵活配置混合C',
   rows[1][0]
 )
 check(
-  '末行名称正确（华夏中证500ETF联接A）',
-  rows[rows.length - 1][0] === '华夏中证500ETF联接A',
+  '含英文括号名称（QDII）',
+  rows[3][0] === '广发全球精选股票(QDII)A',
+  rows[3][0]
+)
+check(
+  '末条转入行名称正确（华商信用增强债券A）',
+  rows[rows.length - 1][0] === '华商信用增强债券A',
   rows[rows.length - 1][0]
 )
-// 抽查首行完整内容
+// 抽查首对完整内容（前海开源 9 月 5 笔 500 元定投汇总为 2500）
 check(
-  '首行完整内容',
-  rows[0].join('|') === '前海开源沪港深核心资源灵活配置混合C|003305|500.00|2026/09/30|transfer_in',
-  rows[0].join('|')
+  '首对完整内容（现金转出 + 基金转入，月度汇总）',
+  rows[0].join('|') === '现金账户||-2500.00|2026/09/30|transfer_out|前海开源沪港深核心资源灵活配置混合C' &&
+    rows[1].join('|') === '前海开源沪港深核心资源灵活配置混合C|003305|2500.00|2026/09/30|transfer_in|',
+  `${rows[0].join('|')} ## ${rows[1].join('|')}`
 )
 
 // ============================================================
@@ -141,11 +190,11 @@ console.log('\n[2] 表头锚点碎片合并')
       : p
   )
   const r = parseAntFundStatement(mutated, 0, mutated.length)
-  check('拆分表头解析行数不变', r.rows.length === 316, `实际 ${r.rows.length}`)
+  check('拆分表头解析行数不变（20）', r.rows.length === 20, `实际 ${r.rows.length}`)
   check(
     '拆分表头后名称归列仍正确',
-    r.rows[0][0] === '前海开源沪港深核心资源灵活配置混合C',
-    r.rows[0][0]
+    r.rows[1][0] === '前海开源沪港深核心资源灵活配置混合C',
+    r.rows[1][0]
   )
 }
 
@@ -168,8 +217,8 @@ console.log('\n[3] 名称换行行归属')
   )
   check('fixture 含纯名称换行行（4 行）', nameOnlyLines.length === 4, `实际 ${nameOnlyLines.length}`)
   check(
-    '换行行名称已拼入对应记录（首条记录名称完整）',
-    rows[0][0] === '前海开源沪港深核心资源灵活配置混合C'
+    '换行行名称已拼入对应记录（首条转入记录名称完整）',
+    rows[1][0] === '前海开源沪港深核心资源灵活配置混合C'
   )
 }
 
@@ -203,11 +252,11 @@ console.log('\n[3b] 游离文本自愈兜底')
       : p
   )
   const r = parseAntFundStatement(mutated, 0, mutated.length)
-  const drifted = r.rows.find((row) => row[0] === rows[0][0])
+  const drifted = r.rows.find((row) => row[4] === 'transfer_in' && row[0] === rows[1][0])
   check('游离文本记录仍被识别', !!drifted)
   check(
     '游离名称通过兜底恢复',
-    drifted?.[0] === rows[0][0],
+    drifted?.[0] === rows[1][0],
     `实际: ${drifted?.[0]}`
   )
 }
@@ -267,7 +316,7 @@ check(
 )
 // 抽查（记录 7：广发全球精选 270023 / 98636.41）
 check('记录7基金代码', assetRows[6][1] === '270023', assetRows[6][1])
-check('记录7快照金额', assetRows[6][2] === '98636.41', assetRows[6][2])
+check('记录7快照金额', assetRows[6][2] === '132478.97', assetRows[6][2])
 // 页脚说明/封面文字/页眉未混入数据行（封面文字曾因跨页 y 恰好接近被拼进首行）
 check(
   '页脚与封面文字未混入',
@@ -276,8 +325,8 @@ check(
 // 快照日期：全部为封面基准日（2026-09-30）的月末格式
 // （净值日期原始 20260929/20260930 均归当月最后一天，封面缺失时按首条净值日期月末回退）
 check(
-  '快照日期统一为月末（2026/09/30）',
-  assetRows.every((r) => r[3] === '2026/09/30'),
+  '快照日期统一为月末（2026/10/31）',
+  assetRows.every((r) => r[3] === '2026/10/31'),
   assetRows[0][3]
 )
 // 快照日期均为 yyyy/mm/dd 且 dd 为当月最后一天
@@ -293,7 +342,7 @@ check(
 // 首行完整内容（账户名称 | 基金代码 | 快照金额 | 快照日期）
 check(
   '首行完整内容',
-  assetRows[0].join('|') === '华安纳斯达克100ETF联接(QDII)A|040046|218043.64|2026/09/30',
+  assetRows[0].join('|') === '华安纳斯达克100ETF联接(QDII)A|040046|210384.70|2026/10/31',
   assetRows[0].join('|')
 )
 

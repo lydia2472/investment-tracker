@@ -4,6 +4,7 @@ import { Button } from 'animal-island-ui'
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -89,9 +90,11 @@ export function ImportDialog({ trigger, onImportSuccess }: ImportDialogProps) {
           })
 
           // 询问用户是否继续
-          const shouldContinue = confirm(
-            `CSV文件可能存在问题：\n\n${warningMsg}\n\n建议：${suggestionMsg}\n\n是否继续导入？`
-          )
+          const shouldContinue = await confirmAsync({
+            title: 'CSV文件可能存在问题',
+            description: `${warningMsg}\n\n建议：${suggestionMsg}`,
+            confirmText: '继续导入',
+          })
 
           if (!shouldContinue) {
             setIsProcessing(false)

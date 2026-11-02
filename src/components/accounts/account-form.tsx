@@ -1,8 +1,8 @@
 'use client'
 
-import { format } from 'date-fns'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Input , Button } from 'animal-island-ui'
+import { format } from 'date-fns'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 
@@ -23,10 +23,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { PRESET_INSTITUTIONS } from '@/lib/constants/institutions'
+import { useAccountStore } from '@/lib/stores/account-store'
 import { cn } from '@/lib/utils'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { getDefaultRiskLevel } from '@/lib/utils/risk-level-helpers'
-import { useAccountStore } from '@/lib/stores/account-store'
 import {
   AccountType,
   RiskLevel,
@@ -47,6 +48,7 @@ const accountFormSchema = z
     icon: z.string().optional(),
     description: z.string().optional(),
     fundCode: z.string().optional(),
+    institution: z.string().optional(),
     // 定期存款配置（可选，当 type 为 FIXED_DEPOSIT 时使用）
     fixedDepositConfig: z
       .object({
@@ -151,6 +153,7 @@ export function AccountForm({
       icon: undefined,
       description: '',
       fundCode: '',
+      institution: '',
     },
   })
 
@@ -208,6 +211,40 @@ export function AccountForm({
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        {/* 所属渠道（账户页按渠道分组展示，可选可输入自定义） */}
+        <FormField
+          control={form.control}
+          name="institution"
+          render={({ field }) => {
+            const usedInstitutions = Array.from(
+              new Set(accounts.map((a) => a.institution).filter(Boolean) as string[])
+            ).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+            const options = Array.from(new Set([...PRESET_INSTITUTIONS, ...usedInstitutions]))
+            return (
+              <FormItem>
+                <FormLabel>所属渠道</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="选择或输入渠道（如 支付宝、工商银行）"
+                    list="institution-options"
+                    {...field}
+                    value={field.value ?? ''}
+                  />
+                </FormControl>
+                <datalist id="institution-options">
+                  {options.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  账户页按渠道分组展示；留空归入「未分组」。在账户页跨组拖拽也可自动改归属。
+                </p>
+                <FormMessage />
+              </FormItem>
+            )
+          }}
         />
 
         <FormField

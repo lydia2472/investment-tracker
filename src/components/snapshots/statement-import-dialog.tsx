@@ -20,7 +20,7 @@ import {
   importSnapshotsAndCreateProfits,
   type SnapshotImportData,
 } from '@/lib/utils/snapshot-import'
-import { createSnapshotProfitSyncPlan } from '@/lib/utils/snapshot-profit-sync'
+import { createSnapshotProfitSyncPlan, sumTransferInForMonth } from '@/lib/utils/snapshot-profit-sync'
 import { parseStatementFile, type ParsedTable } from '@/lib/utils/statement-parser'
 import { AccountType, TransactionType, type Account } from '@/types'
 
@@ -69,7 +69,7 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
   const addTransactions = useTransactionStore((state) => state.addTransactions)
   const updateTransaction = useTransactionStore((state) => state.updateTransaction)
   const deleteMultiple = useTransactionStore((state) => state.deleteMultiple)
-  const { addSnapshot, deleteSnapshot } = useSnapshotStore()
+  const { addSnapshot, deleteSnapshot, updateSnapshot } = useSnapshotStore()
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -150,32 +150,33 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
     setAppNames([])
   }
 
-  /** 蚂蚁基金交易明细 → 交易记录。输出列为 账户名称/基金代码/确认金额/日期（当月最后一天）/交易类型；
-   *  交易类型按第 5 列的枚举值写入（当前对账单统一为 transfer_in 转入）。
-   *  重复导入采用同账户同月覆盖：先删除该账户该月带「对账单导入」标签的旧交易再写入。 */
+  /** 蚂蚁基金交易明细 → 交易记录。输出列为 账户名称/基金代码/确认金额/日期（当月最后一天）/交易类型/转账目标账户名称；
+   *  每条转入记录前配一条「现金账户」转出行（金额为负）。导入时按系统惯例存正数金额（方向由类型表达）。
+   *  同月替换：导入数据涉及的月份，该月所有带「对账单导入」标签的旧交易先删除再写入新数据。 */
   const handleImportTransactions = async () => {
     if (!table || table.parserMode !== 'ant-fund') return
     setIsImporting(true)
 
     try {
-      // 固定 5 列布局：账户名称[0] 基金代码[1] 确认金额[2] 日期[3] 交易类型[4]
+      // 固定 6 列布局：账户名称[0] 基金代码[1] 确认金额[2] 日期[3] 交易类型[4] 转账目标账户名称[5]
       const validTypes = new Set<string>(Object.values(TransactionType))
 
-      // 1. 新建映射到「新建账户」的账户（基金类型，带基金代码）
+      // 1. 新建映射到「新建账户」的账户（转出行按现金类型、转入行按基金类型）
       const nameToAccount = new Map(accounts.map((a) => [a.name, a]))
       for (let i = 0; i < table.rows.length; i++) {
         if (mappings[i] !== NEW_ACCOUNT) continue
         const accountName = table.rows[i][0]
         const fundCode = table.rows[i][1]
         if (!accountName || nameToAccount.has(accountName)) continue
+        const isTransferOut = table.rows[i][4] === 'transfer_out'
         const created = addAccount({
           name: accountName,
-          type: AccountType.FUND,
+          type: isTransferOut ? AccountType.CASH : AccountType.FUND,
           balance: 0,
           initialBalance: 0,
           currency: 'CNY',
           color: '#f0e8d8',
-          fundCode: fundCode || undefined,
+          fundCode: isTransferOut ? undefined : fundCode || undefined,
           description: '对账单导入自动创建',
         })
         nameToAccount.set(created.name, created)
@@ -212,8 +213,10 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
         batch.push({
           accountId: target.id,
           type: txnType,
-          amount,
-          description: `对账单转入·${target.name}`,
+          amount: Math.abs(amount), // 系统惯例：金额恒为正数，方向由交易类型表达
+          // 描述只保留账户名（转出行为目标账户名，转入行为本账户名）
+          description:
+            txnType === TransactionType.TRANSFER_OUT ? row[5] || target.name : target.name,
           tags: ['对账单导入'],
           createdAt: txnDate,
         })
@@ -224,11 +227,12 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
         return
       }
 
-      // 3. 同账户同月覆盖：删除涉及的 (账户, 月份) 上带「对账单导入」标签的旧交易
+      // 3. 同月覆盖：导入数据涉及的月份，该月所有带「对账单导入」标签的旧交易全部替换
+      //    （不区分账户——账户映射调整后，旧映射账户的同月旧记录也一并清除）
       const affectedMonths = new Set(
         batch.map((t) => {
           const d = t.createdAt as Date
-          return `${t.accountId}:${d.getFullYear()}-${d.getMonth()}`
+          return `${d.getFullYear()}-${d.getMonth()}`
         })
       )
       const staleIds = useTransactionStore
@@ -236,7 +240,7 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
         .transactions.filter((t) => {
           if (!t.tags?.includes('对账单导入')) return false
           const d = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt)
-          return affectedMonths.has(`${t.accountId}:${d.getFullYear()}-${d.getMonth()}`)
+          return affectedMonths.has(`${d.getFullYear()}-${d.getMonth()}`)
         })
         .map((t) => t.id)
       if (staleIds.length > 0) {
@@ -245,11 +249,41 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
 
       addTransactions(batch)
 
-      const newCount = mappings.filter((m) => m === NEW_ACCOUNT).length
+      // 4. 回填月末快照的「本月投入」：对涉及的 (账户, 月)，若快照未记录投入，
+      //    用该月转入交易合计填上；再重新同步收益交易（收益 = 快照差 - 投入）
+      const latestTransactions = useTransactionStore.getState().transactions
+      const allSnapshots = useSnapshotStore.getState().snapshots
+      let backfilled = 0
+      const touched = new Set(batch.map((t) => `${t.accountId}:${(t.createdAt as Date).getFullYear()}-${(t.createdAt as Date).getMonth()}`))
+      for (const snap of allSnapshots) {
+        const d = snap.snapshotDate instanceof Date ? snap.snapshotDate : new Date(snap.snapshotDate)
+        if (!touched.has(`${snap.accountId}:${d.getFullYear()}-${d.getMonth()}`)) continue
+        if (snap.investmentAmount) continue // 用户手填的投入不覆盖
+        const transferIn = sumTransferInForMonth(latestTransactions, snap.accountId, d)
+        if (transferIn > 0) {
+          updateSnapshot(snap.id, { investmentAmount: transferIn })
+          backfilled++
+        }
+      }
+      const profitSyncPlan = createSnapshotProfitSyncPlan(
+        useAccountStore.getState().accounts,
+        useSnapshotStore.getState().snapshots,
+        useTransactionStore.getState().transactions
+      )
+      if (profitSyncPlan.deleteIds.length > 0) deleteMultiple(profitSyncPlan.deleteIds)
+      profitSyncPlan.update.forEach(({ id, updates }) => updateTransaction(id, updates))
+      profitSyncPlan.create.forEach((transaction) => addTransaction(transaction))
+
+      const newCount = new Set(
+        table.rows
+          .filter((_, i) => mappings[i] === NEW_ACCOUNT)
+          .map((r) => r[0])
+      ).size
       toast.success('已导入交易记录', {
         description:
           `创建 ${batch.length} 条交易（新建 ${newCount} 个账户）` +
           (staleIds.length > 0 ? `，覆盖 ${staleIds.length} 条旧导入记录` : '') +
+          (backfilled > 0 ? `，回填 ${backfilled} 条快照的本月投入并重算收益` : '') +
           (unsupported > 0 ? `，${unsupported} 条数据无效已跳过` : ''),
       })
       onImportSuccess?.()
@@ -305,11 +339,17 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
           invalidRows.push(i + 1)
           return
         }
+        const snapshotDay = new Date(y, m - 1, d)
         importData.push({
           accountName: target.name,
-          date: endOfDay(new Date(y, m - 1, d)), // 与 CSV 快照导入一致：记为当天最后时刻
+          date: endOfDay(snapshotDay), // 与 CSV 快照导入一致：记为当天最后时刻
           snapshotBalance: balance,
-          transferIn: 0,
+          // 本月投入：从已导入的该月转入交易统计（先导快照后导交易时，交易导入会再回填）
+          transferIn: sumTransferInForMonth(
+            useTransactionStore.getState().transactions,
+            target.id,
+            snapshotDay
+          ),
         })
       })
       if (invalidRows.length > 0) {
@@ -557,8 +597,9 @@ export function StatementImportDialog({ trigger, onImportSuccess }: StatementImp
                   <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3">
                     按基金代码已将 {matchStats.replaced} 行的账户名称替换为账户页名称；
                     {matchStats.matched} 条已匹配现有账户，{matchStats.newCount}{' '}
-                    条将新建基金账户（可在上方「目标账户」列调整）。交易统一记为「转入」，
-                    金额取确认金额，日期归到当月最后一天；同账户同月的旧导入记录会被覆盖。
+                    条将新建基金账户（可在上方「目标账户」列调整）。每笔定投生成一对记录：
+                    「现金账户」转出（金额为负）+ 基金账户转入，日期归到当月最后一天；
+                    同账户同月的旧导入记录会被覆盖。
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button type="default" onClick={handleReset} disabled={isParsing || isImporting}>

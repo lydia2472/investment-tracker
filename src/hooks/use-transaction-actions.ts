@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import { useTransactionStore } from '@/lib/stores'
 
 export function useTransactionActions() {
@@ -7,8 +8,8 @@ export function useTransactionActions() {
   const updateTransaction = useTransactionStore((state) => state.updateTransaction)
 
   const handleDelete = useCallback(
-    (id: string) => {
-      if (confirm('确定要删除这条交易记录吗？')) {
+    async (id: string) => {
+      if (await confirmAsync({ title: '确定要删除这条交易记录吗？', danger: true })) {
         deleteTransaction(id)
       }
     },
@@ -16,8 +17,8 @@ export function useTransactionActions() {
   )
 
   const handleDeleteWithDescription = useCallback(
-    (id: string, description: string) => {
-      if (confirm(`确定要删除交易"${description}"吗？`)) {
+    async (id: string, description: string) => {
+      if (await confirmAsync({ title: `确定要删除交易"${description}"吗？`, danger: true })) {
         deleteTransaction(id)
       }
     },

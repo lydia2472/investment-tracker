@@ -9,6 +9,7 @@ import { SnapshotExportDialog } from '@/components/snapshots/export-dialog'
 import { LegacyMonthlyDataRepairDialog } from '@/components/snapshots/legacy-monthly-data-repair-dialog'
 import { SnapshotImportDialog } from '@/components/snapshots/snapshot-import-dialog'
 import { StatementImportDialog } from '@/components/snapshots/statement-import-dialog'
+import { confirmAsync } from '@/components/ui/confirm-dialog'
 import {
   Select,
   SelectContent,
@@ -18,8 +19,8 @@ import {
 } from '@/components/ui/select'
 import { CalendarIcon, DownloadIcon, TrashIcon, UploadIcon } from '@/lib/components/icon-adapter'
 import { useAccountStore } from '@/lib/stores'
-import { useTransactionStore } from '@/lib/stores/transaction-store'
 import { useSnapshotStore, type Snapshot } from '@/lib/stores/snapshot-store'
+import { useTransactionStore } from '@/lib/stores/transaction-store'
 import { cn } from '@/lib/utils/cn'
 import { formatCurrency } from '@/lib/utils/formatters'
 
@@ -79,7 +80,7 @@ export default function SnapshotsPage() {
     return Array.from(months).sort().reverse()
   }
 
-  const handleDeleteSnapshot = (snapshot: Snapshot, accountName: string) => {
+  const handleDeleteSnapshot = async (snapshot: Snapshot, accountName: string) => {
     const snapshotDate = new Date(snapshot.snapshotDate)
     const sameMonthCount = snapshots.filter((item) => {
       if (item.accountId !== snapshot.accountId) {
@@ -99,7 +100,7 @@ export default function SnapshotsPage() {
         ? `检测到 ${accountName} 在 ${monthLabel} 有 ${sameMonthCount} 条快照，确定要整月删除吗？`
         : `确定要删除 ${accountName} 在 ${monthLabel} 的快照吗？`
 
-    if (confirm(message)) {
+    if (await confirmAsync({ title: message, confirmText: '删除', danger: true })) {
       const deletedCount = deleteSnapshotsForAccountMonth(snapshot.accountId, snapshotDate)
       toast.success(
         deletedCount > 1 ? `已删除 ${monthLabel} 的 ${deletedCount} 条快照` : '快照已删除'

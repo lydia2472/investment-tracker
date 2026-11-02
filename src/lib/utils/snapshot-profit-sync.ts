@@ -73,16 +73,39 @@ export function isSnapshotSyncTransaction(transaction: Transaction): boolean {
   )
 }
 
+/**
+ * 统计某账户在某个月内的转入总额（TRANSFER_IN），作为"本月投入"的数据来源。
+ * 对账单导入的定投、换汇入金等都以 transfer_in 落账，月末快照本身不记录投入时用此值。
+ */
+export function sumTransferInForMonth(
+  transactions: Transaction[],
+  accountId: string,
+  monthDate: Date
+): number {
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+  return transactions
+    .filter((txn) => {
+      if (txn.accountId !== accountId || txn.type !== TransactionType.TRANSFER_IN) return false
+      const d = normalizeDate(txn.createdAt)
+      return d.getFullYear() === year && d.getMonth() === month
+    })
+    .reduce((sum, txn) => sum + (txn.amount || 0), 0)
+}
+
 function buildExpectedTransaction(
   account: Account,
   snapshot: Snapshot,
   startBalance: number,
-  previousSnapshot?: Snapshot | null
+  previousSnapshot: Snapshot | null | undefined,
+  transactions: Transaction[]
 ): ExpectedSnapshotProfitTransaction | null {
   const snapshotDate = normalizeDate(snapshot.snapshotDate)
   const year = snapshotDate.getFullYear()
   const month = snapshotDate.getMonth() + 1
-  const investmentAmount = snapshot.investmentAmount || 0
+  // 快照显式记录了投入就用它；否则从该月的转入交易统计（对账单导入的交易即在此生效）
+  const investmentAmount =
+    snapshot.investmentAmount || sumTransferInForMonth(transactions, account.id, snapshotDate)
   const isGold = isGoldAccount(account)
   const currentValue = isGold ? getGoldSnapshotValue(snapshot) : snapshot.balance
   const previousValue =
@@ -95,12 +118,9 @@ function buildExpectedTransaction(
       })
     : snapshot.balance - startBalance - investmentAmount
 
-  if (calculatedProfit === 0) {
-    return null
-  }
-
+  // 收益为 0 也生成一条 0 元收益记录：让每个已录快照的月份在交易页/统计表都有痕迹
   const type =
-    calculatedProfit > 0 ? TransactionType.INVESTMENT_PROFIT : TransactionType.INVESTMENT_LOSS
+    calculatedProfit >= 0 ? TransactionType.INVESTMENT_PROFIT : TransactionType.INVESTMENT_LOSS
   const monthEnd = endOfMonth(snapshotDate)
   monthEnd.setHours(23, 59, 59, 999)
 
@@ -112,7 +132,7 @@ function buildExpectedTransaction(
     type,
     amount: Math.abs(calculatedProfit),
     balance: currentValue,
-    description: `${year}年${month}月投资${calculatedProfit > 0 ? '收益' : '亏损'}（快照自动同步）`,
+    description: `${year}年${month}月投资${calculatedProfit >= 0 ? '收益' : '亏损'}（快照自动同步）`,
     note:
       `同步来源: 月末快照\n` +
       `账户: ${account.name}\n` +
@@ -194,7 +214,8 @@ export function createSnapshotProfitSyncPlan(
         account,
         snapshot,
         previousSnapshot.balance,
-        previousSnapshot
+        previousSnapshot,
+        transactions
       )
 
       if (expectedTransaction) {

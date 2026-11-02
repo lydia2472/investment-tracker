@@ -41,6 +41,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
         description: data.description,
         fixedDepositConfig: data.fixedDepositConfig,
         fundCode: data.fundCode || undefined,
+        institution: data.institution?.trim() || undefined,
       })
 
       toast.success('账户更新成功')
@@ -70,6 +71,7 @@ export function EditAccountDialog({ account, open, onOpenChange }: EditAccountDi
     icon: account.icon,
     description: account.description,
     fundCode: account.fundCode || '',
+    institution: account.institution || '',
     fixedDepositConfig: account.fixedDepositConfig
       ? {
           ...account.fixedDepositConfig,

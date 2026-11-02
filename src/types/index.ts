@@ -81,6 +81,8 @@ export interface Account {
   archived?: boolean
   /** 基金代码（唯一识别）。如 000217、510300。非基金账户可不填。 */
   fundCode?: string
+  /** 所属渠道/机构。如 支付宝、工商银行、盈立。账户页按此分组展示。 */
+  institution?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -259,6 +261,7 @@ export interface AccountImport {
   icon?: string
   riskLevel?: RiskLevel
   fundCode?: string
+  institution?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }

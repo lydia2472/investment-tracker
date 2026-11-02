@@ -48,6 +48,7 @@ export function AddAccountDialog({ trigger }: AddAccountDialogProps) {
         description: data.description,
         fixedDepositConfig: data.fixedDepositConfig,
         fundCode: data.fundCode || undefined,
+        institution: data.institution?.trim() || undefined,
       })
 
       // 2. 如果是定期存款，立即生成月度利息

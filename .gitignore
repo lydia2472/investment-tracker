@@ -63,3 +63,9 @@ electron-test.js
 
 # Data backups (contains real financial data)
 data-backup*/
+
+# Build output (electron-builder, >100MB cannot push to GitHub)
+/release/
+
+# Statement fixtures contain real personal financial data (name/ID/transactions), keep local only
+scripts/fixtures/

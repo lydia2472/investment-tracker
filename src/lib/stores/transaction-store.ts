@@ -1,14 +1,14 @@
-import { v4 as uuidv4 } from 'uuid'
 import { useMemo } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import { calculateAccountBalanceFromTransactions, getTransactionBalanceDelta } from '@/lib/utils/account-balance-helpers'
+import { getGoldSnapshotValue } from '@/lib/utils/gold-profit-helpers'
 import { AccountType, TransactionType } from '@/types'
 
 import { useAccountStore } from './account-store'
 import { persistStorage } from './persist-storage'
-import { getGoldSnapshotValue } from '@/lib/utils/gold-profit-helpers'
 
 import type { Transaction } from '@/types'
 
@@ -112,6 +112,17 @@ interface TransactionState {
       transferInTags?: string[]
     }
   ) => void
+  /** 重算全部账户余额(修复历史数据错乱时使用;黄金/含快照账户按各自口径计算) */
+  recalculateAllBalances: () => void
+  /** 换汇:跨币种资金转移,两边金额独立,生成配对的 转出(原币种)+转入(目标币种)交易 */
+  exchange: (
+    fromAccountId: string,
+    toAccountId: string,
+    amountFrom: number,
+    amountTo: number,
+    date?: Date,
+    note?: string
+  ) => void
   migrateTransactions: () => void
   simplifyTransactionTypes: () => void // 新增：简化交易类型
 }
@@ -198,19 +209,18 @@ export const useTransactionStore = create<TransactionState>()(
             .forEach((txn) => idsToRemove.add(txn.id))
         }
 
-        const nextTransactions = get().transactions.filter(
-          (txn) => !idsToRemove.has(txn.id)
-        )
-        const affectedAccountIds = [...new Set(nextTransactions.map((t) => t.accountId))]
-        void affectedAccountIds // 仅用于语义占位，实际重算依赖原 accountId
-
-        set({ transactions: nextTransactions })
-        // 重算所有受影响账户（包括被删交易及其配对涉及的账户）
+        // 必须在 set 之前收集被删交易（含联动配对）涉及的账户，
+        // 否则删除后 get() 里已找不到它们，配对账户（如转账的另一端）余额不会重算
         const allAffected = new Set<string>()
-        allAffected.add(transaction.accountId)
         get()
           .transactions.filter((t) => idsToRemove.has(t.id))
           .forEach((t) => allAffected.add(t.accountId))
+
+        const nextTransactions = get().transactions.filter(
+          (txn) => !idsToRemove.has(txn.id)
+        )
+
+        set({ transactions: nextTransactions })
         recalculateAccountBalances([...allAffected], nextTransactions)
       },
 
@@ -226,8 +236,21 @@ export const useTransactionStore = create<TransactionState>()(
         // 这里只确保"已经决定删除"的交易一起处理，不主动扩展删除范围。
         const idsSet = new Set(ids)
 
+        // 成对转账保护：批量删除中若只包含配对的一半，连带另一半一起删除，
+        // 避免留下孤儿交易；并在删除前收集全部受影响账户
+        for (const txn of transactionsToDelete) {
+          if (txn.transferPairId && !idsSet.has(txn.id)) continue
+          if (!txn.transferPairId) continue
+          get()
+            .transactions.filter(
+              (t) => t.transferPairId === txn.transferPairId && !idsSet.has(t.id)
+            )
+            .forEach((t) => idsSet.add(t.id))
+        }
+        const allDeleted = get().transactions.filter((t) => idsSet.has(t.id))
+        const affectedAccountIds = [...new Set(allDeleted.map((t) => t.accountId))]
+
         const nextTransactions = get().transactions.filter((txn) => !idsSet.has(txn.id))
-        const affectedAccountIds = transactionsToDelete.map((transaction) => transaction.accountId)
 
         set({ transactions: nextTransactions })
         recalculateAccountBalances(affectedAccountIds, nextTransactions)
@@ -345,6 +368,50 @@ export const useTransactionStore = create<TransactionState>()(
           transferPairId: transferId,
           description: description || `从 ${fromAccountName} 转入`,
           tags: options?.transferInTags,
+          createdAt: transactionDate,
+        })
+      },
+
+      recalculateAllBalances: () => {
+        const accountIds = useAccountStore.getState().accounts.map((acc) => acc.id)
+        recalculateAccountBalances(accountIds, get().transactions)
+      },
+
+      exchange: (fromAccountId, toAccountId, amountFrom, amountTo, date, note) => {
+        const { addTransaction } = get()
+        const transactionDate = date || new Date()
+        const transferId = uuidv4() // 配对 ID:删除一笔时联动删除另一笔
+
+        const fromAccount = useAccountStore.getState().accounts.find((acc) => acc.id === fromAccountId)
+        const toAccount = useAccountStore.getState().accounts.find((acc) => acc.id === toAccountId)
+        const fromName = fromAccount?.name || fromAccountId
+        const toName = toAccount?.name || toAccountId
+        const fromCurrency = fromAccount?.currency || ''
+        const toCurrency = toAccount?.currency || ''
+
+        // 源账户:转出(原币种金额)
+        addTransaction({
+          accountId: fromAccountId,
+          type: TransactionType.TRANSFER_OUT,
+          amount: amountFrom,
+          transferToAccountId: toAccountId,
+          transferPairId: transferId,
+          description: `换汇→${toName}`,
+          tags: ['换汇'],
+          note,
+          createdAt: transactionDate,
+        })
+
+        // 目标账户:转入(目标币种金额)
+        addTransaction({
+          accountId: toAccountId,
+          type: TransactionType.TRANSFER_IN,
+          amount: amountTo,
+          transferFromAccountId: fromAccountId,
+          transferPairId: transferId,
+          description: `换汇←${fromName}`,
+          tags: ['换汇'],
+          note,
           createdAt: transactionDate,
         })
       },
