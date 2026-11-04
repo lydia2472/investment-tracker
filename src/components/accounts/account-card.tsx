@@ -1,5 +1,5 @@
-import { format } from 'date-fns'
 import { Card , Button } from 'animal-island-ui'
+import { format } from 'date-fns'
 
 import {
   TrendingUpIcon,
@@ -11,19 +11,19 @@ import { FixedDepositService } from '@/lib/services/fixed-deposit-service'
 import { MaturityReminderService } from '@/lib/services/maturity-reminder-service'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { useTransactionStore } from '@/lib/stores/transaction-store'
-import { calculateCurrentDisplayBalance } from '@/lib/utils/snapshot-balance-helpers'
 import { cn } from '@/lib/utils/cn'
 import { iconClasses, cardClasses, buttonClasses } from '@/lib/utils/design-classes'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { calculateGoldAccountSummary, isGoldAccount } from '@/lib/utils/gold-profit-helpers'
+import { calculateCurrentDisplayBalance } from '@/lib/utils/snapshot-balance-helpers'
+import { AccountType } from '@/types'
 
 import { AccountTypeBadge } from './account-type-badge'
 import { MaturityBadge } from './maturity-badge'
 import { RiskLevelBadge } from './risk-level-badge'
-import { TransferDialog } from './transfer-dialog'
 import { SellGoldDialog } from './sell-gold-dialog'
+import { TransferDialog } from './transfer-dialog'
 
-import { AccountType } from '@/types'
 import type { Account } from '@/types'
 
 interface AccountCardProps {
@@ -139,21 +139,26 @@ export function AccountCard({
               }
             >
               {account.icon ? (
-                <img
-                  src={account.icon}
-                  alt={account.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Failed to load account icon:', account.icon, e)
-                    // 图片加载失败时回退到首字母显示
-                    e.currentTarget.style.display = 'none'
-                    const parent = e.currentTarget.parentElement
-                    if (parent) {
-                      parent.style.background = `linear-gradient(135deg, ${account.color}, ${account.color}cc)`
-                      parent.style.boxShadow = `0 8px 16px ${account.color}40`
-                    }
-                  }}
-                />
+                account.icon.startsWith('/') || account.icon.startsWith('http') ? (
+                  <img
+                    src={account.icon}
+                    alt={account.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Failed to load account icon:', account.icon, e)
+                      // 图片加载失败时回退到首字母显示
+                      e.currentTarget.style.display = 'none'
+                      const parent = e.currentTarget.parentElement
+                      if (parent) {
+                        parent.style.background = `linear-gradient(135deg, ${account.color}, ${account.color}cc)`
+                        parent.style.boxShadow = `0 8px 16px ${account.color}40`
+                      }
+                    }}
+                  />
+                ) : (
+                  // emoji 图标(账户图标选择器现在存 emoji 字符)
+                  <span className="text-2xl leading-none">{account.icon}</span>
+                )
               ) : (
                 <span className="text-white text-lg font-bold">
                   {account.name.charAt(0).toUpperCase()}

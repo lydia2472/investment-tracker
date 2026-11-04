@@ -68,8 +68,8 @@ export function Sidebar() {
             style={{ backgroundColor: '#19c8b9' }}
           >
             <img
-              src="/animal-crossing-icon.jpg"
-              alt="Animal Crossing Icon"
+              src="/logo.svg"
+              alt="投资管理"
               className="w-full h-full object-cover"
             />
           </div>
