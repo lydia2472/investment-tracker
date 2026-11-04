@@ -138,14 +138,14 @@ export function AccountCard({
                     }
               }
             >
-              {account.icon ? (
+              {account.icon && !account.icon.startsWith('/icons/') ? (
                 account.icon.startsWith('/') || account.icon.startsWith('http') ? (
                   <img
                     src={account.icon}
                     alt={account.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.error('Failed to load account icon:', account.icon, e)
+                      console.warn('账户图标加载失败，已回退为首字母显示:', account.icon)
                       // 图片加载失败时回退到首字母显示
                       e.currentTarget.style.display = 'none'
                       const parent = e.currentTarget.parentElement
