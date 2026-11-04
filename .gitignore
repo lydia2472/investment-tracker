@@ -69,3 +69,7 @@ data-backup*/
 
 # Statement fixtures contain real personal financial data (name/ID/transactions), keep local only
 scripts/fixtures/
+
+# Legacy backups
+*.backup
+package.temp.json
