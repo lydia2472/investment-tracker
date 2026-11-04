@@ -23,7 +23,7 @@
 
 ```bash
 # 克隆项目 / Clone the repository
-git clone https://github.com/yourusername/investment-tracker.git
+git clone https://github.com/lydia2472/investment-tracker.git
 
 # 进入项目目录 / Enter the project directory
 cd investment-tracker
@@ -151,8 +151,8 @@ investment-tracker/
 
 如有问题或建议，请通过以下方式联系：
 
-- 提交 [Issue](https://github.com/yourusername/investment-tracker/issues)
-- 发送邮件至 your.email@example.com
+- 提交 [Issue](https://github.com/lydia2472/investment-tracker/issues)
+- 在 GitHub 上访问 [@lydia2472](https://github.com/lydia2472)
 
 ---
 
