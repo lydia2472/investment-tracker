@@ -12,6 +12,18 @@
 - **响应式设计** - 支持桌面、平板、手机等多种设备
 - **深色模式** - 支持明亮/深色主题切换
 
+## 📥 下载安装 / Download
+
+前往 [Releases 页面](https://github.com/lydia2472/investment-tracker/releases/latest) 下载最新版本：
+
+| 文件 | 平台 |
+|---|---|
+| `InvestmentTracker-x.x.x-arm64.dmg` | macOS（Apple Silicon） |
+| `InvestmentTracker Setup x.x.x.exe` | Windows（x64） |
+
+> macOS 首次打开若提示无法验证开发者：系统设置 → 隐私与安全性 → 仍要打开。
+> 数据完全保存在本地，安装即用，无需注册。
+
 ## 🚀 快速开始 / Quick Start
 
 ### 环境要求 / Prerequisites
