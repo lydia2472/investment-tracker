@@ -23,6 +23,7 @@
     "electron:dev": "cross-env NODE_ENV=development ts-node electron/main.ts",
     "electron:build": "npm run build:desktop && electron-builder",
     "electron:build:mac": "npm run build:desktop && electron-builder --mac --arm64",
+    "electron:build:win": "npm run build:desktop && electron-builder --win --x64",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\""
   },
   "dependencies": {
@@ -106,6 +107,23 @@
       ],
       "category": "public.app-category.finance",
       "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "InvestmentTracker"
     }
   }
 }
